@@ -76,14 +76,14 @@ export default function AdminDashboard() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.05 }}
-            className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col gap-3 sm:gap-4 relative overflow-hidden group hover:shadow-xl hover:shadow-raden-green/5 transition-all duration-500"
+            className="bg-white p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-row items-center sm:flex-col gap-4 sm:gap-4 relative overflow-hidden group hover:shadow-xl hover:shadow-raden-green/5 transition-all duration-500"
           >
-            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl ${stat.color} flex items-center justify-center transition-transform group-hover:scale-110 duration-500`}>
-              {stat.icon ? <stat.icon size={20} className="sm:w-6 sm:h-6" /> : <Loader2 className="animate-spin" />}
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl ${stat.color} flex items-center justify-center transition-transform group-hover:scale-110 duration-500`}>
+              {stat.icon ? <stat.icon size={18} className="sm:w-6 sm:h-6" /> : <Loader2 className="animate-spin" />}
             </div>
-            <div>
-              <p className="text-[9px] sm:text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">{stat.name || 'Loading...'}</p>
-              <h3 className="text-xl sm:text-2xl font-black text-raden-green tracking-tight">{stat.value || '---'}</h3>
+            <div className="min-w-0 flex-1 sm:flex-none">
+              <p className="text-[9px] sm:text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5 sm:mb-1">{stat.name || 'Loading...'}</p>
+              <h3 className="text-lg sm:text-2xl font-black text-raden-green tracking-tight truncate">{stat.value || '---'}</h3>
             </div>
           </motion.div>
         ))}
@@ -97,7 +97,12 @@ export default function AdminDashboard() {
               Pesanan Aktif
               <span className="text-[9px] sm:text-[10px] bg-blue-100 text-blue-600 px-3 py-1 rounded-full font-black uppercase tracking-widest">{activeOrders.length}</span>
             </h3>
-            <button onClick={() => router.push('/admin/orders')} className="w-full sm:w-auto bg-gray-50 text-raden-gold px-5 py-3 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-gray-100 transition-all border border-gray-100 shadow-sm sm:shadow-none">Lihat Semua</button>
+            <button 
+              onClick={() => router.push('/admin/orders')} 
+              className="px-4 py-2 bg-gray-50 text-raden-gold rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-gray-100 transition-all border border-gray-100 shadow-sm sm:shadow-none shrink-0"
+            >
+              Cek Detail
+            </button>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

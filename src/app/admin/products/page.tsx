@@ -83,8 +83,8 @@ export default function ProductsPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight">Product Master</h1>
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Inventory & Pricing Central.</p>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-          <Plus size={20} /> Add Product
+        <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-5 py-3.5 sm:py-3 rounded-2xl font-black text-[11px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+          <Plus size={18} /> Add Product
         </button>
       </div>
 
@@ -97,22 +97,24 @@ export default function ProductsPage() {
 
       <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden relative min-h-[400px]">
         {loading && products.length === 0 && <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-raden-gold" /></div>}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[600px]">
+        
+        {/* Desktop Table View */}
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="w-full text-left min-w-[700px]">
             <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b">
-              <tr><th className="px-6 sm:px-8 py-5">Item</th><th className="px-6 sm:px-8 py-5">Category</th><th className="px-6 sm:px-8 py-5 text-right">Selling Price</th><th className="px-6 sm:px-8 py-5 text-center">Stock</th><th className="px-6 sm:px-8 py-5 text-right">Actions</th></tr>
+              <tr><th className="px-8 py-5">Item</th><th className="px-8 py-5">Category</th><th className="px-8 py-5 text-right">Selling Price</th><th className="px-8 py-5 text-center">Stock</th><th className="px-8 py-5 text-right">Actions</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredProducts.map(p => (
                 <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 sm:px-8 py-5 font-bold text-sm sm:text-base text-raden-green">{p.name}</td>
-                  <td className="px-6 sm:px-8 py-5 text-[10px] font-black uppercase tracking-widest text-gray-400">{p.category}</td>
-                  <td className="px-6 sm:px-8 py-5 text-right font-black text-raden-green text-sm sm:text-base">NTD {p.price?.toLocaleString()}</td>
-                  <td className="px-6 sm:px-8 py-5 text-center">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${p.current_stock < 10 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>{p.current_stock} {p.unit}</span>
+                  <td className="px-8 py-5 font-bold text-base text-raden-green">{p.name}</td>
+                  <td className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-gray-400">{p.category}</td>
+                  <td className="px-8 py-5 text-right font-black text-raden-green text-base">NTD {p.price?.toLocaleString()}</td>
+                  <td className="px-8 py-5 text-center">
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${p.current_stock < 10 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>{p.current_stock} {p.unit}</span>
                   </td>
-                  <td className="px-6 sm:px-8 py-5 text-right flex justify-end">
-                    <button onClick={() => { setEditForm({ ...p }); setShowEditModal(true); }} className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gray-50 hover:bg-raden-gold/10 hover:text-raden-gold text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
+                  <td className="px-8 py-5 text-right flex justify-end">
+                    <button onClick={() => { setEditForm({ ...p }); setShowEditModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-raden-gold/10 hover:text-raden-gold text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
                       <Edit3 size={14} /> Update
                     </button>
                   </td>
@@ -120,6 +122,32 @@ export default function ProductsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card List View */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {filteredProducts.map(p => (
+            <div key={p.id} className="p-6 flex flex-col gap-4 active:bg-gray-50 transition-colors" onClick={() => { setEditForm({ ...p }); setShowEditModal(true); }}>
+              <div className="flex justify-between items-start">
+                <div className="min-w-0 flex-1 pr-4">
+                  <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1">{p.category || 'NO CATEGORY'}</p>
+                  <h3 className="font-black text-raden-green text-base truncate">{p.name}</h3>
+                </div>
+                <p className="shrink-0 font-black text-raden-gold text-sm">NTD {p.price?.toLocaleString()}</p>
+              </div>
+              
+              <div className="flex items-center justify-between gap-4">
+                <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${p.current_stock < 10 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>
+                  <Package size={12} /> {p.current_stock} {p.unit}
+                </div>
+                <div className="flex items-center gap-2 text-gray-300">
+                  <span className="text-[10px] font-black uppercase tracking-widest">Update</span>
+                  <Edit3 size={16} />
+                </div>
+              </div>
+            </div>
+          ))}
+          {!filteredProducts.length && <div className="p-10 text-center text-gray-400 font-bold italic text-sm">No products found.</div>}
         </div>
       </div>
 

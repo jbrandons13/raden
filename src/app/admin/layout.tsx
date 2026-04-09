@@ -48,26 +48,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
         
-        <nav className="p-4 space-y-2 h-[calc(100vh-80px)] overflow-y-auto">
+        <nav className="p-4 space-y-1.5 h-[calc(100vh-80px)] overflow-y-auto">
           {navItems.map((item) => (
             <Link 
               key={item.href} 
               href={item.href}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition-colors"
+              className="flex items-center gap-3 p-3.5 rounded-2xl hover:bg-white/10 active:bg-white/20 transition-all group"
             >
-              <item.icon size={20} className="text-raden-gold" />
-              <span className="font-medium text-sm">{item.name}</span>
+              <item.icon size={18} className="text-raden-gold group-hover:scale-110 transition-transform" />
+              <span className="font-black text-[11px] uppercase tracking-widest text-white/80 group-hover:text-white">{item.name}</span>
             </Link>
           ))}
           
           <div className="pt-4 mt-4 border-t border-white/10">
             <button 
               onClick={logout}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-500/20 transition-colors text-red-300"
+              className="w-full flex items-center gap-3 p-3.5 rounded-2xl hover:bg-red-500/20 active:bg-red-500/30 transition-all text-red-300"
             >
-              <LogOut size={20} />
-              <span className="font-bold text-sm uppercase tracking-wider">Keluar</span>
+              <LogOut size={18} />
+              <span className="font-black text-[11px] uppercase tracking-widest">Keluar</span>
             </button>
           </div>
         </nav>
@@ -93,12 +93,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </button>
             <button 
               onClick={() => router.back()}
-              className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-raden-green hidden sm:block"
+              className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-raden-green flex items-center justify-center"
               title="Kembali"
             >
-              <ArrowLeft size={24} />
+              <ArrowLeft size={20} className="sm:w-6 sm:h-6" />
             </button>
-            <h2 className="text-[10px] sm:text-xs font-black text-raden-green uppercase tracking-[0.2em]">
+            <h2 className="text-[11px] sm:text-xs font-black text-raden-green uppercase tracking-[0.3em] truncate max-w-[120px] sm:max-w-none">
               Admin Panel
             </h2>
           </div>

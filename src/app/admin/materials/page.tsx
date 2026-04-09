@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Plus, Search, Printer, AlertCircle, Loader2, Trash2, Tag, ShoppingCart, History, X, Edit3, Save } from 'lucide-react';
+import { Package, Plus, Search, Printer, AlertCircle, Loader2, Trash2, Tag, ShoppingCart, History, X, Edit3, Save, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function MaterialsPage() {
@@ -97,8 +97,8 @@ export default function MaterialsPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight">Material Stock</h1>
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Bahan baku & rekomendasi restock.</p>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-          <Plus size={20} /> Add Material
+        <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-5 py-3.5 sm:py-3 rounded-2xl font-black text-[11px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+          <Plus size={18} /> Add Material
         </button>
       </div>
 
@@ -113,24 +113,26 @@ export default function MaterialsPage() {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden relative min-h-[400px]">
             {loading && materials.length === 0 && <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-raden-gold" /></div>}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left min-w-[600px]">
+            
+            {/* Desktop Table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left min-w-[700px]">
                 <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b">
-                  <tr><th className="px-6 sm:px-8 py-5">Item Name</th><th className="px-6 sm:px-8 py-5 text-center">Stock</th><th className="px-6 sm:px-8 py-5">Purchase Notes</th><th className="px-6 sm:px-8 py-5 text-right">Actions</th></tr>
+                  <tr><th className="px-8 py-5">Item Name</th><th className="px-8 py-5 text-center">Stock</th><th className="px-8 py-5">Purchase Notes</th><th className="px-8 py-5 text-right">Actions</th></tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {filteredMaterials.map(item => (
                     <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 sm:px-8 py-5 text-sm font-bold text-raden-green">{item.name}</td>
-                      <td className="px-6 sm:px-8 py-5 text-center"><span className="font-mono text-xs font-bold text-gray-800">{item.qty} {item.unit}</span></td>
-                      <td className="px-6 sm:px-8 py-5">
+                      <td className="px-8 py-5 text-sm font-bold text-raden-green">{item.name}</td>
+                      <td className="px-8 py-5 text-center"><span className="font-mono text-xs font-bold text-gray-800 bg-gray-100 px-3 py-1.5 rounded-lg">{item.qty} {item.unit}</span></td>
+                      <td className="px-8 py-5">
                         {item.notes ? (
                           <div className="flex items-center gap-1.5 text-[10px] font-bold text-raden-gold uppercase tracking-widest bg-raden-gold/5 px-2 py-1.5 rounded-lg border border-raden-gold/10 w-fit">
                             <ShoppingCart size={12} /> {item.notes}
                           </div>
                         ) : <span className="text-gray-300 text-xs italic">-</span>}
                       </td>
-                      <td className="px-6 sm:px-8 py-5 text-right">
+                      <td className="px-8 py-5 text-right">
                         <button onClick={() => { setEditForm({ ...item }); setShowEditModal(true); }} className="px-4 py-2 bg-gray-50 hover:bg-raden-gold/10 hover:text-raden-gold text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all flex items-center gap-2 ml-auto">
                           <Edit3 size={14}/> Edit
                         </button>
@@ -139,6 +141,36 @@ export default function MaterialsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="sm:hidden divide-y divide-gray-100">
+              {filteredMaterials.map(item => (
+                <div key={item.id} className="p-6 flex flex-col gap-4 active:bg-gray-50 transition-colors" onClick={() => { setEditForm({ ...item }); setShowEditModal(true); }}>
+                  <div className="flex justify-between items-start">
+                    <div className="min-w-0 flex-1 pr-4">
+                      <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1">{item.category || 'NO CATEGORY'}</p>
+                      <h3 className="font-black text-raden-green text-base truncate">{item.name}</h3>
+                    </div>
+                    <div className="shrink-0 bg-raden-gold/10 text-raden-gold px-3 py-2 rounded-xl border border-raden-gold/20 flex flex-col items-center min-w-[60px]">
+                      <span className="text-xs font-black">{item.qty}</span>
+                      <span className="text-[8px] font-black uppercase tracking-widest">{item.unit}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      {item.notes ? (
+                        <p className="text-[10px] font-bold text-gray-400 truncate flex items-center gap-1.5">
+                          <ShoppingCart size={12} className="text-raden-gold" /> {item.notes}
+                        </p>
+                      ) : <p className="text-[10px] text-gray-300 italic">No notes</p>}
+                    </div>
+                    <ChevronRight size={18} className="text-gray-300" />
+                  </div>
+                </div>
+              ))}
+              {!filteredMaterials.length && <div className="p-10 text-center text-gray-400 font-bold italic text-sm">No materials found.</div>}
             </div>
           </div>
         </div>

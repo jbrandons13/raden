@@ -135,9 +135,9 @@ export default function StaffManagementPage() {
         
         <div className="overflow-x-auto max-h-[600px] relative">
           <table className="w-full text-left border-collapse min-w-[2000px]">
-            <thead className="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-md shadow-sm">
+            <thead className="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-md shadow-sm">
               <tr>
-                <th className="px-6 py-4 bg-gray-50/95 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-r border-gray-100 w-48 sticky left-0 z-30">Personnel</th>
+                <th className="px-6 py-4 bg-gray-50/95 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-r border-gray-100 w-48 sticky left-0 z-40 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">Personnel</th>
                 {dates.map(d => {
                   const dateObj = new Date(d);
                   const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
@@ -153,7 +153,7 @@ export default function StaffManagementPage() {
             <tbody className="divide-y divide-gray-100">
               {staff.map(s => (
                 <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4 border-r border-gray-100 sticky left-0 bg-white group z-10 w-48">
+                  <td className="px-6 py-4 border-r border-gray-100 sticky left-0 bg-white group z-20 w-48 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-3">
                        <span className="font-bold text-xs text-raden-green truncate">{s.name}</span>
                     </div>

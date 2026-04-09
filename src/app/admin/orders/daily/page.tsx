@@ -43,18 +43,20 @@ export default function OrderHarianPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.05 }}
             onClick={() => setSelectedDate(d)}
-            className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-sm border border-gray-100 hover:border-raden-gold/50 cursor-pointer transition-all flex flex-col items-center text-center group active:scale-95"
+            className="bg-white p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-sm border border-gray-100 hover:border-raden-gold/30 cursor-pointer transition-all flex flex-row sm:flex-col items-center sm:text-center group active:scale-95 gap-4"
           >
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-raden-gold/10 text-raden-gold flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <CalendarIcon size={24} className="sm:w-8 sm:h-8" />
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-raden-gold/10 text-raden-gold flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+              <CalendarIcon size={20} className="sm:w-8 sm:h-8" />
             </div>
-            <h3 className="font-black text-base sm:text-lg text-raden-green">{d.date}</h3>
-            <p className="text-gray-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest mt-1 mb-4">{d.totalOrders} Pesanan</p>
-            <div className={`text-[9px] sm:text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-[0.2em] ${
-              d.status === 'Active' ? 'bg-blue-100 text-blue-700' : 
-              d.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'
-            }`}>
-              {d.status}
+            <div className="flex-1 min-w-0 sm:contents">
+              <h3 className="font-black text-sm sm:text-lg text-raden-green truncate">{d.date}</h3>
+              <p className="text-gray-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest mt-0.5 sm:mt-1 mb-1 sm:mb-4">{d.totalOrders} Pesanan</p>
+              <div className={`w-fit sm:w-auto text-[8px] sm:text-[10px] font-black px-2 sm:px-3 py-1 rounded-md sm:rounded-full uppercase tracking-[0.1em] sm:tracking-[0.2em] ${
+                d.status === 'Active' ? 'bg-blue-100 text-blue-700' : 
+                d.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'
+              }`}>
+                {d.status}
+              </div>
             </div>
           </motion.div>
         ))}
@@ -70,20 +72,21 @@ export default function OrderHarianPage() {
             >
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 px-2 sm:px-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 flex items-center justify-center rounded-2xl bg-raden-gold text-white shadow-lg shadow-raden-gold/30 shrink-0">
-                    <CalendarIcon size={20} />
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl bg-raden-gold text-white shadow-lg shadow-raden-gold/30 shrink-0">
+                    <CalendarIcon size={18} />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-lg sm:text-2xl font-black text-raden-green truncate">Rekap: {selectedDate.date}</h2>
-                    <p className="text-[10px] sm:text-sm text-gray-400 font-bold uppercase tracking-widest">Total Produksi & Distribusi</p>
+                    <h2 className="text-base sm:text-2xl font-black text-raden-green truncate">Rekap: {selectedDate.date}</h2>
+                    <p className="text-[9px] sm:text-sm text-gray-400 font-bold uppercase tracking-widest">Total Produksi & Distribusi</p>
                   </div>
                 </div>
                 <div className="flex w-full sm:w-auto gap-2">
-                  <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-raden-green text-white px-5 py-3 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-                    <Printer size={16} /> <span className="sm:hidden">Print Recap</span><span className="hidden sm:inline">Cetak All Toko</span>
+                  <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-raden-green text-white px-5 py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+                    <Printer size={16} /> Cetak Rekap
                   </button>
-                  <button onClick={() => setSelectedDate(null)} className="p-3 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors text-gray-400"><X size={20}/></button>
+                  <button onClick={() => setSelectedDate(null)} className="p-3 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors text-gray-400 block sm:hidden"><X size={20}/></button>
                 </div>
+                <button onClick={() => setSelectedDate(null)} className="absolute top-6 right-6 p-2 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hidden sm:block"><X size={24}/></button>
               </div>
 
               <div className="flex-1 overflow-y-auto px-4 space-y-10 pb-6">

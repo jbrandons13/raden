@@ -51,13 +51,13 @@ export default function AdminChecklistPage() {
 
   return (
     <div className="space-y-8 relative pb-12">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-raden-green tracking-tighter">Master Checklist</h1>
-          <p className="text-gray-400 font-medium">Standardization of daily operations.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight">Master Checklist</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Standardization of daily operations.</p>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 bg-raden-gold text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-          <Plus size={20} /> Add Task
+        <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-5 py-3.5 sm:py-3 rounded-2xl font-black text-[11px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+          <Plus size={18} /> Add Task
         </button>
       </div>
 
@@ -76,14 +76,14 @@ export default function AdminChecklistPage() {
                 <motion.div 
                   key={t.id}
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center justify-between group hover:shadow-xl hover:border-raden-gold/30 transition-all cursor-default"
+                  className="bg-white p-5 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center justify-between group hover:shadow-xl hover:border-raden-gold/30 transition-all cursor-default"
                 >
-                  <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-raden-green group-hover:bg-raden-gold/10 group-hover:text-raden-gold transition-colors">
-                      <CheckSquare size={20} />
+                  <div className="flex items-center gap-4 sm:gap-5">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-raden-green group-hover:bg-raden-gold/10 group-hover:text-raden-gold transition-colors shrink-0">
+                      <CheckSquare size={18} />
                     </div>
-                    <div>
-                      <p className="font-black text-raden-green text-sm tracking-tight">{t.task_name}</p>
+                    <div className="min-w-0">
+                      <p className="font-black text-raden-green text-sm tracking-tight truncate">{t.task_name}</p>
                       {t.is_mandatory_photo && (
                         <span className="flex items-center gap-1 text-[8px] font-black text-raden-gold uppercase tracking-widest mt-1">
                           <Camera size={10} /> Photo Validation Required

@@ -110,7 +110,7 @@ export default function OrdersPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Pesanan & Omzet</h1>
           <p className="text-gray-500 text-xs sm:text-sm font-medium">Navigasi instan manajemen distribusi.</p>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3 rounded-2xl font-black shadow-lg active:scale-95 transition-all text-xs uppercase tracking-widest">
+        <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-5 py-3.5 sm:py-3 rounded-2xl font-black shadow-lg active:scale-95 transition-all text-[11px] sm:text-xs uppercase tracking-widest">
           <Plus size={18} /> Tambah Pesanan
         </button>
       </div>
@@ -126,42 +126,82 @@ export default function OrdersPage() {
             <Loader2 className="w-8 h-8 animate-spin text-raden-gold" />
           </div>
         )}
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left min-w-[700px]">
             <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b">
               <tr>
-                <th className="px-6 sm:px-8 py-5">Pelanggan</th>
-                <th className="px-6 sm:px-8 py-5">Nilai Pesanan</th>
-                <th className="px-6 sm:px-8 py-5">Status</th>
-                <th className="px-6 sm:px-8 py-5 text-right">Aksi</th>
+                <th className="px-8 py-5">Pelanggan</th>
+                <th className="px-8 py-5">Nilai Pesanan</th>
+                <th className="px-8 py-5">Status</th>
+                <th className="px-8 py-5 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredOrders.length === 0 && !loading && <tr><td colSpan={4} className="px-6 sm:px-8 py-20 text-center text-gray-300 italic">Belum ada data pesanan.</td></tr>}
               {filteredOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 sm:px-8 py-6">
+                  <td className="px-8 py-6">
                     <p className="font-mono text-[9px] text-gray-400 mb-1">#{order.id.split('-')[0]}</p>
-                    <p className="font-bold text-raden-green text-sm sm:text-base">{order.customers?.name}</p>
+                    <p className="font-bold text-raden-green text-base">{order.customers?.name}</p>
                   </td>
-                  <td className="px-6 sm:px-8 py-6 font-black text-raden-green text-sm sm:text-base">NTD {order.total_revenue?.toLocaleString()}</td>
-                  <td className="px-6 sm:px-8 py-6">
-                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${order.status === 'Draft' ? 'bg-gray-100 text-gray-400' : 'bg-blue-100 text-blue-600'}`}>{order.status}</span>
+                  <td className="px-8 py-6 font-black text-raden-green text-base">NTD {order.total_revenue?.toLocaleString()}</td>
+                  <td className="px-8 py-6">
+                    <span className={`px-3 py-1Rounded-full text-[9px] font-black uppercase tracking-widest ${order.status === 'Draft' ? 'bg-gray-100 text-gray-400' : 'bg-blue-100 text-blue-600'}`}>{order.status}</span>
                   </td>
-                  <td className="px-6 sm:px-8 py-6 text-right">
+                  <td className="px-8 py-6 text-right">
                     <div className="flex justify-end gap-2 text-xs">
                       {order.status === 'Draft' ? (
-                        <button onClick={() => handleDispatchPreview(order)} className="bg-raden-green text-white px-3 sm:px-4 py-2 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest">Dispatch</button>
+                        <button onClick={() => handleDispatchPreview(order)} className="bg-raden-green text-white px-4 py-2 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest hover:scale-105 transition-transform">Dispatch</button>
                       ) : order.status === 'Siap Kirim' ? (
-                        <button onClick={() => completeOrder(order.id)} className="bg-raden-gold text-white px-3 sm:px-4 py-2 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest font-black">Tuntas</button>
+                        <button onClick={() => completeOrder(order.id)} className="bg-raden-gold text-white px-4 py-2 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest font-black hover:scale-105 transition-transform">Tuntas</button>
                       ) : null}
-                      <button onClick={() => handleDispatchPreview(order)} className="p-2 text-gray-400 border rounded-xl hover:bg-gray-50"><Receipt size={16} /></button>
+                      <button onClick={() => handleDispatchPreview(order)} className="p-2 text-gray-400 border rounded-xl hover:bg-gray-50 transition-colors"><Receipt size={16} /></button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {filteredOrders.map((order) => (
+            <div key={order.id} className="p-6 flex flex-col gap-4 active:bg-gray-50 transition-colors">
+              <div className="flex justify-between items-start">
+                <div className="min-w-0 flex-1 pr-4">
+                  <p className="font-mono text-[8px] text-gray-300 mb-1">#{order.id.split('-')[0]}</p>
+                  <h3 className="font-black text-raden-green text-[15px] truncate">{order.customers?.name}</h3>
+                </div>
+                <span className={`shrink-0 px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest ${order.status === 'Draft' ? 'bg-gray-100 text-gray-400' : 'bg-blue-100 text-blue-600'}`}>
+                  {order.status}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col">
+                  <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Total Tagihan</p>
+                  <p className="font-black text-raden-gold text-base">NTD {order.total_revenue?.toLocaleString()}</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => handleDispatchPreview(order)} className="p-3 bg-gray-50 text-gray-400 rounded-xl border border-gray-100">
+                    <Receipt size={18} />
+                  </button>
+                  {order.status === 'Draft' ? (
+                    <button onClick={() => handleDispatchPreview(order)} className="px-5 py-3 bg-raden-green text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95">Dispatch</button>
+                  ) : order.status === 'Siap Kirim' ? (
+                    <button onClick={() => completeOrder(order.id)} className="px-5 py-3 bg-raden-gold text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95">Tuntas</button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ))}
+          {filteredOrders.length === 0 && !loading && (
+            <div className="p-10 text-center text-gray-400 font-bold italic text-sm">
+              Belum ada data pesanan.
+            </div>
+          )}
         </div>
       </div>
 
