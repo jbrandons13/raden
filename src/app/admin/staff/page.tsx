@@ -103,16 +103,16 @@ export default function StaffManagementPage() {
 
   return (
     <div className="space-y-6 relative pb-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-raden-green tracking-tight">Staff & Matrix Jadwal</h1>
-          <p className="text-gray-400 text-sm font-medium">Manajemen shift operasional 30 Hari.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Staff & Matrix Jadwal</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Manajemen shift operasional 30 Hari.</p>
         </div>
-        <div className="flex gap-4 w-full md:w-auto">
-          <button onClick={saveShifts} disabled={isSaving} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white border border-gray-100 text-raden-green px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <button onClick={saveShifts} disabled={isSaving} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-gray-100 text-raden-green px-6 py-4 sm:py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
             {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Changes
           </button>
-          <button onClick={() => setShowAddStaff(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+          <button onClick={() => setShowAddStaff(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
             <UserPlus size={16} /> Add Staff
           </button>
         </div>
@@ -121,15 +121,15 @@ export default function StaffManagementPage() {
       <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden relative min-h-[400px]">
         {loading && <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-raden-gold" /></div>}
         
-        <div className="p-6 border-b flex justify-between items-center bg-gray-50/50">
+        <div className="p-4 sm:p-6 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white rounded-xl shadow-sm"><CalendarIcon size={20} className="text-raden-green" /></div>
-            <h3 className="font-black text-raden-green uppercase tracking-widest text-[10px]">30-Day Matrix Overview</h3>
+            <h3 className="font-black text-raden-green uppercase tracking-widest text-[9px] sm:text-[10px]">30-Day Matrix Overview</h3>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => { const d = new Date(baseDate); d.setDate(d.getDate() - 30); setBaseDate(d); }} className="p-2 bg-white rounded-full shadow-sm text-gray-400 hover:text-raden-green hover:shadow-md transition-all"><ChevronLeft size={20}/></button>
-            <span className="font-black text-xs self-center px-4">{baseDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}</span>
-            <button onClick={() => { const d = new Date(baseDate); d.setDate(d.getDate() + 30); setBaseDate(d); }} className="p-2 bg-white rounded-full shadow-sm text-gray-400 hover:text-raden-green hover:shadow-md transition-all"><ChevronRight size={20}/></button>
+          <div className="flex border bg-white rounded-xl p-1 shadow-sm self-stretch sm:self-auto justify-between sm:justify-start">
+            <button onClick={() => { const d = new Date(baseDate); d.setDate(d.getDate() - 30); setBaseDate(d); }} className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 transition-all"><ChevronLeft size={18}/></button>
+            <span className="font-black text-[10px] uppercase tracking-widest self-center px-4 min-w-[100px] text-center">{baseDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}</span>
+            <button onClick={() => { const d = new Date(baseDate); d.setDate(d.getDate() + 30); setBaseDate(d); }} className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 transition-all"><ChevronRight size={18}/></button>
           </div>
         </div>
         
@@ -231,16 +231,16 @@ export default function StaffManagementPage() {
         {showAddStaff && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddStaff(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
-             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[3rem] p-10 w-full max-w-sm shadow-2xl">
+             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2.5rem] p-8 sm:p-10 w-full max-w-sm shadow-2xl">
                <div className="flex justify-between items-center mb-8">
-                 <h2 className="text-xl font-black text-raden-green uppercase tracking-tighter">Register Staff</h2>
-                 <button onClick={() => setShowAddStaff(false)} className="text-gray-400"><X size={20}/></button>
+                 <h2 className="text-lg sm:text-xl font-black text-raden-green uppercase tracking-tighter">Register Staff</h2>
+                 <button onClick={() => setShowAddStaff(false)} className="text-gray-400 p-2 hover:bg-gray-50 rounded-full transition-all"><X size={20}/></button>
                </div>
                <div className="flex flex-col items-center mb-8">
-                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center text-gray-300 mb-4 border-4 border-white shadow-lg"><Users size={40} /></div>
+                 <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4 border-4 border-white shadow-xl"><Users size={32} className="sm:w-10 sm:h-10" /></div>
                </div>
                <input type="text" placeholder="Full Name..." value={newStaffName} onChange={(e) => setNewStaffName(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-center text-raden-green outline-none focus:ring-4 focus:ring-raden-gold/20 mb-6" />
-               <button onClick={handleAddStaff} className="w-full py-4 bg-raden-gold text-white rounded-2xl font-black uppercase tracking-widest shadow-xl">Complete Registration</button>
+               <button onClick={handleAddStaff} className="w-full py-4 bg-raden-gold text-white rounded-2xl font-black uppercase tracking-widest shadow-xl sm:text-xs text-[10px]">Complete Registration</button>
              </motion.div>
           </div>
         )}

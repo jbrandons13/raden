@@ -78,12 +78,12 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-6 relative pb-12">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-raden-green tracking-tight">Product Master</h1>
-          <p className="text-gray-400 text-sm font-medium">Inventory & Pricing Central.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight">Product Master</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Inventory & Pricing Central.</p>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 bg-raden-gold text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+        <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
           <Plus size={20} /> Add Product
         </button>
       </div>
@@ -95,39 +95,41 @@ export default function ProductsPage() {
         ))}
       </div>
 
-      <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden relative min-h-[400px]">
+      <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden relative min-h-[400px]">
         {loading && products.length === 0 && <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-raden-gold" /></div>}
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b">
-            <tr><th className="px-8 py-5">Item</th><th className="px-8 py-5">Category</th><th className="px-8 py-5 text-right">Selling Price</th><th className="px-8 py-5 text-center">Stock</th><th className="px-8 py-5 text-right">Actions</th></tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filteredProducts.map(p => (
-              <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
-                <td className="px-8 py-5 font-bold text-raden-green">{p.name}</td>
-                <td className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-gray-400">{p.category}</td>
-                <td className="px-8 py-5 text-right font-black text-raden-green">NTD {p.price?.toLocaleString()}</td>
-                <td className="px-8 py-5 text-center">
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${p.current_stock < 10 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>{p.current_stock} {p.unit}</span>
-                </td>
-                <td className="px-8 py-5 text-right flex justify-end">
-                  <button onClick={() => { setEditForm({ ...p }); setShowEditModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-raden-gold/10 hover:text-raden-gold text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
-                    <Edit3 size={14} /> Update
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[600px]">
+            <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b">
+              <tr><th className="px-6 sm:px-8 py-5">Item</th><th className="px-6 sm:px-8 py-5">Category</th><th className="px-6 sm:px-8 py-5 text-right">Selling Price</th><th className="px-6 sm:px-8 py-5 text-center">Stock</th><th className="px-6 sm:px-8 py-5 text-right">Actions</th></tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredProducts.map(p => (
+                <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-6 sm:px-8 py-5 font-bold text-sm sm:text-base text-raden-green">{p.name}</td>
+                  <td className="px-6 sm:px-8 py-5 text-[10px] font-black uppercase tracking-widest text-gray-400">{p.category}</td>
+                  <td className="px-6 sm:px-8 py-5 text-right font-black text-raden-green text-sm sm:text-base">NTD {p.price?.toLocaleString()}</td>
+                  <td className="px-6 sm:px-8 py-5 text-center">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${p.current_stock < 10 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>{p.current_stock} {p.unit}</span>
+                  </td>
+                  <td className="px-6 sm:px-8 py-5 text-right flex justify-end">
+                    <button onClick={() => { setEditForm({ ...p }); setShowEditModal(true); }} className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gray-50 hover:bg-raden-gold/10 hover:text-raden-gold text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
+                      <Edit3 size={14} /> Update
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <AnimatePresence>
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[3rem] p-10 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-black text-raden-green tracking-tighter uppercase">Add Product</h2>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
+              <div className="flex justify-between items-center mb-6 sm:mb-8">
+                <h2 className="text-xl sm:text-2xl font-black text-raden-green tracking-tighter uppercase">Add Product</h2>
                 <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-raden-green"><X size={24}/></button>
               </div>
               <div className="space-y-6">
@@ -154,9 +156,9 @@ export default function ProductsPage() {
         {showEditModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowEditModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[3rem] p-10 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-black text-raden-green tracking-tighter uppercase">Update Product</h2>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
+              <div className="flex justify-between items-center mb-6 sm:mb-8">
+                <h2 className="text-xl sm:text-2xl font-black text-raden-green tracking-tighter uppercase">Update Product</h2>
                 <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-raden-green"><X size={24}/></button>
               </div>
               <div className="space-y-5">

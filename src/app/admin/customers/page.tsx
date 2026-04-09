@@ -39,37 +39,37 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-8 relative pb-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-raden-green tracking-tighter">Client Database</h1>
-          <p className="text-gray-400 font-medium">Monitoring loyalitas pelanggan RADEN.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tighter uppercase sm:normal-case">Client Database</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Monitoring loyalitas pelanggan RADEN.</p>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-2 bg-white border border-gray-100 px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest text-raden-green shadow-xl active:scale-95 transition-all">
+        <button onClick={() => window.print()} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-gray-100 px-6 py-4 sm:py-3 rounded-2xl text-xs font-black uppercase tracking-widest text-raden-green shadow-xl active:scale-95 transition-all">
           <Printer size={18} /> Print Catalog
         </button>
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 flex items-center gap-6 group hover:shadow-xl transition-all">
-          <div className="w-16 h-16 rounded-[1.5rem] bg-blue-100 text-blue-600 flex items-center justify-center transition-transform group-hover:scale-110"><Users size={32} /></div>
-          <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Network</p><h3 className="text-3xl font-black text-raden-green">{stats.total}</h3></div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] sm:rounded-[3rem] shadow-sm border border-gray-100 flex items-center gap-4 sm:gap-6 group hover:shadow-xl transition-all">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-[1.5rem] bg-blue-100 text-blue-600 flex items-center justify-center transition-transform group-hover:scale-110"><Users size={24} /></div>
+          <div><p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5 sm:mb-1">Total Network</p><h3 className="text-2xl sm:text-3xl font-black text-raden-green">{stats.total}</h3></div>
         </div>
-        <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 flex items-center gap-6 group hover:shadow-xl transition-all">
-          <div className="w-16 h-16 rounded-[1.5rem] bg-green-100 text-green-600 flex items-center justify-center transition-transform group-hover:scale-110"><ShoppingBag size={32} /></div>
-          <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Orders</p><h3 className="text-3xl font-black text-raden-green">{stats.orders}</h3></div>
+        <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] sm:rounded-[3rem] shadow-sm border border-gray-100 flex items-center gap-4 sm:gap-6 group hover:shadow-xl transition-all">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-[1.5rem] bg-green-100 text-green-600 flex items-center justify-center transition-transform group-hover:scale-110"><ShoppingBag size={24} /></div>
+          <div><p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5 sm:mb-1">Total Orders</p><h3 className="text-2xl sm:text-3xl font-black text-raden-green">{stats.orders}</h3></div>
         </div>
-        <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 flex items-center gap-6 group hover:shadow-xl transition-all">
-          <div className="w-16 h-16 rounded-[1.5rem] bg-raden-gold/20 text-raden-green flex items-center justify-center transition-transform group-hover:scale-110"><DollarSign size={32} /></div>
-          <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Avg Value</p><h3 className="text-2xl font-black text-raden-green">NTD {stats.avgRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</h3></div>
+        <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] sm:rounded-[3rem] shadow-sm border border-gray-100 flex items-center gap-4 sm:gap-6 group hover:shadow-xl transition-all sm:col-span-2 lg:col-span-1">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-[1.5rem] bg-raden-gold/20 text-raden-green flex items-center justify-center transition-transform group-hover:scale-110"><DollarSign size={24} /></div>
+          <div><p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5 sm:mb-1">Avg Value</p><h3 className="text-xl sm:text-2xl font-black text-raden-green">NTD {stats.avgRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</h3></div>
         </div>
       </div>
 
       {/* Search Bar */}
       <div className="relative">
-        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-        <input type="text" placeholder="Search by name or brand..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-16 pr-8 py-5 bg-white border border-gray-100 rounded-[2rem] shadow-sm focus:ring-4 focus:ring-raden-gold/20 outline-none transition-all font-bold text-raden-green" />
-        {loading && <div className="absolute right-6 top-1/2 -translate-y-1/2"><Loader2 className="animate-spin text-raden-gold" size={20} /></div>}
+        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <input type="text" placeholder="Search by name or brand..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-14 sm:pl-16 pr-8 py-4 sm:py-5 bg-white border border-gray-100 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm focus:ring-4 focus:ring-raden-gold/20 outline-none transition-all font-bold text-sm sm:text-base text-raden-green" />
+        {loading && <div className="absolute right-6 top-1/2 -translate-y-1/2"><Loader2 className="animate-spin text-raden-gold" size={18} /></div>}
       </div>
 
       {/* Customers List */}

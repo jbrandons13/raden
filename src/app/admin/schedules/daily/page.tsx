@@ -164,28 +164,28 @@ export default function CalendarSchedulePage() {
 
   return (
     <div className="space-y-6 relative pb-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-raden-green tracking-tight">Jobdesk Calendar</h1>
-          <p className="text-gray-400 text-sm font-medium">Assign daily production target to staff.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Jobdesk Calendar</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Assign daily production target to staff.</p>
         </div>
-        <div className="bg-white px-6 py-3 rounded-full flex items-center gap-4 shadow-sm border border-gray-100">
-          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="text-gray-400 hover:text-raden-green"><ChevronLeft/></button>
-          <span className="font-black text-raden-green text-sm uppercase tracking-widest">{currentDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</span>
-          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="text-gray-400 hover:text-raden-green"><ChevronRight/></button>
+        <div className="bg-white px-4 sm:px-6 py-3 rounded-2xl sm:rounded-full flex items-center justify-between sm:justify-start gap-4 shadow-sm border border-gray-100 w-full sm:w-auto">
+          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="text-gray-400 hover:text-raden-green p-1"><ChevronLeft size={20}/></button>
+          <span className="font-black text-raden-green text-[10px] sm:text-sm uppercase tracking-widest text-center flex-1 sm:flex-none min-w-[120px]">{currentDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</span>
+          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="text-gray-400 hover:text-raden-green p-1"><ChevronRight size={20}/></button>
         </div>
       </div>
 
       {loading ? (
         <div className="h-[400px] flex items-center justify-center bg-white rounded-[3rem] border border-gray-100"><Loader2 className="animate-spin text-raden-gold" /></div>
       ) : (
-        <div className="bg-white rounded-[3rem] shadow-sm border border-gray-100 overflow-hidden p-6">
-          <div className="grid grid-cols-7 gap-4 mb-4">
+        <div className="bg-white rounded-[2rem] sm:rounded-[3rem] shadow-sm border border-gray-100 overflow-hidden p-4 sm:p-8">
+          <div className="grid grid-cols-7 gap-1 sm:gap-4 mb-4">
             {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(day => (
-              <div key={day} className="text-center font-black text-gray-300 text-[10px] uppercase tracking-widest">{day}</div>
+              <div key={day} className="text-center font-black text-gray-300 text-[8px] sm:text-[10px] uppercase tracking-tighter sm:tracking-widest">{day}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-4">
+          <div className="grid grid-cols-7 gap-1 sm:gap-4">
             {calendarBlocks.map((day, i) => {
               if (day === null) return <div key={i} className="aspect-square bg-transparent"></div>;
               
@@ -197,15 +197,15 @@ export default function CalendarSchedulePage() {
                 <button 
                   key={i} 
                   onClick={() => openDateModal(day)}
-                  className={`aspect-square rounded-2xl p-3 flex flex-col justify-between items-start transition-all active:scale-95 border ${isToday ? 'border-raden-gold bg-raden-gold/5 shadow-md' : 'border-gray-100 bg-gray-50/50 hover:border-raden-green/30 hover:shadow-lg'}`}
+                  className={`aspect-square rounded-xl sm:rounded-2xl p-1.5 sm:p-3 flex flex-col justify-between items-start transition-all active:scale-95 border ${isToday ? 'border-raden-gold bg-raden-gold/5 shadow-md' : 'border-gray-100 bg-gray-50/50 hover:border-raden-green/30 hover:shadow-lg'}`}
                 >
-                  <span className={`text-lg font-black ${isToday ? 'text-raden-gold' : 'text-raden-green'}`}>{day}</span>
+                  <span className={`text-sm sm:text-lg font-black ${isToday ? 'text-raden-gold' : 'text-raden-green'}`}>{day}</span>
                   {dayTasksCount > 0 ? (
-                    <span className="w-full text-center bg-raden-green text-white text-[9px] font-black uppercase tracking-widest py-1 rounded-lg shadow-sm">
-                      {dayTasksCount} Tasks
+                    <span className="w-full text-center bg-raden-green text-white text-[7px] sm:text-[9px] font-black uppercase tracking-tighter sm:tracking-widest py-0.5 sm:py-1 rounded sm:rounded-lg shadow-sm">
+                      {dayTasksCount} <span className="hidden sm:inline">Tasks</span>
                     </span>
                   ) : (
-                    <span className="w-full text-center text-gray-300 text-[9px] font-bold uppercase tracking-widest py-1">-</span>
+                    <span className="w-full text-center text-gray-300 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest py-1">-</span>
                   )}
                 </button>
               );
@@ -218,19 +218,19 @@ export default function CalendarSchedulePage() {
         {selectedDate && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedDate(null)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[3rem] p-10 w-full max-w-5xl shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-5xl shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col">
               
-              <div className="flex justify-between items-center mb-8 border-b pb-6">
+              <div className="flex justify-between items-center mb-6 sm:mb-8 border-b pb-6 shrink-0">
                  <div>
-                    <h3 className="text-2xl font-black text-raden-green tracking-tight flex items-center gap-3">
-                       <CalendarIcon size={24} className="text-raden-gold" />
-                       Jobdesk Assignment
+                    <h3 className="text-xl sm:text-2xl font-black text-raden-green tracking-tight flex items-center gap-2 sm:gap-3">
+                       <CalendarIcon size={20} className="text-raden-gold sm:w-6 sm:h-6" />
+                       <span className="truncate">Jobdesk Assignment</span>
                     </h3>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
-                       Target Produksi: {new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                       {new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}
                     </p>
                  </div>
-                 <button onClick={() => setSelectedDate(null)} className="p-2 bg-gray-50 rounded-full text-gray-400 hover:bg-gray-100 hover:text-red-500"><X size={24} /></button>
+                 <button onClick={() => setSelectedDate(null)} className="p-2 sm:p-3 bg-gray-50 rounded-full text-gray-400 hover:bg-gray-100 hover:text-red-500 transition-colors"><X size={20} /></button>
               </div>
 
               <div className="space-y-6 flex-1">
@@ -243,51 +243,51 @@ export default function CalendarSchedulePage() {
                      const workingStaff = getWorkingStaff(selectedDate);
                      
                      return (
-                        <div key={t.id || idx} className="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex gap-6">
+                        <div key={t.id || idx} className="bg-gray-50 rounded-3xl p-5 sm:p-6 border border-gray-100 flex flex-col lg:flex-row gap-6">
                            <div className="flex-1 space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                  <div>
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Produk</label>
-                                    <select value={t.product_id} onChange={e => updateModalTask(t.id, 'product_id', e.target.value)} className="w-full p-4 rounded-xl font-bold bg-white border border-gray-100 outline-none focus:ring-2 focus:ring-raden-gold shadow-sm appearance-none">
+                                    <select value={t.product_id} onChange={e => updateModalTask(t.id, 'product_id', e.target.value)} className="w-full p-3 sm:p-4 rounded-xl font-bold bg-white border border-gray-100 outline-none focus:ring-2 focus:ring-raden-gold shadow-sm appearance-none text-sm sm:text-base">
                                       <option value="">Pilih...</option>
                                       {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                     </select>
                                  </div>
                                  <div>
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Target Qty</label>
-                                    <input type="number" value={t.expected_qty} onChange={e => updateModalTask(t.id, 'expected_qty', e.target.value)} className="w-full p-4 rounded-xl font-bold text-center bg-white border border-gray-100 outline-none focus:ring-2 focus:ring-raden-gold shadow-sm" placeholder="100..." />
+                                    <input type="number" value={t.expected_qty} onChange={e => updateModalTask(t.id, 'expected_qty', e.target.value)} className="w-full p-3 sm:p-4 rounded-xl font-bold text-center bg-white border border-gray-100 outline-none focus:ring-2 focus:ring-raden-gold shadow-sm text-sm sm:text-base" placeholder="100..." />
                                  </div>
                               </div>
                               <div>
                                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Catatan Tambahan</label>
-                                 <input type="text" value={t.notes} onChange={e => updateModalTask(t.id, 'notes', e.target.value)} className="w-full p-4 rounded-xl text-xs bg-white border border-gray-100 outline-none focus:ring-2 focus:ring-raden-gold shadow-sm" placeholder="Prioritas tinggi..." />
+                                 <input type="text" value={t.notes} onChange={e => updateModalTask(t.id, 'notes', e.target.value)} className="w-full p-3 sm:p-4 rounded-xl text-xs bg-white border border-gray-100 outline-none focus:ring-2 focus:ring-raden-gold shadow-sm" placeholder="Prioritas tinggi..." />
                               </div>
                            </div>
                            
                            {/* Multi Select Staff Block */}
-                           <div className="w-64 border-l pl-6 flex flex-col">
+                           <div className="lg:w-64 lg:border-l lg:pl-6 flex flex-col">
                               <label className="text-[10px] font-black text-raden-green uppercase tracking-widest mb-2 flex items-center gap-2"><Users size={12}/> Pelaksana (Piket)</label>
-                              <div className="flex-1 overflow-y-auto space-y-2 max-h-[160px] pr-2">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-2 overflow-y-auto max-h-[160px] pr-2">
                                  {workingStaff.length > 0 ? workingStaff.map(ws => {
                                     const isSelected = (t.assigned_staff || []).includes(ws.id);
                                     return (
                                        <button 
                                           key={ws.id} 
                                           onClick={() => toggleStaffAssignment(t.id, ws.id)}
-                                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex justify-between items-center ${isSelected ? 'bg-raden-gold text-white shadow-md' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}`}
+                                          className={`px-3 py-2 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex justify-between items-center ${isSelected ? 'bg-raden-gold text-white shadow-md' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}`}
                                        >
-                                          {ws.name}
-                                          {isSelected && <Check size={14} />}
+                                          <span className="truncate">{ws.name}</span>
+                                          {isSelected && <Check size={12} className="shrink-0 ml-2" />}
                                        </button>
                                     )
                                  }) : (
-                                    <p className="text-[9px] text-red-400 font-bold italic mt-4">⚠️ Tidak ada staff yang memiliki shift pada tanggal ini.</p>
+                                    <p className="text-[9px] text-red-400 font-bold italic mt-2 col-span-2 sm:col-span-3 lg:col-span-1">⚠️ Tidak ada staff yang memiliki shift pada tanggal ini.</p>
                                  )}
                               </div>
                            </div>
 
-                           <div className="flex items-center justify-center pl-4">
-                              <button onClick={() => handleDeleteTask(t.id, t.isNew)} className="p-4 bg-white hover:bg-red-50 text-red-300 hover:text-red-500 rounded-2xl shadow-sm border border-gray-100 transition-all">
+                           <div className="flex items-center justify-center lg:pl-4 border-t lg:border-t-0 lg:border-l pt-4 lg:pt-0">
+                              <button onClick={() => handleDeleteTask(t.id, t.isNew)} className="w-full lg:w-auto p-4 bg-white hover:bg-red-50 text-red-300 hover:text-red-500 rounded-2xl shadow-sm border border-gray-100 transition-all flex justify-center">
                                  <Trash2 size={20} />
                               </button>
                            </div>

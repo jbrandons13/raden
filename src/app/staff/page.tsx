@@ -94,55 +94,55 @@ export default function StaffJobdeskPage() {
 
   return (
     <div className="space-y-6 pb-12 relative">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-raden-green tracking-tight">Jobdesk Hari Ini</h1>
-          <p className="text-gray-400 text-sm font-medium">Selesaikan target dan update hasil riil.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Jobdesk Hari Ini</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Selesaikan target dan update hasil riil.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {loading && tasks.length === 0 && <div className="col-span-full h-40 flex items-center justify-center"><Loader2 className="animate-spin text-raden-gold" /></div>}
         
         {tasks.map((task, i) => {
           const isDone = task.status === 'Completed';
           return (
-            <motion.div key={task.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="group bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 hover:shadow-xl transition-all cursor-pointer" onClick={() => !isDone && setSelectedTask(task)}>
+            <motion.div key={task.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} className="group bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[3rem] shadow-sm border border-gray-100 hover:shadow-xl transition-all cursor-pointer active:scale-95" onClick={() => !isDone && setSelectedTask(task)}>
               <div className="flex justify-between items-start mb-6">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl transition-all ${isDone ? 'bg-green-100 text-green-500' : 'bg-raden-gold text-white shadow-lg shadow-raden-gold/30'}`}>
-                  {isDone ? <CheckCircle2 size={28} /> : <Package size={24} />}
+                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-xl transition-all ${isDone ? 'bg-green-100 text-green-500' : 'bg-raden-gold text-white shadow-lg shadow-raden-gold/30'}`}>
+                  {isDone ? <CheckCircle2 size={24} className="sm:w-7 sm:h-7" /> : <Package size={22} className="sm:w-6 sm:h-6" />}
                 </div>
                 <div className="text-right">
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Target Qty</span>
-                  <p className={`text-2xl font-black ${isDone ? 'text-gray-300' : 'text-raden-green'}`}>{task.expected_qty}</p>
+                  <span className="text-[8px] sm:text-[9px] font-black text-gray-300 uppercase tracking-widest block mb-1">Target Qty</span>
+                  <p className={`text-xl sm:text-2xl font-black ${isDone ? 'text-gray-300' : 'text-raden-green'}`}>{task.expected_qty}</p>
                 </div>
               </div>
 
-              <h3 className={`text-xl font-black tracking-tight mb-4 ${isDone ? 'text-gray-400 line-through' : 'text-raden-green'}`}>{task.products?.name || 'Produk Dihapus'}</h3>
+              <h3 className={`text-lg sm:text-xl font-black tracking-tight mb-4 truncate ${isDone ? 'text-gray-400 line-through' : 'text-raden-green'}`}>{task.products?.name || 'Produk Dihapus'}</h3>
 
-              <div className="space-y-4 pt-6 border-t border-gray-50">
+              <div className="space-y-3 sm:space-y-4 pt-5 sm:pt-6 border-t border-gray-50">
                 <div className="flex items-start gap-3">
                   <div className="mt-1"><Users size={14} className={isDone ? 'text-gray-300' : 'text-raden-gold'}/></div>
-                  <div>
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Dikugaskan Kepada</p>
-                    <p className={`text-xs font-bold leading-relaxed ${isDone ? 'text-gray-400' : 'text-gray-700'}`}>{getStaffNames(task.assigned_staff)}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[8px] sm:text-[9px] font-black text-gray-300 uppercase tracking-widest mb-0.5">Dikugaskan Kepada</p>
+                    <p className={`text-[10px] sm:text-xs font-bold leading-relaxed truncate ${isDone ? 'text-gray-400' : 'text-gray-700'}`}>{getStaffNames(task.assigned_staff)}</p>
                   </div>
                 </div>
 
                 {task.notes && (
                   <div className="flex items-start gap-3">
                     <div className="mt-1"><Info size={14} className={isDone ? 'text-gray-300' : 'text-blue-400'}/></div>
-                    <div>
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Catatan Khusus</p>
-                      <p className={`text-xs font-bold leading-relaxed ${isDone ? 'text-gray-400' : 'text-gray-700'}`}>{task.notes}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[8px] sm:text-[9px] font-black text-gray-300 uppercase tracking-widest mb-0.5">Catatan Khusus</p>
+                      <p className={`text-[10px] sm:text-xs font-bold leading-relaxed italic ${isDone ? 'text-gray-400' : 'text-gray-600'}`}>{task.notes}</p>
                     </div>
                   </div>
                 )}
               </div>
 
               {isDone && (
-                <div className="mt-6 pt-4 border-t border-green-50 flex justify-between items-center bg-green-50/50 -mx-8 -mb-8 p-6 rounded-b-[3rem]">
-                   <span className="text-[10px] font-black text-green-600 uppercase tracking-widest flex items-center gap-1"><CheckCircle2 size={12}/> Selesai</span>
+                <div className="mt-6 pt-4 border-t border-green-50 flex justify-between items-center bg-green-50/50 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 p-6 rounded-b-[2rem] sm:rounded-b-[3rem]">
+                   <span className="text-[9px] sm:text-[10px] font-black text-green-600 uppercase tracking-widest flex items-center gap-1"><CheckCircle2 size={12}/> Selesai</span>
                    <span className="text-xs font-black text-green-700">Hasil: {task.actual_qty}</span>
                 </div>
               )}
@@ -162,7 +162,7 @@ export default function StaffJobdeskPage() {
         {selectedTask && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[3rem] p-10 w-full max-w-sm shadow-2xl flex flex-col">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2.5rem] sm:rounded-[3rem] p-8 sm:p-10 w-full max-w-sm shadow-2xl flex flex-col">
               <div className="flex justify-between items-center mb-8">
                 <h3 className="text-xl font-black text-raden-green tracking-tight">Setor Hasil</h3>
                 <button onClick={() => setSelectedTask(null)} className="p-2 bg-gray-50 rounded-full text-gray-400"><X size={20}/></button>

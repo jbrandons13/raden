@@ -105,12 +105,12 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-raden-green">Pesanan & Omzet</h1>
-          <p className="text-gray-500 text-sm">Navigasi instan manajemen distribusi.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Pesanan & Omzet</h1>
+          <p className="text-gray-500 text-xs sm:text-sm font-medium">Navigasi instan manajemen distribusi.</p>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 bg-raden-gold text-white px-6 py-3 rounded-2xl font-bold shadow-lg active:scale-95 transition-all text-xs uppercase tracking-widest">
+        <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3 rounded-2xl font-black shadow-lg active:scale-95 transition-all text-xs uppercase tracking-widest">
           <Plus size={18} /> Tambah Pesanan
         </button>
       </div>
@@ -120,56 +120,58 @@ export default function OrdersPage() {
         <button onClick={() => setActiveTab('history')} className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'history' ? 'bg-raden-green text-white shadow-md' : 'text-gray-400'}`}>Riwayat</button>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-gray-100 relative min-h-[400px]">
+      <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-sm border border-gray-100 relative min-h-[400px]">
         {loading && (
           <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-raden-gold" />
           </div>
         )}
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase font-bold tracking-widest border-b">
-            <tr>
-              <th className="px-8 py-5">Pelanggan</th>
-              <th className="px-8 py-5">Nilai Pesanan</th>
-              <th className="px-8 py-5">Status</th>
-              <th className="px-8 py-5 text-right">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filteredOrders.length === 0 && !loading && <tr><td colSpan={4} className="px-8 py-20 text-center text-gray-300 italic">Belum ada data pesanan.</td></tr>}
-            {filteredOrders.map((order) => (
-              <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
-                <td className="px-8 py-6">
-                  <p className="font-mono text-[9px] text-gray-400 mb-1">#{order.id.split('-')[0]}</p>
-                  <p className="font-bold text-raden-green">{order.customers?.name}</p>
-                </td>
-                <td className="px-8 py-6 font-bold text-raden-green">NTD {order.total_revenue?.toLocaleString()}</td>
-                <td className="px-8 py-6">
-                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${order.status === 'Draft' ? 'bg-gray-100 text-gray-400' : 'bg-blue-100 text-blue-600'}`}>{order.status}</span>
-                </td>
-                <td className="px-8 py-6 text-right">
-                   <div className="flex justify-end gap-2 text-xs">
-                    {order.status === 'Draft' ? (
-                      <button onClick={() => handleDispatchPreview(order)} className="bg-raden-green text-white px-4 py-2 rounded-xl font-bold shadow-md">Dispatch</button>
-                    ) : order.status === 'Siap Kirim' ? (
-                      <button onClick={() => completeOrder(order.id)} className="bg-raden-gold text-white px-4 py-2 rounded-xl font-bold shadow-md">Tuntas</button>
-                    ) : null}
-                    <button onClick={() => handleDispatchPreview(order)} className="p-2 text-gray-400 border rounded-xl hover:bg-gray-50"><Receipt size={16} /></button>
-                  </div>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[700px]">
+            <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b">
+              <tr>
+                <th className="px-6 sm:px-8 py-5">Pelanggan</th>
+                <th className="px-6 sm:px-8 py-5">Nilai Pesanan</th>
+                <th className="px-6 sm:px-8 py-5">Status</th>
+                <th className="px-6 sm:px-8 py-5 text-right">Aksi</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredOrders.length === 0 && !loading && <tr><td colSpan={4} className="px-6 sm:px-8 py-20 text-center text-gray-300 italic">Belum ada data pesanan.</td></tr>}
+              {filteredOrders.map((order) => (
+                <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-6 sm:px-8 py-6">
+                    <p className="font-mono text-[9px] text-gray-400 mb-1">#{order.id.split('-')[0]}</p>
+                    <p className="font-bold text-raden-green text-sm sm:text-base">{order.customers?.name}</p>
+                  </td>
+                  <td className="px-6 sm:px-8 py-6 font-black text-raden-green text-sm sm:text-base">NTD {order.total_revenue?.toLocaleString()}</td>
+                  <td className="px-6 sm:px-8 py-6">
+                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${order.status === 'Draft' ? 'bg-gray-100 text-gray-400' : 'bg-blue-100 text-blue-600'}`}>{order.status}</span>
+                  </td>
+                  <td className="px-6 sm:px-8 py-6 text-right">
+                    <div className="flex justify-end gap-2 text-xs">
+                      {order.status === 'Draft' ? (
+                        <button onClick={() => handleDispatchPreview(order)} className="bg-raden-green text-white px-3 sm:px-4 py-2 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest">Dispatch</button>
+                      ) : order.status === 'Siap Kirim' ? (
+                        <button onClick={() => completeOrder(order.id)} className="bg-raden-gold text-white px-3 sm:px-4 py-2 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest font-black">Tuntas</button>
+                      ) : null}
+                      <button onClick={() => handleDispatchPreview(order)} className="p-2 text-gray-400 border rounded-xl hover:bg-gray-50"><Receipt size={16} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <AnimatePresence>
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
-            <motion.div className="relative bg-white rounded-[3rem] p-8 w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-black text-raden-green uppercase tracking-tighter">New Order</h2>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+              <div className="flex justify-between items-center mb-6 sm:mb-8">
+                <h2 className="text-xl sm:text-2xl font-black text-raden-green uppercase tracking-tighter">New Order</h2>
                 <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-full"><X /></button>
               </div>
               <div className="space-y-6 overflow-y-auto pr-2">
@@ -203,7 +205,7 @@ export default function OrdersPage() {
         {showPrintModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPrintModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
-            <motion.div className="relative bg-white rounded-[3rem] p-10 w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
               <div id="print-area" className="flex-1 overflow-y-auto pr-2">
                 <div className="text-center border-b-2 border-dashed pb-6 mb-8">
                   <h2 className="text-2xl font-black text-raden-green tracking-tighter uppercase">RADEN OFFICIAL</h2>

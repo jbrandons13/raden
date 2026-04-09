@@ -97,31 +97,32 @@ export default function StaffOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-raden-green">Pesanan Toko (Pivot)</h1>
-          <p className="text-gray-500 text-sm">Distribusi produk per toko/pelanggan.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Pesanan Toko (Pivot)</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Distribusi produk per toko/pelanggan.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {dates.map((d) => (
           <motion.div
             key={d.id}
-            whileHover={{ y: -4 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
             onClick={() => setSelectedDate(d)}
-            className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer group hover:border-raden-gold/30 transition-all"
+            className="bg-white p-5 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer group hover:border-raden-gold/30 transition-all active:scale-95"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-raden-gold/10 text-raden-gold rounded-2xl flex items-center justify-center">
-                <CalendarIcon size={24} />
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-raden-gold/10 text-raden-gold rounded-xl sm:rounded-2xl flex items-center justify-center">
+                <CalendarIcon size={20} className="sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-raden-green">{new Date(d.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</h3>
-                <p className="text-xs text-gray-400 font-bold">{d.totalOrders} Toko</p>
+                <h3 className="font-black text-sm sm:text-base text-raden-green">{new Date(d.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</h3>
+                <p className="text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-widest">{d.totalOrders} Toko</p>
               </div>
             </div>
-            <ChevronRight size={20} className="text-gray-300 group-hover:text-raden-gold" />
+            <ChevronRight size={18} className="text-gray-300 group-hover:text-raden-gold" />
           </motion.div>
         ))}
       </div>
@@ -132,16 +133,16 @@ export default function StaffOrdersPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedDate(null)} className="absolute inset-0 bg-raden-green/80 backdrop-blur-md" />
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-white rounded-[3rem] p-8 w-full max-w-[95vw] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden print:p-0 print:shadow-none"
+              className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-[95vw] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden print:p-0 print:shadow-none"
             >
-              <div className="flex justify-between items-start mb-8 print:hidden">
-                <div>
-                  <h2 className="text-2xl font-bold text-raden-green">Rekap Order: {selectedDate.date}</h2>
-                  <p className="text-sm text-gray-400">Tampilan Pivot: Produk vs Toko</p>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8 print:hidden">
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-2xl font-black text-raden-green truncate">Rekap Order: {selectedDate.date}</h2>
+                  <p className="text-[10px] sm:text-sm text-gray-400 font-bold uppercase tracking-widest">Tampilan Pivot: Produk vs Toko</p>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => window.print()} className="p-3 bg-gray-50 hover:bg-gray-100 rounded-2xl text-raden-green transition-all"><Printer size={20}/></button>
-                  <button onClick={() => setSelectedDate(null)} className="p-3 bg-gray-50 hover:bg-gray-100 rounded-2xl text-gray-400 transition-all"><X /></button>
+                <div className="flex w-full sm:w-auto gap-2">
+                  <button onClick={() => window.print()} className="flex-1 sm:flex-none p-3 bg-gray-50 hover:bg-gray-100 rounded-2xl text-raden-green transition-all flex justify-center"><Printer size={20}/></button>
+                  <button onClick={() => setSelectedDate(null)} className="flex-1 sm:flex-none p-3 bg-gray-50 hover:bg-gray-100 rounded-2xl text-gray-400 transition-all flex justify-center"><X /></button>
                 </div>
               </div>
 
