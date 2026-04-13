@@ -151,15 +151,15 @@ export default function CalendarSchedulePage() {
           const item: any = {
             date: t.date,
             product_id: t.product_id,
-            staff_id: t.assigned_staff.length > 0 ? t.assigned_staff[0] : null,
-            batch_qty: t.batch_qty?.toString() || '',
+            staff_id: (t.assigned_staff && t.assigned_staff.length > 0) ? t.assigned_staff[0] : null,
+            batch_qty: t.batch_qty ? parseFloat(t.batch_qty) : null,
             expected_qty: parseInt(t.expected_qty) || 0,
             notes: finalNotes,
-            status: t.status,
+            status: t.status || 'Pending',
             job_type: t.job_type || 'Pastry'
           };
 
-          if (!t.isNew && t.id) {
+          if (!t.isNew && t.id && !t.id.startsWith('new-')) {
             item.id = t.id;
           }
 

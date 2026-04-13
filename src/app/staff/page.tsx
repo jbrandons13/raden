@@ -85,18 +85,22 @@ export default function StaffJobdeskPage() {
       // but we mark it as done.
     } else {
       const currentStock = selectedTask.products?.current_stock || 0;
-      const { error: prodError } = await supabase.from('products')
-        .update({ current_stock: currentStock + actual }).eq('id', selectedTask.product_id);
+      const productId = selectedTask.product_id;
+      
+      if (productId) {
+        const { error: prodError } = await supabase.from('products')
+          .update({ current_stock: currentStock + actual }).eq('id', productId);
 
-      if (prodError) {
-        alert("Gagal update stok produk: " + prodError.message);
-      } else {
-        await supabase.from('stock_logs').insert({
-          item_type: 'Product',
-          item_id: selectedTask.product_id,
-          change_qty: actual,
-          reason: `Production Task Completed: ${selectedTask.id}`
-        });
+        if (prodError) {
+          alert("Gagal update stok produk: " + prodError.message);
+        } else {
+          await supabase.from('stock_logs').insert({
+            item_type: 'Product',
+            item_id: productId,
+            change_qty: actual,
+            reason: `Production Task Completed: ${selectedTask.id}`
+          });
+        }
       }
     }
 
