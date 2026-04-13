@@ -349,7 +349,7 @@ export default function ProductsPage() {
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
               <div className="flex justify-between items-center mb-6 sm:mb-8">
                 <h2 className="text-xl sm:text-2xl font-black text-raden-green tracking-tighter uppercase">Add Product</h2>
-                <button onClick={() => { setShowAddModal(false); setNewProduct({ name: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0 }); setIsAddingNewCategory(false); setNewCategoryName(''); }} className="text-gray-400 hover:text-raden-green"><X size={24}/></button>
+                <button onClick={() => { setShowAddModal(false); setNewProduct({ name: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0, yield_per_batch: 0, weekly_target: 0 }); setIsAddingNewCategory(false); setNewCategoryName(''); }} className="text-gray-400 hover:text-raden-green"><X size={24}/></button>
               </div>
               <div className="space-y-6">
                 <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Name</label><input type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold" /></div>
