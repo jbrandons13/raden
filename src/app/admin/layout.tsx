@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Users, Package, ClipboardCheck, Calendar, LogOut, Loader2, CheckSquare, Menu, X } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Users, Package, ClipboardCheck, Calendar, LogOut, Loader2, CheckSquare, Menu, X, Flame, Activity } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -30,7 +30,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Pesanan', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Pelanggan', href: '/admin/customers', icon: Users },
-    { name: 'Produk', href: '/admin/products', icon: Package },
+    { name: 'Raden\'s Product', href: '/admin/products', icon: Package },
+    { name: 'Hot Kitchen', href: '/admin/hot-kitchen', icon: Flame },
     { name: 'Stok Bahan', href: '/admin/materials', icon: ClipboardCheck },
     { name: 'Jadwal', href: '/admin/schedules/daily', icon: Calendar },
     { name: 'Staff & Shift', href: '/admin/staff', icon: Users },

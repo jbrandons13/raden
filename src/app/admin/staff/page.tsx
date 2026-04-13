@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Save, Loader2, X, Users, Info, AlignLeft } from 'lucide-react';
+import { UserPlus, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Save, Loader2, X, Users, Info, AlignLeft, Sparkles, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import AiImporterModal from './AiImporterModal';
 
 // Explicit shift types requested
 const SHIFT_TYPES = ['', 'EM^', 'EM', 'EMS', 'M', 'MS', 'A', 'AS'];
@@ -23,10 +24,14 @@ export default function StaffManagementPage() {
   const [shifts, setShifts] = useState<Record<string, Record<string, string>>>({});
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{id: string, name: string} | null>(null);
   
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [newStaffName, setNewStaffName] = useState('');
   const [notes, setNotes] = useState('');
+  
+  // AI Importer State
+  const [showAiModal, setShowAiModal] = useState(false);
   
   // Pivot Table Dates (30 Days)
   const [baseDate, setBaseDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1)); // Default to start of current month
@@ -100,6 +105,36 @@ export default function StaffManagementPage() {
     } catch (e: any) { alert("Failed to save: " + e.message); }
     finally { setIsSaving(false); }
   };
+  const handleApplyAiMappings = (staffId: string, mappings: Record<string, string>) => {
+    setShifts(prev => {
+      const next = { ...prev };
+      if (!next[staffId]) next[staffId] = {};
+      Object.entries(mappings).forEach(([date, type]) => {
+        next[staffId][date] = type as string;
+      });
+      return next;
+    });
+  };
+
+  const handleDeleteStaff = async () => {
+    if (!itemToDelete) return;
+    try {
+        setLoading(true);
+        // cleanup staff shifts and checklist history
+        await Promise.all([
+          supabase.from('staff_shifts').delete().eq('staff_id', itemToDelete.id),
+          supabase.from('checklist_history').delete().eq('staff_id', itemToDelete.id)
+        ]);
+        
+        const { error } = await supabase.from('staff').delete().eq('id', itemToDelete.id);
+        if (error) alert(error.message);
+        else {
+          setItemToDelete(null);
+          fetchData();
+        }
+    } catch (e: any) { alert("Failed: " + e.message); }
+    finally { setLoading(false); }
+  };
 
   return (
     <div className="space-y-6 relative pb-12">
@@ -109,6 +144,9 @@ export default function StaffManagementPage() {
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Manajemen shift operasional 30 Hari.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <button onClick={() => setShowAiModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+            <Sparkles size={16} /> Import Staff Wishlist
+          </button>
           <button onClick={saveShifts} disabled={isSaving} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-gray-100 text-raden-green px-6 py-4 sm:py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
             {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Changes
           </button>
@@ -157,7 +195,7 @@ export default function StaffManagementPage() {
                     <div className="flex items-center gap-3">
                        <span className="font-bold text-xs text-raden-green truncate">{s.name}</span>
                     </div>
-                    <button onClick={async () => { if(confirm(`Remove ${s.name}?`)) { await supabase.from('staff').delete().eq('id', s.id); fetchData(); } }} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-all bg-white p-1 rounded-full"><Trash2 size={12}/></button>
+                    <button onClick={() => setItemToDelete({id: s.id, name: s.name})} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 transition-all bg-white p-2 rounded-full shadow-sm border border-red-50"><Trash2 size={14}/></button>
                   </td>
                   {dates.map(date => {
                     const currentType = shifts[s.id]?.[date] || '';
@@ -178,6 +216,21 @@ export default function StaffManagementPage() {
                   })}
                 </tr>
               ))}
+              
+              {/* Total Staff Summary Row */}
+              <tr className="bg-gray-50/50 font-black border-t-2 border-gray-100 italic">
+                <td className="sticky left-0 bg-white z-10 px-6 py-4 text-[10px] text-raden-green uppercase tracking-widest border-r border-gray-100 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">
+                  Total Staff
+                </td>
+                {dates.map(date => {
+                  const totalOnDay = staff.filter(s => !!shifts[s.id]?.[date]).length;
+                  return (
+                    <td key={date} className="px-1 py-4 text-center border-r border-gray-50 text-raden-gold bg-raden-gold/5 font-black">
+                      <span className="text-xs">{totalOnDay || '-'}</span>
+                    </td>
+                  );
+                })}
+              </tr>
             </tbody>
           </table>
         </div>
@@ -226,8 +279,16 @@ export default function StaffManagementPage() {
 
       </div>
 
+      <AiImporterModal 
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+        staff={staff}
+        dates={dates}
+        shiftTypes={SHIFT_TYPES.filter(t => t !== '')}
+        onApply={handleApplyAiMappings}
+      />
+
       <AnimatePresence>
-        // ... (Keep existing showAddStaff modal)
         {showAddStaff && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddStaff(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
@@ -242,6 +303,23 @@ export default function StaffManagementPage() {
                <input type="text" placeholder="Full Name..." value={newStaffName} onChange={(e) => setNewStaffName(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-center text-raden-green outline-none focus:ring-4 focus:ring-raden-gold/20 mb-6" />
                <button onClick={handleAddStaff} className="w-full py-4 bg-raden-gold text-white rounded-2xl font-black uppercase tracking-widest shadow-xl sm:text-xs text-[10px]">Complete Registration</button>
              </motion.div>
+          </div>
+        )}
+
+        {itemToDelete && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setItemToDelete(null)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl text-center">
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-black text-raden-green mb-2 uppercase tracking-tight">Hapus Personel?</h3>
+              <p className="text-gray-500 text-sm mb-8">Data <span className="text-red-500 font-bold">"{itemToDelete.name}"</span> akan dihapus permanen beserta seluruh riwayat shift dan checklistnya.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setItemToDelete(null)} className="flex-1 py-4 bg-gray-100 text-gray-400 font-bold rounded-2xl hover:bg-gray-200 transition-colors">Batal</button>
+                <button onClick={handleDeleteStaff} className="flex-1 py-4 bg-red-500 text-white font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-red-200 hover:scale-105 active:scale-95 transition-all">Hapus</button>
+              </div>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>

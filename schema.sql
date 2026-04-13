@@ -20,6 +20,12 @@ CREATE TABLE products (
   initial_stock INTEGER DEFAULT 0,
   current_stock INTEGER DEFAULT 0,
   image_url TEXT,
+  sort_order INTEGER DEFAULT 0,
+  yield_per_batch INTEGER DEFAULT 0,
+  weekly_target INTEGER DEFAULT 0,
+  is_hot_kitchen BOOLEAN DEFAULT FALSE,
+  notes TEXT,
+  weekly_plan TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -30,6 +36,7 @@ CREATE TABLE materials (
   category TEXT, -- For custom tabs
   qty NUMERIC DEFAULT 0,
   unit TEXT,
+  weekly_target NUMERIC DEFAULT 0,
   notes TEXT, -- For purchase recommendations
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -75,6 +82,7 @@ CREATE TABLE tasks (
   date DATE DEFAULT CURRENT_DATE,
   product_id UUID REFERENCES products(id),
   staff_id UUID REFERENCES staff(id),
+  batch_qty NUMERIC DEFAULT 0,
   expected_qty INTEGER,
   actual_qty INTEGER,
   notes TEXT,

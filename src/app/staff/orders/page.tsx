@@ -15,20 +15,47 @@ export default function StaffOrdersPage() {
 
   const fetchOrderDates = async () => {
     try {
+      // Calculate fixed 3 relative dates
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+
+      const formatDate = (d: Date) => d.toISOString().split('T')[0];
+      const relatives = [
+        { date: formatDate(yesterday), label: 'Kemarin' },
+        { date: formatDate(today), label: 'Hari Ini' },
+        { date: formatDate(tomorrow), label: 'Besok' },
+      ];
+      const relativeDateStrings = relatives.map(r => r.date);
+
       const { data, error } = await supabase
         .from('orders')
         .select('order_date')
-        .order('order_date', { ascending: false });
+        .in('order_date', relativeDateStrings);
 
       if (data) {
-        // Group by date
+        // Group by date and associate labels, ensuring ALL 3 relatives exist in state
         const groups = data.reduce((acc: any, curr: any) => {
           const date = curr.order_date;
-          if (!acc[date]) acc[date] = { id: date, date, totalOrders: 0 };
+          if (!acc[date]) {
+            const rel = relatives.find(r => r.date === date);
+            acc[date] = { id: date, date, totalOrders: 0, label: rel?.label };
+          }
           acc[date].totalOrders += 1;
           return acc;
         }, {});
-        setDates(Object.values(groups));
+        
+        // Ensure all 3 slots are represented, even with 0 orders
+        const finalDates = relatives.map(rel => {
+          return groups[rel.date] || { id: rel.date, date: rel.date, totalOrders: 0, label: rel.label };
+        });
+
+        setDates(finalDates);
+      } else {
+        // If query fails or no data, still show the 3 slots with 0 orders
+        setDates(relatives.map(rel => ({ id: rel.date, date: rel.date, totalOrders: 0, label: rel.label })));
       }
     } catch (e) {
       console.error(e);
@@ -104,25 +131,41 @@ export default function StaffOrdersPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {dates.map((d) => (
           <motion.div
             key={d.id}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            onClick={() => setSelectedDate(d)}
-            className="bg-white p-5 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer group hover:border-raden-gold/30 transition-all active:scale-95"
+            onClick={() => d.totalOrders > 0 && setSelectedDate(d)}
+            className={`relative overflow-hidden p-8 rounded-[3rem] border transition-all active:scale-95 flex flex-col items-center text-center ${
+              d.totalOrders > 0 
+                ? 'bg-white border-gray-100 shadow-xl cursor-pointer hover:border-raden-gold/50' 
+                : 'bg-gray-50 border-gray-100 opacity-80 cursor-default'
+            }`}
           >
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-raden-gold/10 text-raden-gold rounded-xl sm:rounded-2xl flex items-center justify-center">
-                <CalendarIcon size={20} className="sm:w-6 sm:h-6" />
-              </div>
-              <div>
-                <h3 className="font-black text-sm sm:text-base text-raden-green">{new Date(d.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</h3>
-                <p className="text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-widest">{d.totalOrders} Toko</p>
-              </div>
+            <div className={`text-[10px] font-black uppercase tracking-[0.4em] mb-4 ${d.label === 'Hari Ini' ? 'text-raden-gold' : 'text-gray-400'}`}>
+              {d.label}
             </div>
-            <ChevronRight size={18} className="text-gray-300 group-hover:text-raden-gold" />
+            
+            <h3 className="text-3xl font-black text-raden-green tracking-tighter mb-1">
+               {new Date(d.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+            </h3>
+            
+            <div className="mt-8 flex flex-col items-center">
+               <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 ${d.totalOrders > 0 ? 'bg-raden-green text-raden-gold shadow-lg shadow-raden-green/20' : 'bg-gray-200 text-gray-400'}`}>
+                  <Package size={28} />
+               </div>
+               <p className={`text-xl font-black ${d.totalOrders > 0 ? 'text-raden-green' : 'text-gray-300'}`}>
+                 {d.totalOrders} <span className="text-[10px] uppercase opacity-60">Toko</span>
+               </p>
+            </div>
+
+            {d.totalOrders > 0 && (
+              <div className="absolute top-6 right-6 text-raden-gold">
+                 <ChevronRight size={24} />
+              </div>
+            )}
           </motion.div>
         ))}
       </div>

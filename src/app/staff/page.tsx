@@ -13,13 +13,19 @@ export default function StaffJobdeskPage() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [actualYield, setActualYield] = useState('');
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('Hari Ini');
 
   const fetchTasks = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+
+      const formatDate = (d: Date) => d.toISOString().split('T')[0];
+      const dateRange = [formatDate(today), formatDate(tomorrow)];
       
       const [taskRes, staffRes] = await Promise.all([
-        supabase.from('tasks').select('*, products(name, current_stock)').eq('date', today).order('created_at', { ascending: false }),
+        supabase.from('tasks').select('*, products(name, current_stock, is_hot_kitchen)').in('date', dateRange).order('date', { ascending: true }).order('created_at', { ascending: false }),
         supabase.from('staff').select('id, name')
       ]);
       
@@ -62,8 +68,11 @@ export default function StaffJobdeskPage() {
   };
 
   const submitActual = async () => {
-    if (!selectedTask || !actualYield) return;
-    const actual = parseInt(actualYield);
+    if (!selectedTask) return;
+    const isHK = selectedTask.products?.is_hot_kitchen;
+    
+    if (!isHK && !actualYield) return alert("Masukkan jumlah hasil!");
+    const actual = isHK ? 0 : parseInt(actualYield);
 
     // 1. Update Task Status
     const { error: taskError } = await supabase.from('tasks')
@@ -71,20 +80,24 @@ export default function StaffJobdeskPage() {
 
     if (taskError) return alert("Gagal update tugas: " + taskError.message);
 
-    // 2. Increment Product Stock
-    const currentStock = selectedTask.products?.current_stock || 0;
-    const { error: prodError } = await supabase.from('products')
-      .update({ current_stock: currentStock + actual }).eq('id', selectedTask.product_id);
-
-    if (prodError) {
-      alert("Gagal update stok produk: " + prodError.message);
+    if (isHK) {
+      // HK items don't track stock incremental logs in this specific way usually, 
+      // but we mark it as done.
     } else {
-      await supabase.from('stock_logs').insert({
-        item_type: 'Product',
-        item_id: selectedTask.product_id,
-        change_qty: actual,
-        reason: `Production Task Completed: ${selectedTask.id}`
-      });
+      const currentStock = selectedTask.products?.current_stock || 0;
+      const { error: prodError } = await supabase.from('products')
+        .update({ current_stock: currentStock + actual }).eq('id', selectedTask.product_id);
+
+      if (prodError) {
+        alert("Gagal update stok produk: " + prodError.message);
+      } else {
+        await supabase.from('stock_logs').insert({
+          item_type: 'Product',
+          item_id: selectedTask.product_id,
+          change_qty: actual,
+          reason: `Production Task Completed: ${selectedTask.id}`
+        });
+      }
     }
 
     setSelectedTask(null);
@@ -101,61 +114,127 @@ export default function StaffJobdeskPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {loading && tasks.length === 0 && <div className="col-span-full h-40 flex items-center justify-center"><Loader2 className="animate-spin text-raden-gold" /></div>}
-        
-        {tasks.map((task, i) => {
-          const isDone = task.status === 'Completed';
+      {/* Tab Navigation */}
+      <div className="flex p-1 bg-gray-100 rounded-2xl w-full sm:w-fit mb-4">
+        {['Hari Ini', 'Besok'].map(label => {
+          const count = tasks.filter(t => {
+             const todayStr = new Date().toISOString().split('T')[0];
+             const tomorrow = new Date();
+             tomorrow.setDate(tomorrow.getDate() + 1);
+             const tomorrowStr = tomorrow.toISOString().split('T')[0];
+             return t.date === (label === 'Hari Ini' ? todayStr : tomorrowStr);
+          }).length;
+
           return (
-            <motion.div key={task.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} className="group bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[3rem] shadow-sm border border-gray-100 hover:shadow-xl transition-all cursor-pointer active:scale-95" onClick={() => !isDone && setSelectedTask(task)}>
-              <div className="flex justify-between items-start mb-6">
-                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-xl transition-all ${isDone ? 'bg-green-100 text-green-500' : 'bg-raden-gold text-white shadow-lg shadow-raden-gold/30'}`}>
-                  {isDone ? <CheckCircle2 size={24} className="sm:w-7 sm:h-7" /> : <Package size={22} className="sm:w-6 sm:h-6" />}
-                </div>
-                <div className="text-right">
-                  <span className="text-[8px] sm:text-[9px] font-black text-gray-300 uppercase tracking-widest block mb-1">Target Qty</span>
-                  <p className={`text-xl sm:text-2xl font-black ${isDone ? 'text-gray-300' : 'text-raden-green'}`}>{task.expected_qty}</p>
-                </div>
+            <button
+              key={label}
+              onClick={() => setActiveTab(label)}
+              className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                activeTab === label 
+                  ? 'bg-white text-raden-green shadow-sm' 
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              {label}
+              {count > 0 && (
+                <span className={`ml-2 px-1.5 py-0.5 rounded-md text-[8px] ${activeTab === label ? 'bg-raden-gold/10 text-raden-gold' : 'bg-gray-200 text-gray-400'}`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="space-y-10">
+        {loading && tasks.length === 0 && <div className="h-40 flex items-center justify-center"><Loader2 className="animate-spin text-raden-gold" /></div>}
+        
+        {(() => {
+          const todayStr = new Date().toISOString().split('T')[0];
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const tomorrowStr = tomorrow.toISOString().split('T')[0];
+          
+          const targetDate = activeTab === 'Hari Ini' ? todayStr : tomorrowStr;
+          const sectionTasks = tasks.filter(t => t.date === targetDate);
+
+          return (
+            <motion.div 
+              key={activeTab}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="space-y-4"
+            >
+              <div className="flex items-center gap-4 px-2">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Pekerjaan {activeTab} — {new Date(targetDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })}
+                </p>
+                <div className="h-px bg-gray-100 flex-1" />
               </div>
 
-              <h3 className={`text-lg sm:text-xl font-black tracking-tight mb-4 truncate ${isDone ? 'text-gray-400 line-through' : 'text-raden-green'}`}>{task.products?.name || 'Produk Dihapus'}</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-3">
+                {sectionTasks.map((task) => {
+                  const isDone = task.status === 'Completed';
+                  const isLocked = activeTab === 'Besok';
 
-              <div className="space-y-3 sm:space-y-4 pt-5 sm:pt-6 border-t border-gray-50">
-                <div className="flex items-start gap-3">
-                  <div className="mt-1"><Users size={14} className={isDone ? 'text-gray-300' : 'text-raden-gold'}/></div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[8px] sm:text-[9px] font-black text-gray-300 uppercase tracking-widest mb-0.5">Dikugaskan Kepada</p>
-                    <p className={`text-[10px] sm:text-xs font-bold leading-relaxed truncate ${isDone ? 'text-gray-400' : 'text-gray-700'}`}>{getStaffNames(task.assigned_staff)}</p>
-                  </div>
-                </div>
+                  return (
+                    <motion.div 
+                      key={task.id} 
+                      layout
+                      onClick={() => !isDone && !isLocked && setSelectedTask(task)}
+                      className={`relative group p-4 rounded-2xl border transition-all active:scale-95 ${
+                        isDone ? 'bg-gray-50 border-gray-100 opacity-60' : 
+                        isLocked ? 'bg-gray-50/50 border-gray-100 cursor-not-allowed' :
+                        'bg-white border-gray-100 shadow-sm hover:border-raden-gold/40 cursor-pointer'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                         <div className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${isDone ? 'bg-gray-200 text-gray-400' : 'bg-raden-gold/10 text-raden-gold'}`}>
+                            {task.expected_qty}
+                            <span className="ml-[2px] opacity-60">PCS</span>
+                         </div>
+                         {isDone ? (
+                           <div className="flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded-lg border border-green-100">
+                             <CheckCircle2 size={10} className="text-green-500" />
+                             <span className="text-[9px] font-black text-green-600 uppercase">OK: {task.actual_qty}</span>
+                           </div>
+                         ) : isLocked ? (
+                            <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-lg border border-gray-200">
+                              <Clock size={10} className="text-gray-400" />
+                              <span className="text-[8px] font-black text-gray-400 uppercase">Besok</span>
+                            </div>
+                         ) : null}
+                      </div>
 
-                {task.notes && (
-                  <div className="flex items-start gap-3">
-                    <div className="mt-1"><Info size={14} className={isDone ? 'text-gray-300' : 'text-blue-400'}/></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[8px] sm:text-[9px] font-black text-gray-300 uppercase tracking-widest mb-0.5">Catatan Khusus</p>
-                      <p className={`text-[10px] sm:text-xs font-bold leading-relaxed italic ${isDone ? 'text-gray-400' : 'text-gray-600'}`}>{task.notes}</p>
-                    </div>
+                      <h3 className={`text-[12px] font-black leading-tight mb-2 line-clamp-2 ${isDone ? 'text-gray-400' : 'text-raden-green'}`}>
+                        {task.products?.name}
+                      </h3>
+
+                      <div className="space-y-1 mt-auto border-t border-gray-50 pt-2">
+                        <div className="flex items-center gap-1.5 opacity-60">
+                          <Users size={10} className="shrink-0" />
+                          <p className="text-[8px] font-bold truncate">{getStaffNames(task.assigned_staff)}</p>
+                        </div>
+                        {task.notes && (
+                          <div className="flex items-center gap-1.5 opacity-60">
+                            <Info size={10} className="shrink-0 text-blue-400" />
+                            <p className="text-[8px] font-bold truncate italic">{task.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+                
+                {sectionTasks.length === 0 && (
+                  <div className="col-span-full py-16 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                    <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Tidak ada jadwal untuk {activeTab.toLowerCase()}.</p>
                   </div>
                 )}
               </div>
-
-              {isDone && (
-                <div className="mt-6 pt-4 border-t border-green-50 flex justify-between items-center bg-green-50/50 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 p-6 rounded-b-[2rem] sm:rounded-b-[3rem]">
-                   <span className="text-[9px] sm:text-[10px] font-black text-green-600 uppercase tracking-widest flex items-center gap-1"><CheckCircle2 size={12}/> Selesai</span>
-                   <span className="text-xs font-black text-green-700">Hasil: {task.actual_qty}</span>
-                </div>
-              )}
             </motion.div>
           );
-        })}
-        
-        {!loading && tasks.length === 0 && (
-          <div className="col-span-full py-20 text-center">
-             <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle2 size={40} className="text-gray-300"/></div>
-             <p className="text-sm font-black text-gray-400 uppercase tracking-widest">Tidak ada jadwal produksi untuk hari ini.</p>
-          </div>
-        )}
+        })()}
       </div>
 
       <AnimatePresence>
@@ -175,12 +254,19 @@ export default function StaffJobdeskPage() {
                 </div>
               </div>
               <div className="space-y-6">
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block text-center text-raden-gold">Hasil Aktual Dibuat</label>
-                  <input type="number" autoFocus placeholder="0" value={actualYield} onChange={e => setActualYield(e.target.value)} className="w-full p-6 text-center text-4xl font-black bg-raden-gold/10 text-raden-gold rounded-3xl outline-none focus:ring-4 focus:ring-raden-gold/30 transition-all border-none" />
-                </div>
+                {!selectedTask.products?.is_hot_kitchen ? (
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block text-center text-raden-gold">Hasil Aktual Dibuat</label>
+                    <input type="number" autoFocus placeholder="0" value={actualYield} onChange={e => setActualYield(e.target.value)} className="w-full p-6 text-center text-4xl font-black bg-raden-gold/10 text-raden-gold rounded-3xl outline-none focus:ring-4 focus:ring-raden-gold/30 transition-all border-none" />
+                  </div>
+                ) : (
+                  <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100 text-center">
+                    <p className="text-orange-600 font-black text-sm uppercase tracking-tight mb-1">Dapur Hot Kitchen</p>
+                    <p className="text-xs text-orange-400 font-bold">Tekan tombol di bawah untuk konfirmasi penyelesaian item ini.</p>
+                  </div>
+                )}
                 <button onClick={submitActual} className="w-full py-5 bg-raden-gold text-white rounded-2xl font-black uppercase tracking-widest shadow-xl flex justify-center gap-2">
-                  <CheckCircle2 size={18} /> Selesaikan Tugas
+                  <CheckCircle2 size={18} /> {selectedTask.products?.is_hot_kitchen ? 'Tuntaskan Sekarang' : 'Selesaikan Tugas'}
                 </button>
               </div>
             </motion.div>

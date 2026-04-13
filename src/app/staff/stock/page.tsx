@@ -12,9 +12,10 @@ export default function StaffStockCheckPage() {
   const [searchTerm, setSearchTerm] = useState('');
   
   const [formData, setFormData] = useState<any>({
-    staffName: '',
+    staffId: '',
     items: {}
   });
+  const [staffList, setStaffList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -22,12 +23,17 @@ export default function StaffStockCheckPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [matRes, catRes] = await Promise.all([
+        const [matRes, catRes, staffRes] = await Promise.all([
           supabase.from('materials').select('*').order('name'),
-          supabase.from('material_categories').select('*').order('name')
+          supabase.from('material_categories').select('*').order('name'),
+          supabase.from('staff').select('*').order('name')
         ]);
         if (matRes.data) setMaterials(matRes.data);
         if (catRes.data) setCategories(catRes.data);
+        if (staffRes.data) setStaffList(staffRes.data);
+
+        const savedStaffId = localStorage.getItem('raden_staff_id');
+        if (savedStaffId) setFormData(prev => ({ ...prev, staffId: savedStaffId }));
       } catch (e) {
         console.error(e);
       } finally {
@@ -54,17 +60,25 @@ export default function StaffStockCheckPage() {
     e.preventDefault();
     setSubmitting(true);
 
+    const staffName = staffList.find(s => s.id === formData.staffId)?.name || 'Unknown';
+
     const checkEntries = Object.entries(formData.items)
       .filter(([_, values]: [any, any]) => values.qty || values.buy)
       .map(([materialId, values]: [any, any]) => ({
         material_id: materialId,
         actual_qty: parseFloat(values.qty) || 0,
         how_much_to_buy: values.buy || '',
-        staff_name: formData.staffName
+        staff_name: staffName
       }));
 
     if (checkEntries.length === 0) {
       alert("Silakan isi setidaknya satu item.");
+      setSubmitting(false);
+      return;
+    }
+    
+    if (!formData.staffId) {
+      alert("Silakan pilih nama Anda dulu.");
       setSubmitting(false);
       return;
     }
@@ -98,11 +112,11 @@ export default function StaffStockCheckPage() {
           <CheckCircle2 size={48} />
         </motion.div>
         <h2 className="text-2xl font-bold text-raden-green mb-2">Laporan Dikirim!</h2>
-        <p className="text-gray-500 mb-8 font-medium">Data stok telah sinkron ke panel Admin. Terima kasih, {formData.staffName}.</p>
+        <p className="text-gray-500 mb-8 font-medium">Data stok telah sinkron ke panel Admin. Terima kasih.</p>
         <button 
           onClick={() => {
             setIsSubmitted(false);
-            setFormData({ staffName: formData.staffName, items: {} });
+            setFormData(prev => ({ ...prev, items: {} }));
           }}
           className="w-full max-w-xs py-4 bg-raden-green text-white rounded-2xl font-bold shadow-xl"
         >
@@ -163,18 +177,24 @@ export default function StaffStockCheckPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-raden-gold/5 p-5 sm:p-6 rounded-[2rem] border border-raden-gold/20">
-          <label className="text-[10px] font-black text-raden-gold uppercase tracking-[0.2em] mb-4 block">Nama Staff Yang Mengecek</label>
-          <div className="relative">
-            <UserIcon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-raden-gold sm:w-5 sm:h-5" />
-            <input 
-              type="text" 
-              required
-              value={formData.staffName}
-              onChange={(e) => setFormData({...formData, staffName: e.target.value})}
-              placeholder="Masukkan namamu..." 
-              className="w-full pl-12 pr-4 py-4 sm:py-5 bg-white border border-raden-gold/30 rounded-2xl outline-none focus:ring-4 focus:ring-raden-gold/20 font-black text-raden-green text-sm sm:text-base shadow-sm"
-            />
+        <div className="bg-raden-gold/5 p-5 rounded-[2rem] border border-raden-gold/20">
+          <label className="text-[10px] font-black text-raden-gold uppercase tracking-[0.2em] mb-4 block">Pilih Nama Anda</label>
+          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            {staffList.map(s => (
+              <button 
+                key={s.id} 
+                type="button"
+                onClick={() => { 
+                  setFormData({...formData, staffId: s.id});
+                  localStorage.setItem('raden_staff_id', s.id);
+                }} 
+                className={`shrink-0 px-5 py-3 rounded-2xl border-2 font-black text-[10px] uppercase tracking-widest transition-all ${
+                  formData.staffId === s.id ? 'bg-raden-green border-raden-green text-white shadow-md' : 'bg-white text-gray-400 border-gray-100'
+                }`}
+              >
+                {s.name}
+              </button>
+            ))}
           </div>
         </div>
 

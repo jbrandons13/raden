@@ -12,21 +12,28 @@ export default function AdminDashboard() {
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checklistCompleted, setChecklistCompleted] = useState(true);
 
   const fetchDashboardData = async () => {
     const today = new Date().toISOString().split('T')[0];
 
     try {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+
       // Parallelize all queries to reduce latency
-      const [orderRes, productRes, lowStockRes, revenueRes, activeOrdersRes] = await Promise.all([
+      const [orderRes, productRes, lowStockRes, revenueRes, activeOrdersRes, checklistRes] = await Promise.all([
         supabase.from('orders').select('*', { count: 'exact', head: true }).filter('created_at', 'gte', today),
         supabase.from('products').select('*', { count: 'exact', head: true }),
         supabase.from('products').select('name, current_stock').lt('current_stock', 10),
         supabase.from('orders').select('total_revenue').filter('created_at', 'gte', today),
-        supabase.from('orders').select('*, customers(name)').neq('status', 'Selesai').order('created_at', { ascending: false }).limit(5)
+        supabase.from('orders').select('*, customers(name)').neq('status', 'Selesai').order('created_at', { ascending: false }).limit(5),
+        supabase.from('checklist_history').select('*', { count: 'exact', head: true }).eq('date', yesterdayStr)
       ]);
 
       const totalRevenue = revenueRes.data?.reduce((acc, curr) => acc + (Number(curr.total_revenue) || 0), 0) || 0;
+      setChecklistCompleted((checklistRes.count || 0) > 0);
 
       setStats([
         { name: 'Pesanan Hari Ini', value: orderRes.count?.toString() || '0', icon: ShoppingBag, color: 'bg-blue-100 text-blue-600' },
@@ -67,6 +74,32 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+      
+      <AnimatePresence>
+        {!loading && !checklistCompleted && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            className="bg-red-50 border border-red-100 p-6 rounded-[2.5rem] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-red-500 text-white rounded-2xl shadow-lg shadow-red-200">
+                <AlertTriangle size={24} />
+              </div>
+              <div className="text-center sm:text-left">
+                <h4 className="text-red-900 font-black uppercase tracking-tight text-sm">Checklist Belum Terisi!</h4>
+                <p className="text-red-600/70 text-xs font-medium">Operasional hari ini belum divalidasi oleh staff di outlet.</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => router.push('/admin/checklist')}
+              className="w-full sm:w-auto px-6 py-3 bg-white text-red-500 border border-red-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/50 transition-all shadow-sm"
+            >
+              Cek Detail
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modern Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">

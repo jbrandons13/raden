@@ -1,0 +1,32 @@
+================================================================================
+ILUSTRASI LAYOUT ORDER BARU (2-KOLOM DRAG & DROP)
+================================================================================
+
+[ HEADER: PESANAN BARU ] -> [ BUTTON: SIMPAN PESANAN ]
+--------------------------------------------------------------------------------
+
+PILIH PELANGGAN: [ CARI NAMA TOKO / PELANGGAN... ] (Autocomplete, No Dropdown)
+
+--------------------------------------------------------------------------------
+DAFTAR PRODUK (Dapat ditarik/Drag-and-Drop untuk pindah urutan)
+--------------------------------------------------------------------------------
+
+KOLOM 1                                      KOLOM 2
+=======                                      =======
+
+[≡] NASTAR PREM. - NTD 150 [ 10 ]            [≡] KASTENGEL K. - NTD 180 [ 5  ]
+[≡] PUTRI SALJU  - NTD 120 [ 0  ]            [≡] BOLEN PISANG - NTD 200 [ 12 ]
+[≡] LIDAH KUCING - NTD 130 [ 0  ]            [≡] COKLAT CHIP  - NTD 140 [ 0  ]
+[≡] ...                                      [≡] ...
+
+--------------------------------------------------------------------------------
+RINGKASAN TOTAL: NTD 4,500
+--------------------------------------------------------------------------------
+
+NOTES:
+1. [≡] Adalah handle untuk Drag & Drop.
+2. Layout 2 kolom Menyamping: Nama, Harga, dan Box QTY berada di satu baris yang sama.
+3. Lebih ringkas, menghemat ruang vertikal sehingga lebih banyak produk muncul.
+4. Box [ ] adalah input field untuk QTY.
+
+================================================================================
