@@ -33,7 +33,7 @@ export default function StaffStockCheckPage() {
         if (staffRes.data) setStaffList(staffRes.data);
 
         const savedStaffId = localStorage.getItem('raden_staff_id');
-        if (savedStaffId) setFormData(prev => ({ ...prev, staffId: savedStaffId }));
+        if (savedStaffId) setFormData((prev: any) => ({ ...prev, staffId: savedStaffId }));
       } catch (e) {
         console.error(e);
       } finally {
@@ -116,7 +116,7 @@ export default function StaffStockCheckPage() {
         <button 
           onClick={() => {
             setIsSubmitted(false);
-            setFormData(prev => ({ ...prev, items: {} }));
+            setFormData((prev: any) => ({ ...prev, items: {} }));
           }}
           className="w-full max-w-xs py-4 bg-raden-green text-white rounded-2xl font-bold shadow-xl"
         >
