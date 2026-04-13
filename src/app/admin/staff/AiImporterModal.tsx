@@ -150,7 +150,7 @@ export default function AiImporterModal({ isOpen, onClose, staff, dates, shiftTy
              <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
                 <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Pratinjau Jadwal (30 Hari kedepan)</h5>
                 <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto pr-2">
-                   {Object.entries(result.mappings).slice(0, 15).map(([date, shift]: any) => (
+                   {(Object.entries(result.mappings || {}) as [string, string][]).slice(0, 15).map(([date, shift]) => (
                      <div key={date} className="px-3 py-2 bg-white rounded-xl border border-gray-100 flex flex-col items-center min-w-[60px]">
                         <span className="text-[8px] font-black text-gray-300 uppercase">{new Date(date).toLocaleDateString('id-ID', { weekday: 'short' })}</span>
                         <span className="text-[10px] font-black text-raden-green">{new Date(date).getDate()}</span>

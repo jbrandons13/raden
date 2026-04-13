@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 
+interface MappingRequest {
+  templateText: string;
+  staffList: any[];
+  dates: string[];
+  shiftTypes: string[];
+}
+
 export async function POST(req: Request) {
   try {
-    const { templateText, staffList, dates, shiftTypes } = await req.json();
+    const { templateText, staffList, dates, shiftTypes }: MappingRequest = await req.json();
 
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
@@ -72,7 +79,7 @@ export async function POST(req: Request) {
     const exclusions = extraction.exclusion_dates || [];
     const shiftCode = extraction.shift_code || "EM";
 
-    dates.forEach(d => {
+    dates.forEach((d: string) => {
       const dayName = getIndoDay(d);
       const dayNum = new Date(d).getUTCDate().toString(); // Handle "tanggal 1" etc
       
