@@ -628,7 +628,7 @@ const ProductCard = ({ p, index, isSorting, totalCount, productLayout, onMove, o
   return (
     <motion.div 
       layout
-      transition={{ type: "none" }}
+      transition={{ duration: 0 }}
       className={`group bg-white rounded-3xl p-3 sm:p-3.5 flex items-center justify-between shadow-sm border border-gray-100 hover:border-raden-gold/30 hover:shadow-xl hover:shadow-raden-gold/5 transition-none ${isSorting ? 'ring-2 ring-raden-gold/30 z-10' : ''}`}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
