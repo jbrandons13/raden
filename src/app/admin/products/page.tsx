@@ -214,15 +214,15 @@ export default function ProductsPage() {
     <div className="space-y-6 relative pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight">Raden's Product</h1>
-          <p className="text-gray-400 text-xs sm:text-sm font-medium">Inventory & Pricing Central.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight">Produk Raden</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Pusat Inventaris & Harga.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <button onClick={() => setShowCategoryManager(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">
-            <Tag size={18} /> Categories
+            <Tag size={18} /> Kategori
           </button>
           <button onClick={() => setShowAddModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-            <Plus size={18} /> Add Product
+            <Plus size={18} /> Tambah Produk
           </button>
         </div>
       </div>
@@ -348,29 +348,33 @@ export default function ProductsPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
               <div className="flex justify-between items-center mb-6 sm:mb-8">
-                <h2 className="text-xl sm:text-2xl font-black text-raden-green tracking-tighter uppercase">Add Product</h2>
+                <h2 className="text-xl sm:text-2xl font-black text-raden-green tracking-tighter uppercase">Tambah Produk</h2>
                 <button onClick={() => { setShowAddModal(false); setNewProduct({ name: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0, yield_per_batch: 0, weekly_target: 0 }); setIsAddingNewCategory(false); setNewCategoryName(''); }} className="text-gray-400 hover:text-raden-green"><X size={24}/></button>
               </div>
               <div className="space-y-6">
-                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Name</label><input type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold" /></div>
+                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama Produk</label><input type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold" /></div>
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Category</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kategori</label>
                   <select 
                     value={newProduct.category} 
                     onChange={e => setNewProduct({...newProduct, category: e.target.value})} 
                     className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold appearance-none outline-none focus:ring-4 focus:ring-raden-gold/10"
                   >
-                    <option value="">Select Category...</option>
+                    <option value="">Pilih Kategori...</option>
                     {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Initial Stock</label><input type="number" value={newProduct.initial_stock} onFocus={(e) => e.target.select()} onChange={e => setNewProduct({...newProduct, initial_stock: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center" /></div>
-                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Unit</label><input type="text" value={newProduct.unit} onChange={e => setNewProduct({...newProduct, unit: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center" placeholder="Pcs, Kg..." /></div>
+                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Harga (NTD)</label><input type="number" value={newProduct.price} onFocus={(e) => e.target.select()} onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold" /></div>
+                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Unit / Satuan</label><input type="text" value={newProduct.unit} onChange={e => setNewProduct({...newProduct, unit: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center" placeholder="Pcs, Kg..." /></div>
+                </div>
+                <div>
+                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Stok Awal</label>
+                   <input type="number" value={newProduct.initial_stock} onFocus={(e) => e.target.select()} onChange={e => setNewProduct({...newProduct, initial_stock: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center" />
                 </div>
 
                 <div className="pt-4 border-t space-y-4">
-                  <p className="text-[10px] font-black text-raden-gold uppercase tracking-widest mb-2">Production Config (Yield Calculator)</p>
+                  <p className="text-[10px] font-black text-raden-gold uppercase tracking-widest mb-2">Konfigurasi Produksi (Kalkulator Hasil)</p>
                   
                   <div className="bg-gray-50/50 p-4 rounded-3xl border border-gray-100 flex flex-col gap-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -412,7 +416,7 @@ export default function ProductsPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-4 pt-4"><button onClick={() => setShowAddModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-400 rounded-2xl font-bold">Cancel</button><button onClick={handleSaveProduct} className="flex-1 py-4 bg-raden-gold text-white rounded-2xl font-black uppercase tracking-widest shadow-xl">Confirm</button></div>
+                <div className="flex gap-4 pt-4"><button onClick={() => setShowAddModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-400 rounded-2xl font-bold">Batal</button><button onClick={handleSaveProduct} className="flex-1 py-4 bg-raden-gold text-white rounded-2xl font-black uppercase tracking-widest shadow-xl">Simpan Produk</button></div>
               </div>
             </motion.div>
           </div>
@@ -423,26 +427,26 @@ export default function ProductsPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowEditModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
               <div className="flex justify-between items-center mb-6 sm:mb-8">
-                <h2 className="text-xl sm:text-2xl font-black text-raden-green tracking-tighter uppercase">Update Product</h2>
+                <h2 className="text-xl sm:text-2xl font-black text-raden-green tracking-tighter uppercase">Update Produk</h2>
                 <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-raden-green"><X size={24}/></button>
               </div>
                <div className="space-y-5">
-                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Name</label><input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-raden-green outline-none" /></div>
+                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama Produk</label><input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-raden-green outline-none" /></div>
                 
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Category</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kategori</label>
                   <select 
                     value={editForm.category} 
                     onChange={e => setEditForm({...editForm, category: e.target.value})} 
                     className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold appearance-none outline-none focus:ring-4 focus:ring-raden-gold/10"
                   >
-                    <option value="">No Category</option>
+                    <option value="">Tanpa Kategori</option>
                     {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Stock Adjustment</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Penyesuaian Stok</label>
                   <div className="flex items-center gap-2 bg-gray-50 rounded-2xl p-2 border">
                     <button onClick={() => setEditForm({...editForm, current_stock: Math.max(0, editForm.current_stock - 1)})} className="w-12 h-12 bg-white rounded-xl font-bold shadow-sm active:scale-90 transition-all">-</button>
                     <input type="number" value={editForm.current_stock} onFocus={(e) => e.target.select()} onChange={e => setEditForm({...editForm, current_stock: Number(e.target.value)})} className="flex-1 bg-transparent text-center font-black text-xl text-raden-green focus:outline-none" />
@@ -450,8 +454,8 @@ export default function ProductsPage() {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Price (NTD)</label><input type="number" value={editForm.price} onFocus={(e) => e.target.select()} onChange={e => setEditForm({...editForm, price: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold" /></div>
-                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Unit</label><input type="text" value={editForm.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center" /></div>
+                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Harga (NTD)</label><input type="number" value={editForm.price} onFocus={(e) => e.target.select()} onChange={e => setEditForm({...editForm, price: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold" /></div>
+                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Unit / Satuan</label><input type="text" value={editForm.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center" /></div>
                 </div>
 
                 <div className="pt-4 border-t space-y-4">
@@ -498,7 +502,7 @@ export default function ProductsPage() {
                 
                 <div className="pt-6 border-t mt-6 flex gap-4">
                   <button onClick={() => setItemToDelete({id: editForm.id, name: editForm.name})} className="px-6 py-4 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={20} /></button>
-                  <button onClick={handleUpdateProduct} className="flex-1 py-4 bg-raden-green text-raden-gold rounded-2xl font-black uppercase tracking-widest shadow-xl flex justify-center items-center gap-2"><Save size={18}/> Save Changes</button>
+                  <button onClick={handleUpdateProduct} className="flex-1 py-4 bg-raden-green text-raden-gold rounded-2xl font-black uppercase tracking-widest shadow-xl flex justify-center items-center gap-2"><Save size={18}/> Simpan Perubahan</button>
                 </div>
               </div>
             </motion.div>
@@ -557,18 +561,18 @@ export default function ProductsPage() {
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh]">
               <div className="flex justify-between items-center mb-8 border-b pb-6">
                 <div>
-                  <h2 className="text-xl font-black text-raden-green uppercase tracking-tighter">Category Manager</h2>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Global categorization control</p>
+                  <h2 className="text-xl font-black text-raden-green uppercase tracking-tighter">Kelola Kategori</h2>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Kontrol Kategorisasi Produk</p>
                 </div>
                 <button onClick={() => { setShowCategoryManager(false); setNewCategoryName(''); }} className="p-2 hover:bg-gray-100 rounded-full transition-all text-gray-400"><X /></button>
               </div>
 
               <div className="mb-8">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Add New Category</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Tambah Kategori Baru</label>
                 <div className="flex gap-2">
                   <input 
                     type="text" 
-                    placeholder="E.g. Coffee, Pastry..." 
+                    placeholder="Contoh: Kopi, Pastry..." 
                     value={!categoryToEdit ? newCategoryName : ''} 
                     onChange={e => !categoryToEdit && setNewCategoryName(e.target.value)}
                     className="flex-1 p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-raden-gold/10 transition-all"
@@ -578,7 +582,7 @@ export default function ProductsPage() {
                     disabled={!newCategoryName || categoryToEdit !== null}
                     className="px-6 bg-raden-gold text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 disabled:opacity-50 transition-all"
                   >
-                    Add
+                    Tambah
                   </button>
                 </div>
               </div>
@@ -600,7 +604,7 @@ export default function ProductsPage() {
               </div>
 
               <div className="mt-8 border-t pt-6">
-                <button onClick={() => setShowCategoryManager(false)} className="w-full py-4 bg-raden-green text-raden-gold rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">Done - Save View</button>
+                <button onClick={() => setShowCategoryManager(false)} className="w-full py-4 bg-raden-green text-raden-gold rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">Selesai</button>
               </div>
             </motion.div>
           </div>

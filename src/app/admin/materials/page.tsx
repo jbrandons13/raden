@@ -143,27 +143,40 @@ export default function MaterialsPage() {
     <div className="space-y-6 relative pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight">Material Stock</h1>
-          <p className="text-gray-400 text-xs sm:text-sm font-medium">Bahan baku & rekomendasi restock.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight">Gudang Bahan</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Manajemen Stok & Ketersediaan.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <button onClick={() => setShowHistoryModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-100 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-            <History size={18} /> Stock Log
+          <button onClick={() => setShowCategoryManager(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+            <Tag size={18} /> Kategori
           </button>
-          <button onClick={() => setShowCategoryManager(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-100 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-            <Tag size={18} /> Categories
+          <button onClick={() => setShowHistoryModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-gold px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+            <History size={18} /> Riwayat Stok
           </button>
           <button onClick={() => setShowAddModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-            <Plus size={18} /> Add Material
+            <Plus size={18} /> Tambah Bahan
           </button>
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-        <button onClick={() => setSearchTerm('')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${!searchTerm ? 'bg-raden-green text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}>All</button>
-        {categories.map(cat => (
-          <button key={cat.id} onClick={() => setSearchTerm(cat.name)} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${searchTerm === cat.name ? 'bg-raden-gold text-raden-green shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}>{cat.name}</button>
-        ))}
+      <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between gap-4">
+        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar flex-1 w-full order-2 sm:order-1">
+          <button onClick={() => setSearchTerm('')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${!searchTerm ? 'bg-raden-green text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}>Semua</button>
+          {categories.map(c => (
+            <button key={c.id} onClick={() => setSearchTerm(c.name)} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${searchTerm === c.name ? 'bg-raden-gold text-raden-green shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}>{c.name}</button>
+          ))}
+        </div>
+        
+        <div className="relative w-full sm:w-64 group order-1 sm:order-2">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-raden-green transition-colors" size={18} />
+          <input 
+            type="text" 
+            placeholder="Cari bahan..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-raden-green/5 focus:border-raden-green/20 shadow-sm transition-all"
+          />
+        </div>
       </div>
 
       <div className="space-y-8">
@@ -312,29 +325,29 @@ export default function MaterialsPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
               <div className="flex justify-between items-center mb-6 sm:mb-8">
-                <h2 className="text-xl sm:text-2xl font-black text-raden-green tracking-tighter uppercase">Add Material</h2>
+                <h2 className="text-xl sm:text-2xl font-black text-raden-green tracking-tighter uppercase">Tambah Bahan</h2>
                 <button onClick={() => { setShowAddModal(false); setNewMaterial({ name: '', category: '', qty: 0, unit: '', weekly_target: 0, notes: '' }); setNewCategoryName(''); }} className="text-gray-400 hover:text-raden-green transition-all"><X size={24}/></button>
               </div>
               <div className="space-y-6">
-                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Name</label><input type="text" value={newMaterial.name} onChange={e => setNewMaterial({...newMaterial, name: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold" /></div>
+                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama Bahan</label><input type="text" value={newMaterial.name} onChange={e => setNewMaterial({...newMaterial, name: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold" /></div>
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Category</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kategori</label>
                   <select 
                     value={newMaterial.category} 
                     onChange={e => setNewMaterial({...newMaterial, category: e.target.value})} 
                     className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold appearance-none outline-none focus:ring-4 focus:ring-raden-gold/10"
                   >
-                    <option value="">Select Category...</option>
+                    <option value="">Pilih Kategori...</option>
                     {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
                 </div>
                  <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Initial Stock</label><input type="number" step="0.1" value={newMaterial.qty} onFocus={(e) => e.target.select()} onChange={e => setNewMaterial({...newMaterial, qty: parseFloat(e.target.value) || 0})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center text-raden-green" /></div>
-                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Unit</label><input type="text" value={newMaterial.unit} onChange={e => setNewMaterial({...newMaterial, unit: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center" /></div>
+                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Stok Real</label><input type="number" step="0.1" value={newMaterial.qty} onFocus={(e) => e.target.select()} onChange={e => setNewMaterial({...newMaterial, qty: parseFloat(e.target.value) || 0})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center text-raden-green" /></div>
+                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Unit / Satuan</label><input type="text" value={newMaterial.unit} onChange={e => setNewMaterial({...newMaterial, unit: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center" placeholder="Kg, Pcs, Liter..." /></div>
                 </div>
-                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Weekly Target (Kebutuhan Mingguan)</label><input type="number" step="0.1" value={newMaterial.weekly_target} onFocus={(e) => e.target.select()} onChange={e => setNewMaterial({...newMaterial, weekly_target: parseFloat(e.target.value) || 0})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-raden-green" /></div>
-                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Notes / Supplier</label><input type="text" value={newMaterial.notes} onChange={e => setNewMaterial({...newMaterial, notes: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold" /></div>
-                <div className="flex gap-4 pt-4"><button onClick={() => setShowAddModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-400 font-bold rounded-2xl">Cancel</button><button onClick={handleSaveMaterial} className="flex-1 py-4 bg-raden-gold text-white font-black uppercase tracking-widest rounded-2xl shadow-xl">Confirm</button></div>
+                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Min. Stok (Warning)</label><input type="number" step="0.1" value={newMaterial.weekly_target} onFocus={(e) => e.target.select()} onChange={e => setNewMaterial({...newMaterial, weekly_target: parseFloat(e.target.value) || 0})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-raden-green" /></div>
+                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Catatan / Lokasi</label><textarea value={newMaterial.notes} onChange={e => setNewMaterial({...newMaterial, notes: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold min-h-[100px]" placeholder="Misal: Rak A, Freezer 2..." /></div>
+                <div className="flex gap-4 pt-4"><button onClick={() => setShowAddModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-400 font-bold rounded-2xl">Batal</button><button onClick={handleSaveMaterial} className="flex-1 py-4 bg-raden-gold text-white font-black uppercase tracking-widest rounded-2xl shadow-xl">Simpan Bahan</button></div>
               </div>
             </motion.div>
           </div>

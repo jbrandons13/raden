@@ -140,19 +140,28 @@ export default function StaffManagementPage() {
     <div className="space-y-6 relative pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Staff & Matrix Jadwal</h1>
-          <p className="text-gray-400 text-xs sm:text-sm font-medium">Manajemen shift operasional 30 Hari.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight">Manajemen Staff</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Jadwal Shift & Pengaturan Tim.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <button onClick={() => setShowAiModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-            <Sparkles size={16} /> Import Staff Wishlist
+          <button onClick={() => setShowAiModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+            <Sparkles size={18} className="text-raden-gold" /> AI Import
           </button>
-          <button onClick={saveShifts} disabled={isSaving} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-gray-100 text-raden-green px-6 py-4 sm:py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Changes
+          <button onClick={() => setShowAddStaff(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+            <UserPlus size={18} /> Tambah Staff
           </button>
-          <button onClick={() => setShowAddStaff(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-            <UserPlus size={16} /> Add Staff
-          </button>
+        </div>
+      </div>
+
+      {/* Stats Summary - Mini */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+           <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Tim</p>
+           <p className="text-xl font-black text-raden-green">{staff.length} <span className="text-[10px] text-gray-400">Orang</span></p>
+        </div>
+         <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+           <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Aktif Hari Ini</p>
+           <p className="text-xl font-black text-raden-gold">{Object.values(shifts).filter(s => s[new Date().toISOString().split('T')[0]]).length} <span className="text-[10px] text-gray-400">Staff</span></p>
         </div>
       </div>
 
@@ -174,19 +183,19 @@ export default function StaffManagementPage() {
         <div className="overflow-x-auto max-h-[600px] relative">
           <table className="w-full text-left border-collapse min-w-[2000px]">
             <thead className="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-md shadow-sm">
-              <tr>
-                <th className="px-6 py-4 bg-gray-50/95 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-r border-gray-100 w-48 sticky left-0 z-40 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">Personnel</th>
-                {dates.map(d => {
-                  const dateObj = new Date(d);
-                  const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-                  return (
-                    <th key={d} className={`px-2 py-3 text-center border-b border-gray-100 min-w-[60px] ${isWeekend ? 'bg-red-50/50' : ''}`}>
-                      <p className={`text-[9px] font-black uppercase tracking-widest ${isWeekend ? 'text-red-400' : 'text-raden-gold'}`}>{dateObj.toLocaleDateString('id-ID', { weekday: 'short' })}</p>
-                      <p className="text-xs font-black text-raden-green">{dateObj.toLocaleDateString('id-ID', { day: 'numeric' })}</p>
-                    </th>
-                  );
-                })}
-              </tr>
+              <div className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
+                <div className="flex">
+                  <div className="w-32 sm:w-48 sticky left-0 z-30 bg-gray-50 px-4 py-4 border-r border-gray-100">
+                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Nama Staff</span>
+                  </div>
+                  {dates.map(date => (
+                    <div key={date} className="w-16 min-w-[4rem] px-2 py-4 text-center border-r border-gray-100 flex flex-col items-center justify-center bg-gray-50/50">
+                       <span className="text-[8px] font-black text-gray-300 uppercase leading-none mb-1">{new Date(date).toLocaleDateString('id-ID', { weekday: 'short' })}</span>
+                       <span className={`text-[11px] font-black ${new Date(date).toDateString() === new Date().toDateString() ? 'text-raden-gold' : 'text-raden-green'}`}>{new Date(date).getDate()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {staff.map(s => (
@@ -236,47 +245,32 @@ export default function StaffManagementPage() {
         </div>
       </div>
 
-      {/* Legend & Notes Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-        
-        {/* Legend */}
-        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-8">
-          <div className="flex items-center gap-3 mb-6">
-             <div className="p-2 bg-blue-50 text-blue-500 rounded-xl"><Info size={20} /></div>
-             <h3 className="font-black text-raden-green uppercase tracking-widest text-[10px]">Additional Information</h3>
-          </div>
-          <table className="w-full text-left text-xs border border-gray-100 rounded-xl overflow-hidden">
-            <thead className="bg-gray-50 font-bold text-gray-500 border-b border-gray-100">
-              <tr>
-                <th className="px-4 py-3 border-r border-gray-100 text-center">Session</th>
-                <th className="px-4 py-3 text-center">Time</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {SHIFT_LEGEND.map((leg, i) => (
-                <tr key={i} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-bold text-raden-green border-r border-gray-100 text-center">{leg.code}</td>
-                  <td className="px-4 py-3 text-gray-600 font-medium text-center">{leg.time}</td>
-                </tr>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+           <h3 className="text-xs font-black text-raden-green uppercase tracking-[0.2em] mb-4 flex items-center gap-2 italic">
+              <Info size={14} className="text-raden-gold" /> Keterangan Shift
+           </h3>
+           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {SHIFT_LEGEND.map(item => (
+                <div key={item.code} className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                   <p className="text-[10px] font-black text-raden-green mb-0.5">{item.code}</p>
+                   <p className="text-[8px] font-bold text-gray-400">{item.time}</p>
+                </div>
               ))}
-            </tbody>
-          </table>
+           </div>
         </div>
 
-        {/* Notes Container */}
-        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-8 flex flex-col">
-          <div className="flex items-center gap-3 mb-6">
-             <div className="p-2 bg-raden-gold/10 text-raden-gold rounded-xl"><AlignLeft size={20} /></div>
-             <h3 className="font-black text-raden-green uppercase tracking-widest text-[10px]">Catatan Operasional</h3>
-          </div>
-          <textarea 
-             value={notes}
-             onChange={(e) => setNotes(e.target.value)}
-             placeholder="Masukkan rincian shift staff seperti...&#10;- Arel, Fregon, Mareno, dll (Rabu s/d 12.00)&#10;- Bianca 11.00 - 18.00"
-             className="w-full flex-1 bg-gray-50 border-none rounded-2xl p-6 text-xs text-gray-600 font-medium outline-none focus:ring-4 focus:ring-raden-gold/10 resize-none min-h-[200px] leading-relaxed"
-          />
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+           <h3 className="text-xs font-black text-raden-green uppercase tracking-[0.2em] mb-4 flex items-center gap-2 italic">
+              <AlignLeft size={14} className="text-raden-gold" /> Catatan Tambahan
+           </h3>
+           <textarea 
+            value={notes} 
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Tulis instruksi shift untuk staff di sini..."
+            className="w-full h-24 p-4 bg-gray-50 rounded-2xl text-[10px] font-bold outline-none border border-transparent focus:border-raden-gold/30 transition-all resize-none"
+           />
         </div>
-
       </div>
 
       <AiImporterModal 
@@ -290,19 +284,22 @@ export default function StaffManagementPage() {
 
       <AnimatePresence>
         {showAddStaff && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddStaff(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
-             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2.5rem] p-8 sm:p-10 w-full max-w-sm shadow-2xl">
-               <div className="flex justify-between items-center mb-8">
-                 <h2 className="text-lg sm:text-xl font-black text-raden-green uppercase tracking-tighter">Register Staff</h2>
-                 <button onClick={() => setShowAddStaff(false)} className="text-gray-400 p-2 hover:bg-gray-50 rounded-full transition-all"><X size={20}/></button>
-               </div>
-               <div className="flex flex-col items-center mb-8">
-                 <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4 border-4 border-white shadow-xl"><Users size={32} className="sm:w-10 sm:h-10" /></div>
-               </div>
-               <input type="text" placeholder="Full Name..." value={newStaffName} onChange={(e) => setNewStaffName(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-center text-raden-green outline-none focus:ring-4 focus:ring-raden-gold/20 mb-6" />
-               <button onClick={handleAddStaff} className="w-full py-4 bg-raden-gold text-white rounded-2xl font-black uppercase tracking-widest shadow-xl sm:text-xs text-[10px]">Complete Registration</button>
-             </motion.div>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddStaff(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl">
+              <h3 className="text-xl font-black text-raden-green mb-6 uppercase tracking-tight">Daftarkan Staff Baru</h3>
+              <input 
+                type="text" 
+                placeholder="Nama Lengkap Staff" 
+                value={newStaffName} 
+                onChange={e => setNewStaffName(e.target.value)}
+                className="w-full p-4 bg-gray-50 border rounded-2xl font-bold mb-6 outline-none focus:ring-4 focus:ring-raden-gold/20"
+              />
+              <div className="flex gap-3">
+                <button onClick={() => setShowAddStaff(false)} className="flex-1 py-4 bg-gray-100 text-gray-400 font-bold rounded-2xl">Batal</button>
+                <button onClick={handleAddStaff} className="flex-1 py-4 bg-raden-gold text-white font-black uppercase tracking-widest rounded-2xl shadow-xl">Daftarkan</button>
+              </div>
+            </motion.div>
           </div>
         )}
 
