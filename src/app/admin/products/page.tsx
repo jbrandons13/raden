@@ -251,17 +251,15 @@ export default function ProductsPage() {
 
       {activeTab === 'management' ? (
         <>
-          <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between gap-4">
-            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar flex-1 w-full order-2 sm:order-1">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar w-full sm:w-auto flex-1">
               <button onClick={() => setSearchTerm('')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${!searchTerm ? 'bg-raden-green text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}>Semua</button>
               {categories.map(c => (
                 <button key={c.id} onClick={() => setSearchTerm(c.name)} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${searchTerm === c.name ? 'bg-raden-gold text-raden-green shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}>{c.name}</button>
               ))}
             </div>
-          </div>
-
-          <div className="flex justify-end mb-4">
-            <div className="flex items-center gap-2">
+            
+            <div className="flex items-center gap-2 shrink-0">
               <button 
                 onClick={() => setIsSorting(!isSorting)} 
                 className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSorting ? 'bg-raden-gold text-white shadow-lg pr-6' : 'bg-white text-gray-400 border border-gray-100 hover:text-raden-green'} active:scale-95`}
