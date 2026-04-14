@@ -221,7 +221,11 @@ export default function ProductsPage() {
           <button onClick={() => setShowCategoryManager(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">
             <Tag size={18} /> Kategori
           </button>
-          <button onClick={() => setShowAddModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+          <button onClick={() => {
+            const activeCategory = categories.find(c => c.name === searchTerm);
+            setNewProduct(prev => ({ ...prev, category: activeCategory ? activeCategory.name : '' }));
+            setShowAddModal(true);
+          }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
             <Plus size={18} /> Tambah Produk
           </button>
         </div>
