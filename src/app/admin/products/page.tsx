@@ -372,6 +372,7 @@ export default function ProductsPage() {
                   <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Harga (NTD)</label><input type="number" value={newProduct.price} onFocus={(e) => e.target.select()} onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold" /></div>
                   <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Unit / Satuan</label><input type="text" value={newProduct.unit} onChange={e => setNewProduct({...newProduct, unit: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center" placeholder="Pcs, Kg..." /></div>
                 </div>
+
                 <div>
                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Stok Awal</label>
                    <input type="number" value={newProduct.initial_stock} onFocus={(e) => e.target.select()} onChange={e => setNewProduct({...newProduct, initial_stock: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center" />
@@ -449,6 +450,11 @@ export default function ProductsPage() {
                   </select>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Harga (NTD)</label><input type="number" value={editForm.price} onFocus={(e) => e.target.select()} onChange={e => setEditForm({...editForm, price: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold" /></div>
+                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Unit / Satuan</label><input type="text" value={editForm.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center" /></div>
+                </div>
+
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Penyesuaian Stok</label>
                   <div className="flex items-center gap-2 bg-gray-50 rounded-2xl p-2 border">
@@ -457,13 +463,9 @@ export default function ProductsPage() {
                     <button onClick={() => setEditForm({...editForm, current_stock: editForm.current_stock + 1})} className="w-12 h-12 bg-white rounded-xl font-bold shadow-sm active:scale-90 transition-all">+</button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Harga (NTD)</label><input type="number" value={editForm.price} onFocus={(e) => e.target.select()} onChange={e => setEditForm({...editForm, price: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold" /></div>
-                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Unit / Satuan</label><input type="text" value={editForm.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold text-center" /></div>
-                </div>
 
                 <div className="pt-4 border-t space-y-4">
-                  <p className="text-[10px] font-black text-raden-gold uppercase tracking-widest mb-2">Production Config (Yield Calculator)</p>
+                  <p className="text-[10px] font-black text-raden-gold uppercase tracking-widest mb-2">Konfigurasi Produksi (Kalkulator Hasil)</p>
 
                   <div className="bg-gray-50/50 p-4 rounded-3xl border border-gray-100 flex flex-col gap-4">
                     <div className="grid grid-cols-2 gap-4">
