@@ -14,6 +14,8 @@ export default function StaffOrdersPage() {
   const [pivotData, setPivotData] = useState<{ products: {id: string, name: string}[], stores: string[], grid: Record<string, Record<string, number>> }>({ products: [], stores: [], grid: {} });
   const [sections, setSections] = useState<any[]>([]);
   const [storeSearch, setStoreSearch] = useState('');
+  const [viewMode, setViewMode] = useState<'selection' | 'table'>('selection');
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState<any>(null); // null means 'ALL'
 
   const fetchOrderDates = async () => {
     try {
@@ -144,8 +146,12 @@ export default function StaffOrdersPage() {
             const rows = [];
             let globalRowIndex = 0;
 
-            // 1. Grouped by Layout Sections
-            sections.forEach(sec => {
+            // 1. Filtered or All Sections
+            const sectionsToRender = selectedSectionFilter === 'all' 
+              ? sections 
+              : (selectedSectionFilter === 'others' ? [] : sections.filter(sec => sec.id === selectedSectionFilter?.id));
+
+            sectionsToRender.forEach(sec => {
               const secItems = (sec.items || []).filter((item: any) => pivotData.grid[item.product_id]);
               if (secItems.length === 0) return;
 
@@ -167,20 +173,28 @@ export default function StaffOrdersPage() {
               });
             });
 
-            // 2. Uncategorized Products (Others)
-            const otherProducts = pivotData.products.filter(p => !assignedProductIds.has(p.id));
-            if (otherProducts.length > 0) {
-              rows.push(
-                <tr key="sec-others" className={`${isForPrint ? 'bg-gray-200' : 'bg-gray-100/40'}`}>
-                  <td colSpan={filteredStores.length * 2 + 2} className="px-4 py-2 font-black text-[9px] text-gray-400 uppercase tracking-[0.3em] border-b-2 border-gray-200">
-                     ::: Produk Lainnya
-                  </td>
-                </tr>
-              );
-              otherProducts.forEach(p => {
-                rows.push(renderProductRow(p.id, p.name, globalRowIndex % 2 === 0, isForPrint));
-                globalRowIndex++;
-              });
+            // 2. Others (Only if 'all' or specifically 'others' selected)
+            if (selectedSectionFilter === 'all' || selectedSectionFilter === 'others') {
+              // We need to identify which products are 'others' across ALL sections for the 'all' mode
+              const allAssignedIds = new Set();
+              sections.forEach(s => (s.items || []).forEach((i: any) => allAssignedIds.add(i.product_id)));
+              
+              const otherProducts = pivotData.products.filter(p => !allAssignedIds.has(p.id));
+              
+              if (otherProducts.length > 0) {
+                // If in 'all' mode, show the header. If in 'others' mode, header is optional but good for context.
+                rows.push(
+                  <tr key="sec-others" className={`${isForPrint ? 'bg-gray-200' : 'bg-gray-100/40'}`}>
+                    <td colSpan={filteredStores.length * 2 + 2} className="px-4 py-2 font-black text-[9px] text-gray-400 uppercase tracking-[0.3em] border-b-2 border-gray-200">
+                       ::: Produk Lainnya
+                    </td>
+                  </tr>
+                );
+                otherProducts.forEach(p => {
+                  rows.push(renderProductRow(p.id, p.name, globalRowIndex % 2 === 0, isForPrint));
+                  globalRowIndex++;
+                });
+              }
             }
 
             return rows;
@@ -188,10 +202,18 @@ export default function StaffOrdersPage() {
         </tbody>
         <tfoot className={`sticky bottom-0 z-30 ${isForPrint ? 'static' : 'print:static'}`}>
           <tr className="bg-raden-green text-white">
-            <td className={`p-4 font-black text-[10px] uppercase tracking-widest border-r-2 border-white/20 sticky left-0 bg-raden-green z-40 shadow-[4px_0_10px_rgba(0,0,0,0.1)] ${isForPrint ? 'text-white' : ''}`}>Total Toko</td>
+            <td className={`p-4 font-black text-[10px] uppercase tracking-widest border-r-2 border-white/20 sticky left-0 bg-raden-green z-40 shadow-[4px_0_10px_rgba(0,0,0,0.1)] ${isForPrint ? 'text-white' : ''}`}>Total Bagian</td>
             {filteredStores.map(s => {
               let totalStore = 0;
-              pivotData.products.forEach(p => totalStore += (pivotData.grid[p.id]?.[s] || 0));
+              // Recalculate based on active filter
+              const relevantProducts = selectedSectionFilter === 'all' 
+                ? pivotData.products 
+                : (selectedSectionFilter === 'others' 
+                    ? pivotData.products.filter(p => !sections.some(sec => (sec.items || []).some((i: any) => i.product_id === p.id)))
+                    : pivotData.products.filter(p => (selectedSectionFilter?.items || []).some((i: any) => i.product_id === p.id))
+                  );
+
+              relevantProducts.forEach(p => totalStore += (pivotData.grid[p.id]?.[s] || 0));
               return (
                 <React.Fragment key={s}>
                   <td className="w-10 border-r-2 border-white/10 bg-white/5" />
@@ -200,7 +222,15 @@ export default function StaffOrdersPage() {
               );
             })}
             <td className={`p-4 bg-raden-gold font-black text-white text-center sticky right-0 z-40 text-base shadow-[-10px_0_20px_rgba(0,0,0,0.06)] ${isForPrint ? 'text-white' : ''}`}>
-              {pivotData.products.reduce((acc, p) => acc + pivotData.stores.reduce((acc2, s) => acc2 + (pivotData.grid[p.id]?.[s] || 0), 0), 0)}
+               {(() => {
+                const relevantProducts = selectedSectionFilter === 'all' 
+                  ? pivotData.products 
+                  : (selectedSectionFilter === 'others' 
+                      ? pivotData.products.filter(p => !sections.some(sec => (sec.items || []).some((i: any) => i.product_id === p.id)))
+                      : pivotData.products.filter(p => (selectedSectionFilter?.items || []).some((i: any) => i.product_id === p.id))
+                    );
+                return relevantProducts.reduce((acc, p) => acc + pivotData.stores.reduce((acc2, s) => acc2 + (pivotData.grid[p.id]?.[s] || 0), 0), 0);
+              })()}
             </td>
           </tr>
         </tfoot>
@@ -286,9 +316,21 @@ export default function StaffOrdersPage() {
             >
               {/* Modal Header */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 print:hidden px-2">
-                <div className="min-w-0">
-                  <h2 className="text-xl sm:text-2xl font-black text-raden-green truncate tracking-tighter uppercase leading-none mb-1">Manifest: {selectedDate.label}</h2>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">{new Date(selectedDate.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <div className="flex items-center gap-4 min-w-0">
+                  {viewMode === 'table' && (
+                    <button 
+                      onClick={() => { setViewMode('selection'); setSelectedSectionFilter(null); }}
+                      className="p-3 bg-gray-50 text-raden-green rounded-xl hover:bg-gray-100 transition-all border border-gray-100 shadow-sm"
+                    >
+                      <ArrowLeft size={18} />
+                    </button>
+                  )}
+                  <div className="min-w-0">
+                    <h2 className="text-xl sm:text-2xl font-black text-raden-green truncate tracking-tighter uppercase leading-none mb-1">
+                      {viewMode === 'selection' ? 'Pilih Bagian' : (selectedSectionFilter === 'all' ? 'Semua Bagian' : (selectedSectionFilter?.title || 'Lainnya'))}
+                    </h2>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">{selectedDate.label} • {new Date(selectedDate.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })}</p>
+                  </div>
                 </div>
                 
                 <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -296,21 +338,88 @@ export default function StaffOrdersPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                     <input type="text" placeholder="Cari toko..." value={storeSearch} onChange={e => setStoreSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold outline-none" />
                   </div>
-                  <button onClick={() => window.print()} className="p-3 bg-raden-green text-white rounded-xl shadow-lg hover:bg-raden-green/90 transition-all"><Printer size={18}/></button>
-                  <button onClick={() => { setSelectedDate(null); setStoreSearch(''); }} className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 transition-all"><X size={18} /></button>
+                  {viewMode === 'table' && (
+                    <button onClick={() => window.print()} className="p-3 bg-raden-green text-white rounded-xl shadow-lg hover:bg-raden-green/90 transition-all"><Printer size={18}/></button>
+                  )}
+                  <button onClick={() => { setSelectedDate(null); setStoreSearch(''); setViewMode('selection'); setSelectedSectionFilter(null); }} className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 transition-all"><X size={18} /></button>
                 </div>
               </div>
 
-              {/* Grouped Pivot Table (Screen Version) */}
-              <div id="print-area" className="flex-1 overflow-auto bg-white rounded-[2rem] border-2 border-gray-200 print:hidden no-scrollbar">
-                {renderPivotTable(false)}
+              <div id="print-area" className="flex-1 flex flex-col min-h-0 bg-white rounded-[2rem] border-2 border-gray-200 print:border-none print:overflow-visible no-scrollbar overflow-hidden">
+                {viewMode === 'selection' ? (
+                  <div className="flex-1 overflow-auto p-4 sm:p-8 no-scrollbar">
+                    <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                      {/* Overall Option */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => { setSelectedSectionFilter('all'); setViewMode('table'); }}
+                        className="relative group p-8 rounded-[2.5rem] bg-raden-green text-white transition-all shadow-xl flex flex-col items-center text-center overflow-hidden border-2 border-transparent hover:border-raden-gold"
+                      >
+                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform">
+                            <Package size={80} />
+                         </div>
+                         <div className="relative z-10 w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center mb-4 backdrop-blur-sm">
+                            <Package size={32} className="text-raden-gold" />
+                         </div>
+                         <h3 className="relative z-10 text-xl font-black uppercase tracking-tighter leading-tight mb-2">Semua Bagian</h3>
+                         <p className="relative z-10 text-[10px] text-white/50 font-bold uppercase tracking-widest leading-none">Manifest Lengkap</p>
+                      </motion.button>
+
+                      {/* Dynamic Sections */}
+                      {sections.map(sec => (
+                        <motion.button
+                          key={sec.id}
+                          whileHover={{ scale: 1.02, y: -4 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => { setSelectedSectionFilter(sec); setViewMode('table'); }}
+                          className="relative group p-8 rounded-[2.5rem] bg-white border-2 border-gray-100 transition-all shadow-xl flex flex-col items-center text-center overflow-hidden hover:border-raden-green hover:shadow-raden-green/10"
+                        >
+                           <div className="absolute top-0 right-0 p-4 text-gray-50 group-hover:text-raden-green/5 transition-colors">
+                              <ChevronRight size={80} />
+                           </div>
+                           <div className="relative z-10 w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-4 group-hover:bg-raden-green/5 transition-colors">
+                              <Store size={32} className="text-raden-green" />
+                           </div>
+                           <h3 className="relative z-10 text-xl font-black text-raden-green uppercase tracking-tighter leading-tight mb-2">{sec.title}</h3>
+                           <p className="relative z-10 text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">Bagian Dapur</p>
+                        </motion.button>
+                      ))}
+
+                      {/* Others Option (if applicable) */}
+                      {pivotData.products.some(p => !sections.some(sec => (sec.items || []).some((i: any) => i.product_id === p.id))) && (
+                        <motion.button
+                          whileHover={{ scale: 1.02, y: -4 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => { setSelectedSectionFilter('others'); setViewMode('table'); }}
+                          className="relative group p-8 rounded-[2.5rem] bg-white border-2 border-gray-100 transition-all shadow-xl flex flex-col items-center text-center overflow-hidden hover:border-gray-300"
+                        >
+                           <div className="absolute top-0 right-0 p-4 text-gray-50 transition-colors">
+                              <Package size={80} />
+                           </div>
+                           <div className="relative z-10 w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
+                              <Package size={32} className="text-gray-400" />
+                           </div>
+                           <h3 className="relative z-10 text-xl font-black text-gray-500 uppercase tracking-tighter leading-tight mb-2">Produk Lainnya</h3>
+                           <p className="relative z-10 text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">Belum Masuk Bagian</p>
+                        </motion.button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 overflow-auto no-scrollbar print:overflow-visible">
+                    {renderPivotTable(false)}
+                  </div>
+                )}
               </div>
 
-              <div className="mt-4 print:hidden">
-                <button onClick={() => window.print()} className="w-full flex items-center justify-center gap-2 bg-raden-green text-white py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl hover:scale-[1.01] transition-all">
-                  <Printer size={18} /> Cetak Manifest Distribusi
-                </button>
-              </div>
+              {viewMode === 'table' && (
+                <div className="mt-4 print:hidden">
+                  <button onClick={() => window.print()} className="w-full flex items-center justify-center gap-2 bg-raden-green text-white py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl hover:scale-[1.01] transition-all">
+                    <Printer size={18} /> Cetak Manifest {selectedSectionFilter === 'all' ? 'Lengkap' : (selectedSectionFilter?.title || 'Lainnya')}
+                  </button>
+                </div>
+              )}
             </motion.div>
           </div>
         )}
