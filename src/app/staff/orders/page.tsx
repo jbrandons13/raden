@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar as CalendarIcon, Printer, Store, Package, X, ChevronRight, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Printer, Store, Package, X, ChevronRight, Loader2, Search, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function StaffOrdersPage() {
@@ -11,11 +11,12 @@ export default function StaffOrdersPage() {
   const [loading, setLoading] = useState(true);
   
   // Pivot Table States
-  const [pivotData, setPivotData] = useState<{ products: string[], stores: string[], grid: Record<string, Record<string, number>> }>({ products: [], stores: [], grid: {} });
+  const [pivotData, setPivotData] = useState<{ products: {id: string, name: string}[], stores: string[], grid: Record<string, Record<string, number>> }>({ products: [], stores: [], grid: {} });
+  const [sections, setSections] = useState<any[]>([]);
+  const [storeSearch, setStoreSearch] = useState('');
 
   const fetchOrderDates = async () => {
     try {
-      // Calculate fixed 3 relative dates
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
@@ -30,13 +31,9 @@ export default function StaffOrdersPage() {
       ];
       const relativeDateStrings = relatives.map(r => r.date);
 
-      const { data, error } = await supabase
-        .from('orders')
-        .select('order_date')
-        .in('order_date', relativeDateStrings);
+      const { data } = await supabase.from('orders').select('order_date').in('order_date', relativeDateStrings);
 
       if (data) {
-        // Group by date and associate labels, ensuring ALL 3 relatives exist in state
         const groups = data.reduce((acc: any, curr: any) => {
           const date = curr.order_date;
           if (!acc[date]) {
@@ -47,14 +44,11 @@ export default function StaffOrdersPage() {
           return acc;
         }, {});
         
-        // Ensure all 3 slots are represented, even with 0 orders
         const finalDates = relatives.map(rel => {
           return groups[rel.date] || { id: rel.date, date: rel.date, totalOrders: 0, label: rel.label };
         });
-
         setDates(finalDates);
       } else {
-        // If query fails or no data, still show the 3 slots with 0 orders
         setDates(relatives.map(rel => ({ id: rel.date, date: rel.date, totalOrders: 0, label: rel.label })));
       }
     } catch (e) {
@@ -65,41 +59,49 @@ export default function StaffOrdersPage() {
   };
 
   const fetchPivotRecap = async (date: string) => {
-    const { data: ords } = await supabase
-      .from('orders')
-      .select('id, customers(name)')
-      .eq('order_date', date);
+    try {
+      // 1. Fetch Orders, Items, and Sections (Layout)
+      const [ordsRes, sectionsRes] = await Promise.all([
+        supabase.from('orders').select('id, customers(name)').eq('order_date', date),
+        supabase.from('pos_sections').select('*, items:pos_section_items(*)').order('sort_order')
+      ]);
 
-    if (!ords) return;
+      const ords = ordsRes.data;
+      if (!ords || ords.length === 0) return;
 
-    const orderIds = ords.map(o => o.id);
-    const { data: items } = await supabase
-      .from('order_items')
-      .select('*, products(name)')
-      .in('order_id', orderIds);
+      const orderIds = ords.map(o => o.id);
+      const { data: items } = await supabase.from('order_items').select('*, products(name)').in('order_id', orderIds);
 
-    if (items) {
-      const productSet = new Set<string>();
-      const storeSet = new Set<string>();
-      const grid: Record<string, Record<string, number>> = {};
+      if (items) {
+        const productMap: Record<string, {id: string, name: string}> = {};
+        const storeSet = new Set<string>();
+        const grid: Record<string, Record<string, number>> = {};
 
-      items.forEach(item => {
-        const pName = item.products?.name || 'Unknown';
-        const order = ords.find(o => o.id === item.order_id);
-        const sName = (Array.isArray(order?.customers) ? order.customers[0]?.name : (order?.customers as any)?.name) || 'Unknown';
+        items.forEach(item => {
+          const pId = item.product_id;
+          const pName = item.products?.name || 'Unknown';
+          const order = ords.find(o => o.id === item.order_id);
+          const sName = (Array.isArray(order?.customers) ? order.customers[0]?.name : (order?.customers as any)?.name) || 'Unknown';
 
-        productSet.add(pName);
-        storeSet.add(sName);
+          productMap[pId] = { id: pId, name: pName };
+          storeSet.add(sName);
 
-        if (!grid[pName]) grid[pName] = {};
-        grid[pName][sName] = (grid[pName][sName] || 0) + item.qty;
-      });
+          if (!grid[pId]) grid[pId] = {};
+          grid[pId][sName] = (grid[pId][sName] || 0) + item.qty;
+        });
 
-      setPivotData({
-        products: Array.from(productSet).sort(),
-        stores: Array.from(storeSet).sort(),
-        grid
-      });
+        setPivotData({
+          products: Object.values(productMap),
+          stores: Array.from(storeSet).sort(),
+          grid
+        });
+      }
+
+      if (sectionsRes.data) {
+        setSections(sectionsRes.data);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -113,12 +115,122 @@ export default function StaffOrdersPage() {
     }
   }, [selectedDate]);
 
-  if (loading) {
+  const filteredStores = pivotData.stores.filter(s => s.toLowerCase().includes(storeSearch.toLowerCase()));
+
+  function renderPivotTable(isForPrint: boolean) {
     return (
-      <div className="h-[60vh] flex flex-col items-center justify-center text-raden-green">
-        <Loader2 className="w-10 h-10 animate-spin mb-4" />
-        <p className="font-bold tracking-widest uppercase text-xs">Memuat Data Pesanan...</p>
-      </div>
+      <table className={`w-full text-left border-separate border-spacing-0 ${isForPrint ? 'border-2 border-black' : ''}`}>
+        <thead className={`sticky top-0 z-30 ${isForPrint ? 'static' : 'print:static'}`}>
+          <tr>
+            <th className={`p-4 border-b-2 border-r-2 border-gray-200 font-black text-[9px] text-gray-400 uppercase tracking-widest sticky left-0 z-40 min-w-[160px] ${isForPrint ? 'bg-gray-100 text-black' : 'bg-white'}`}>
+              Produk \ Toko
+            </th>
+            {filteredStores.map(s => (
+              <React.Fragment key={s}>
+                <th className={`w-10 border-b-2 border-r border-gray-200 ${isForPrint ? 'bg-blue-50' : 'bg-blue-50/40'}`} title="Checklist" />
+                <th className={`p-2 border-b-2 border-r-2 border-gray-200 font-black text-[9px] text-raden-green text-center min-w-[45px] max-w-[80px] uppercase tracking-tighter leading-tight ${isForPrint ? 'bg-gray-200 text-black' : 'bg-gray-50/90 backdrop-blur-sm'}`}>
+                  {s}
+                </th>
+              </React.Fragment>
+            ))}
+            <th className={`p-4 border-b-2 border-raden-gold/40 font-black text-[10px] text-raden-gold text-center sticky right-0 z-40 uppercase tracking-widest shadow-[-4px_0_10px_rgba(0,0,0,0.05)] ${isForPrint ? 'bg-raden-gold/10 text-black' : 'bg-raden-gold/30 backdrop-blur-sm'}`}>
+              TOTAL
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white">
+          {(() => {
+            const assignedProductIds = new Set();
+            const rows = [];
+            let globalRowIndex = 0;
+
+            // 1. Grouped by Layout Sections
+            sections.forEach(sec => {
+              const secItems = (sec.items || []).filter((item: any) => pivotData.grid[item.product_id]);
+              if (secItems.length === 0) return;
+
+              // Section Header Row
+              rows.push(
+                <tr key={`sec-${sec.id}`} className={`${isForPrint ? 'bg-gray-200' : 'bg-gray-100/40'}`}>
+                  <td colSpan={filteredStores.length * 2 + 2} className="px-4 py-2 font-black text-[9px] text-raden-gold uppercase tracking-[0.3em] border-b-2 border-gray-200">
+                     ::: {sec.title}
+                  </td>
+                </tr>
+              );
+
+              secItems.forEach((item: any) => {
+                const pId = item.product_id;
+                const pName = pivotData.products.find(p => p.id === pId)?.name || 'Unknown';
+                assignedProductIds.add(pId);
+                rows.push(renderProductRow(pId, pName, globalRowIndex % 2 === 0, isForPrint));
+                globalRowIndex++;
+              });
+            });
+
+            // 2. Uncategorized Products (Others)
+            const otherProducts = pivotData.products.filter(p => !assignedProductIds.has(p.id));
+            if (otherProducts.length > 0) {
+              rows.push(
+                <tr key="sec-others" className={`${isForPrint ? 'bg-gray-200' : 'bg-gray-100/40'}`}>
+                  <td colSpan={filteredStores.length * 2 + 2} className="px-4 py-2 font-black text-[9px] text-gray-400 uppercase tracking-[0.3em] border-b-2 border-gray-200">
+                     ::: Produk Lainnya
+                  </td>
+                </tr>
+              );
+              otherProducts.forEach(p => {
+                rows.push(renderProductRow(p.id, p.name, globalRowIndex % 2 === 0, isForPrint));
+                globalRowIndex++;
+              });
+            }
+
+            return rows;
+          })()}
+        </tbody>
+        <tfoot className={`sticky bottom-0 z-30 ${isForPrint ? 'static' : 'print:static'}`}>
+          <tr className="bg-raden-green text-white">
+            <td className={`p-4 font-black text-[10px] uppercase tracking-widest border-r-2 border-white/20 sticky left-0 bg-raden-green z-40 shadow-[4px_0_10px_rgba(0,0,0,0.1)] ${isForPrint ? 'text-white' : ''}`}>Total Toko</td>
+            {filteredStores.map(s => {
+              let totalStore = 0;
+              pivotData.products.forEach(p => totalStore += (pivotData.grid[p.id]?.[s] || 0));
+              return (
+                <React.Fragment key={s}>
+                  <td className="w-10 border-r-2 border-white/10 bg-white/5" />
+                  <td className="p-4 text-center font-black text-xs border-r-2 border-white/10">{totalStore}</td>
+                </React.Fragment>
+              );
+            })}
+            <td className={`p-4 bg-raden-gold font-black text-white text-center sticky right-0 z-40 text-base shadow-[-10px_0_20px_rgba(0,0,0,0.06)] ${isForPrint ? 'text-white' : ''}`}>
+              {pivotData.products.reduce((acc, p) => acc + pivotData.stores.reduce((acc2, s) => acc2 + (pivotData.grid[p.id]?.[s] || 0), 0), 0)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    );
+  }
+
+  function renderProductRow(pId: string, pName: string, isLight: boolean, isForPrint: boolean) {
+    let totalProd = 0;
+    return (
+      <tr key={pId} className={`transition-colors group ${isLight ? 'bg-white' : (isForPrint ? 'bg-gray-100' : 'bg-gray-100/60')}`}>
+        <td className={`p-4 border-r-2 border-gray-300 font-black text-raden-green text-[11px] sticky left-0 z-20 group-hover:bg-raden-gold/5 ${isLight ? 'bg-white' : (isForPrint ? 'bg-gray-100' : 'bg-[#f0f0f0]')}`}>
+          {pName}
+        </td>
+        {filteredStores.map(s => {
+          const qty = pivotData.grid[pId]?.[s] || 0;
+          totalProd += qty;
+          return (
+            <React.Fragment key={s}>
+              <td className={`w-10 border-r-2 border-gray-200 ${isForPrint ? 'bg-blue-50' : 'bg-blue-50/30'} print:bg-white`} />
+              <td className={`p-2 text-center font-black text-xs border-r-2 border-gray-300 transition-all ${qty > 0 ? 'text-raden-green' : 'text-gray-200'}`}>
+                {qty || '-'}
+              </td>
+            </React.Fragment>
+          );
+        })}
+        <td className={`p-4 font-black text-xs text-raden-gold text-center sticky right-0 z-20 shadow-[-10px_0_20px_rgba(0,0,0,0.06)] group-hover:bg-raden-gold/5 ${isLight ? 'bg-raden-gold/[0.06]' : (isForPrint ? 'bg-gray-100' : 'bg-raden-gold/[0.08]')}`}>
+          {totalProd}
+        </td>
+      </tr>
     );
   }
 
@@ -126,11 +238,12 @@ export default function StaffOrdersPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Pesanan Toko (Pivot)</h1>
-          <p className="text-gray-400 text-xs sm:text-sm font-medium">Distribusi produk per toko/pelanggan.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Rekap Distribusi</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Manifest pengiriman berdasarkan susunan menu.</p>
         </div>
       </div>
 
+      {/* Date Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {dates.map((d) => (
           <motion.div
@@ -141,17 +254,15 @@ export default function StaffOrdersPage() {
             className={`relative overflow-hidden p-8 rounded-[3rem] border transition-all active:scale-95 flex flex-col items-center text-center ${
               d.totalOrders > 0 
                 ? 'bg-white border-gray-100 shadow-xl cursor-pointer hover:border-raden-gold/50' 
-                : 'bg-gray-50 border-gray-100 opacity-80 cursor-default'
+                : 'bg-gray-50 border-gray-100 opacity-60 cursor-default'
             }`}
           >
             <div className={`text-[10px] font-black uppercase tracking-[0.4em] mb-4 ${d.label === 'Hari Ini' ? 'text-raden-gold' : 'text-gray-400'}`}>
               {d.label}
             </div>
-            
             <h3 className="text-3xl font-black text-raden-green tracking-tighter mb-1">
                {new Date(d.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
             </h3>
-            
             <div className="mt-8 flex flex-col items-center">
                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 ${d.totalOrders > 0 ? 'bg-raden-green text-raden-gold shadow-lg shadow-raden-green/20' : 'bg-gray-200 text-gray-400'}`}>
                   <Package size={28} />
@@ -160,87 +271,44 @@ export default function StaffOrdersPage() {
                  {d.totalOrders} <span className="text-[10px] uppercase opacity-60">Toko</span>
                </p>
             </div>
-
-            {d.totalOrders > 0 && (
-              <div className="absolute top-6 right-6 text-raden-gold">
-                 <ChevronRight size={24} />
-              </div>
-            )}
+            {d.totalOrders > 0 && <div className="absolute top-6 right-6 text-raden-gold"><ChevronRight size={24} /></div>}
           </motion.div>
         ))}
       </div>
 
       <AnimatePresence>
         {selectedDate && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedDate(null)} className="absolute inset-0 bg-raden-green/80 backdrop-blur-md" />
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-[95vw] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden print:p-0 print:shadow-none"
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="relative bg-white rounded-[2.5rem] p-4 sm:p-8 w-full max-w-[98vw] h-[96vh] flex flex-col shadow-2xl overflow-hidden print:p-0 print:shadow-none"
             >
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8 print:hidden">
+              {/* Modal Header */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 print:hidden px-2">
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-2xl font-black text-raden-green truncate">Rekap Order: {selectedDate.date}</h2>
-                  <p className="text-[10px] sm:text-sm text-gray-400 font-bold uppercase tracking-widest">Tampilan Pivot: Produk vs Toko</p>
+                  <h2 className="text-xl sm:text-2xl font-black text-raden-green truncate tracking-tighter uppercase leading-none mb-1">Manifest: {selectedDate.label}</h2>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">{new Date(selectedDate.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
-                <div className="flex w-full sm:w-auto gap-2">
-                  <button onClick={() => window.print()} className="flex-1 sm:flex-none p-3 bg-gray-50 hover:bg-gray-100 rounded-2xl text-raden-green transition-all flex justify-center"><Printer size={20}/></button>
-                  <button onClick={() => setSelectedDate(null)} className="flex-1 sm:flex-none p-3 bg-gray-50 hover:bg-gray-100 rounded-2xl text-gray-400 transition-all flex justify-center"><X /></button>
+                
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                    <input type="text" placeholder="Cari toko..." value={storeSearch} onChange={e => setStoreSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold outline-none" />
+                  </div>
+                  <button onClick={() => window.print()} className="p-3 bg-raden-green text-white rounded-xl shadow-lg hover:bg-raden-green/90 transition-all"><Printer size={18}/></button>
+                  <button onClick={() => { setSelectedDate(null); setStoreSearch(''); }} className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 transition-all"><X size={18} /></button>
                 </div>
               </div>
 
-              <div id="print-area" className="flex-1 overflow-auto border rounded-3xl print:border-none print:overflow-visible">
-                <table className="w-full text-left border-collapse">
-                  <thead className="sticky top-0 bg-gray-50 z-10 print:static">
-                    <tr>
-                      <th className="p-4 border-b border-r bg-gray-50 font-bold text-[10px] text-gray-400 uppercase tracking-widest sticky left-0 z-20">Produk \ Toko</th>
-                      {pivotData.stores.map(s => (
-                        <th key={s} className="p-4 border-b font-bold text-xs text-raden-green text-center min-w-[100px]">{s}</th>
-                      ))}
-                      <th className="p-4 border-b border-l bg-gray-50 font-bold text-xs text-raden-gold text-center sticky right-0 z-20">TOTAL</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {pivotData.products.map(p => {
-                      let totalProd = 0;
-                      return (
-                        <tr key={p} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="p-4 border-r font-bold text-raden-green text-sm bg-white sticky left-0 z-10">{p}</td>
-                          {pivotData.stores.map(s => {
-                            const qty = pivotData.grid[p]?.[s] || 0;
-                            totalProd += qty;
-                            return (
-                              <td key={s} className={`p-4 text-center font-bold text-sm ${qty > 0 ? 'text-raden-green' : 'text-gray-200'}`}>
-                                {qty || '-'}
-                              </td>
-                            );
-                          })}
-                          <td className="p-4 border-l font-bold text-raden-gold text-center bg-raden-gold/5 sticky right-0 z-10">
-                            {totalProd}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot className="bg-gray-50/50 font-bold sticky bottom-0 z-10 print:static">
-                    <tr>
-                      <td className="p-4 border-r border-t bg-gray-50 sticky left-0">TOTAL TOKO</td>
-                      {pivotData.stores.map(s => {
-                        let totalStore = 0;
-                        pivotData.products.forEach(p => totalStore += (pivotData.grid[p]?.[s] || 0));
-                        return <td key={s} className="p-4 text-center text-raden-green border-t">{totalStore}</td>;
-                      })}
-                      <td className="p-4 border-l border-t bg-raden-gold text-white text-center sticky right-0">
-                        {pivotData.products.reduce((acc, p) => acc + pivotData.stores.reduce((acc2, s) => acc2 + (pivotData.grid[p]?.[s] || 0), 0), 0)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+              {/* Grouped Pivot Table (Screen Version) */}
+              <div id="print-area" className="flex-1 overflow-auto bg-white rounded-[2rem] border-2 border-gray-200 print:hidden no-scrollbar">
+                {renderPivotTable(false)}
               </div>
-              
-              <div className="mt-6 print:hidden">
-                <button onClick={() => window.print()} className="w-full flex items-center justify-center gap-2 bg-raden-green text-white py-4 rounded-2xl font-bold shadow-xl">
-                  <Printer size={20} /> Cetak Manifest (Pivot)
+
+              <div className="mt-4 print:hidden">
+                <button onClick={() => window.print()} className="w-full flex items-center justify-center gap-2 bg-raden-green text-white py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl hover:scale-[1.01] transition-all">
+                  <Printer size={18} /> Cetak Manifest Distribusi
                 </button>
               </div>
             </motion.div>
@@ -248,14 +316,90 @@ export default function StaffOrdersPage() {
         )}
       </AnimatePresence>
 
+      {/* Dedicated Print Version (Root level, bypasses modal constraints) */}
+      {selectedDate && (
+        <div id="staff-manifest-print" className="hidden print:block bg-white p-0">
+          <div className="mb-8 border-b-4 border-raden-green pb-4">
+            <div className="flex justify-between items-end">
+              <div>
+                <h1 className="text-3xl font-black text-raden-green uppercase tracking-tighter leading-none mb-2">Manifest Distribusi</h1>
+                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest leading-none">Status: {selectedDate.label}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xl font-black text-raden-green leading-none mb-1">{new Date(selectedDate.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Dokumen Resmi Raden ERP</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-2 border-black">
+            {renderPivotTable(true)}
+          </div>
+          
+        </div>
+      )}
+
       <style jsx global>{`
         @media print {
+          @page { size: auto; margin: 10mm; }
+          
+          /* Selective Print Pattern */
           body * { visibility: hidden; }
-          #print-area, #print-area * { visibility: visible; }
-          #print-area { position: absolute; left: 0; top: 0; width: 100%; border: none !important; }
-          table { width: 100% !important; border-collapse: collapse !important; }
-          th, td { border: 1px solid #eee !important; padding: 12px !important; }
-          .sticky { position: static !important; }
+          #staff-manifest-print, #staff-manifest-print * { visibility: visible; }
+          #staff-manifest-print { 
+            display: block !important;
+            position: absolute !important; 
+            left: 0 !important; 
+            top: 0 !important; 
+            width: 100% !important; 
+            height: auto !important;
+            overflow: visible !important;
+            background: white !important;
+          }
+          
+          html, body { 
+            height: auto !important; 
+            overflow: visible !important; 
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          
+          /* Force Table Styles */
+          table { 
+            width: 100% !important; 
+            border-collapse: collapse !important; 
+            font-size: 8pt !important;
+            border: 2px solid black !important;
+            border-radius: 0 !important;
+          }
+          
+          thead { display: table-header-group !important; }
+          tfoot { display: table-footer-group !important; }
+          
+          th, td { 
+            border: 1px solid #333 !important; 
+            padding: 10px 6px !important; 
+            color: black !important; 
+            opacity: 1 !important;
+            border-radius: 0 !important;
+            page-break-inside: avoid !important;
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
+
+          th { background-color: #f3f4f6 !important; font-weight: 900 !important; }
+          
+          /* Specific Rows */
+          tr.bg-gray-100\/40 { background-color: #f3f4f6 !important; }
+          tr.bg-gray-100\/60 { background-color: #eeeeee !important; }
+          td.bg-blue-50\/20, td.bg-blue-50\/30 { background-color: #eff6ff !important; border-right: 2px solid #333 !important; }
+          
+          tfoot tr { background-color: #0d2d22 !important; color: white !important; }
+          .bg-raden-gold { background-color: #d4a017 !important; color: white !important; }
+          
+          /* Force remove all rounds */
+          * { border-radius: 0 !important; }
         }
       `}</style>
     </div>
