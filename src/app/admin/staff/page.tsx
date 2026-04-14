@@ -39,7 +39,8 @@ export default function StaffManagementPage() {
   const dates = Array.from({ length: 30 }, (_, i) => {
     const d = new Date(baseDate);
     d.setDate(d.getDate() + i);
-    return d.toISOString().split('T')[0];
+    // Use local date parts instead of toISOString to avoid UTC offset bugs
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
 
   const fetchData = async () => {
@@ -182,20 +183,22 @@ export default function StaffManagementPage() {
         
         <div className="overflow-x-auto max-h-[600px] relative">
           <table className="w-full text-left border-collapse min-w-[2000px]">
-            <thead className="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-md shadow-sm">
-              <div className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
-                <div className="flex">
-                  <div className="w-32 sm:w-48 sticky left-0 z-30 bg-gray-50 px-4 py-4 border-r border-gray-100">
-                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Nama Staff</span>
-                  </div>
-                  {dates.map(date => (
-                    <div key={date} className="w-16 min-w-[4rem] px-2 py-4 text-center border-r border-gray-100 flex flex-col items-center justify-center bg-gray-50/50">
-                       <span className="text-[8px] font-black text-gray-300 uppercase leading-none mb-1">{new Date(date).toLocaleDateString('id-ID', { weekday: 'short' })}</span>
-                       <span className={`text-[11px] font-black ${new Date(date).toDateString() === new Date().toDateString() ? 'text-raden-gold' : 'text-raden-green'}`}>{new Date(date).getDate()}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <thead className="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-md shadow-sm border-b">
+              <tr>
+                <th className="w-32 sm:w-48 sticky left-0 z-40 bg-gray-50 px-6 py-5 border-r border-gray-100 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">
+                   <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block text-center">Nama Staff</span>
+                </th>
+                {dates.map(date => {
+                  const d = new Date(date);
+                  const isToday = date === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+                  return (
+                    <th key={date} className="w-16 min-w-[4rem] px-2 py-5 text-center border-r border-gray-100 bg-gray-50/50">
+                       <span className="text-[8px] font-black text-gray-300 uppercase leading-none mb-1 block">{d.toLocaleDateString('id-ID', { weekday: 'short' })}</span>
+                       <span className={`text-[11px] font-black block ${isToday ? 'text-raden-gold' : 'text-raden-green'}`}>{d.getDate()}</span>
+                    </th>
+                  );
+                })}
+              </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {staff.map(s => (

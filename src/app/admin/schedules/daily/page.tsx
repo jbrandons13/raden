@@ -279,7 +279,8 @@ export default function CalendarSchedulePage() {
               
               const fullDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
               const dayTasksCount = tasks.filter(t => t.date === fullDate).length;
-              const isToday = fullDate === new Date().toISOString().split('T')[0];
+              const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+              const isToday = fullDate === todayStr;
 
               return (
                 <button 
