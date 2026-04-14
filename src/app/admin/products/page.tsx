@@ -39,10 +39,8 @@ export default function ProductsPage() {
 
   const fetchData = async () => {
     try {
-      const orderColumn = searchTerm && categories.some(c => c.name === searchTerm) ? 'cat_order' : 'sort_order';
-      
       const [prodsRes, catsRes, historyRes, staffRes] = await Promise.all([
-        supabase.from('products').select('*').eq('is_hot_kitchen', false).order(orderColumn, { ascending: true }),
+        supabase.from('products').select('*').eq('is_hot_kitchen', false).order('sort_order', { ascending: true }),
         supabase.from('product_categories').select('*').order('name'),
         supabase.from('tasks').select('*, products(name), staff(name)').eq('status', 'Completed').order('created_at', { ascending: false }).limit(50),
         supabase.from('staff').select('id, name')
@@ -50,6 +48,7 @@ export default function ProductsPage() {
       if (prodsRes.data) setProducts(prodsRes.data);
       if (catsRes.data) setCategories(catsRes.data);
       if (historyRes.data) {
+        // Decode staff names similar to staff page if needed, but here tasks table has staff_id
         setHistory(historyRes.data);
       }
       if (staffRes.data) setStaffList(staffRes.data);
@@ -61,32 +60,20 @@ export default function ProductsPage() {
   };
 
   const handleReorder = async (newOrder: any[]) => {
-    const isFiltered = searchTerm && categories.some(c => c.name === searchTerm);
-    const orderColumn = isFiltered ? 'cat_order' : 'sort_order';
-
-    // 1. Get the existing order values of ONLY the items currently in the view
-    // This ensures we keep the spread of sort orders consistent and don't mess up global indices
-    const currentOrderValues = filteredProducts
-      .map(p => p[orderColumn] || 0)
-      .sort((a, b) => a - b);
-
-    // 2. Map the new positions to these existing order values
-    const updatedItems = newOrder.map((p, index) => ({
-      ...p,
-      [orderColumn]: currentOrderValues[index] ?? index
+    // 1. Prepare updated objects with new sort_order
+    const updatedWithOrder = newOrder.map((p, index) => ({
+      ...p, 
+      sort_order: index
     }));
 
-    // 3. Update local state
-    // We need to merge these changes back into the main products list
-    const updatedProducts = products.map(p => {
-      const match = updatedItems.find(u => u.id === p.id);
-      return match ? match : p;
-    });
-    setProducts(updatedProducts);
+    // 2. Update local state immediately for UI snappiness
+    setProducts(updatedWithOrder);
 
-    // 4. Persist
-    const { error } = await supabase.from('products').upsert(updatedItems);
-    if (error) console.error("Reorder Save Error:", error.message);
+    // 3. Persist to Supabase
+    if (!searchTerm) {
+      const { error } = await supabase.from('products').upsert(updatedWithOrder);
+      if (error) console.error("Reorder Save Error:", error.message);
+    }
   };
 
   const moveProduct = (fromIndex: number, direction: 'up' | 'down' | 'left' | 'right') => {
@@ -100,7 +87,7 @@ export default function ProductsPage() {
     if (direction === 'right') toIndex = fromIndex + 1;
 
     // Boundary Checks
-    if (toIndex < 0 || toIndex >= filteredProducts.length) return;
+    if (toIndex < 0 || toIndex >= products.length) return;
     
     // Grid horizontal boundaries
     if (isGrid) {
@@ -108,7 +95,7 @@ export default function ProductsPage() {
       if (direction === 'right' && fromIndex % 2 === 1) return;
     }
 
-    const newOrder = [...filteredProducts];
+    const newOrder = [...products];
     const [removed] = newOrder.splice(fromIndex, 1);
     newOrder.splice(toIndex, 0, removed);
     handleReorder(newOrder);
@@ -234,11 +221,7 @@ export default function ProductsPage() {
           <button onClick={() => setShowCategoryManager(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">
             <Tag size={18} /> Kategori
           </button>
-          <button onClick={() => {
-            const activeCategory = categories.find(c => c.name === searchTerm);
-            setNewProduct(prev => ({ ...prev, category: activeCategory ? activeCategory.name : '' }));
-            setShowAddModal(true);
-          }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+          <button onClick={() => setShowAddModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-raden-gold text-white px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
             <Plus size={18} /> Tambah Produk
           </button>
         </div>
@@ -262,7 +245,8 @@ export default function ProductsPage() {
             <div className="flex items-center gap-2 order-1 sm:order-2 ml-auto">
               <button 
                 onClick={() => setIsSorting(!isSorting)} 
-                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSorting ? 'bg-raden-gold text-white shadow-lg pr-6' : 'bg-white text-gray-400 border border-gray-100 hover:text-raden-green'} active:scale-95`}
+                disabled={!!searchTerm}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSorting ? 'bg-raden-gold text-white shadow-lg pr-6' : 'bg-white text-gray-400 border border-gray-100 hover:text-raden-green'} ${!!searchTerm ? 'opacity-30 cursor-not-allowed' : 'active:scale-95'}`}
               >
                 {isSorting ? <CheckCircle2 size={16} /> : <ListOrdered size={16} />}
                 {isSorting ? 'Selesai' : 'Sortir'}
