@@ -16,11 +16,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "GROQ_API_KEY is not defined in environment variables" }, { status: 500 });
     }
 
-    // Helper using UTCDay to avoid timezone shifts with YYYY-MM-DD strings
+    // Helper to get Indonesian day name without timezone shifting
     const getIndoDay = (dateStr: string) => {
       const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-      const date = new Date(dateStr);
-      return days[date.getUTCDay()];
+      // Split YYYY-MM-DD and use new Date(year, monthIndex, day) for local time
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const date = new Date(y, m - 1, d); 
+      return days[date.getDay()];
     };
 
     const systemPrompt = `
@@ -84,10 +86,11 @@ export async function POST(req: Request) {
     const exclusions = (extraction.exclusion_dates || []).map((e: any) => String(e).trim());
     const shiftCode = String(extraction.shift_code || "EM").trim();
 
+    console.log("=== AI MAPPING AUDIT ===");
     dates.forEach((d: string) => {
       const dayName = getIndoDay(d);
-      const dateObj = new Date(d);
-      const dayNum = dateObj.getUTCDate().toString();
+      const [y, m, dn] = d.split('-').map(Number);
+      const dayNum = dn.toString();
       
       const isExcluded = exclusions.some((ex: string) => 
         ex === d || ex === dayNum || ex.endsWith(`-${dayNum.padStart(2, '0')}`)
@@ -95,8 +98,10 @@ export async function POST(req: Request) {
 
       if (targetDays.includes(dayName) && !isExcluded) {
         mappings[d] = shiftCode;
+        console.log(`✅ MATCH: ${d} (${dayName}) -> ${shiftCode}`);
       }
     });
+    console.log("========================");
 
     const finalResult = {
       staff_id: extraction.staff_id,
@@ -104,9 +109,6 @@ export async function POST(req: Request) {
       mappings,
       summary: extraction.summary
     };
-
-    console.log("=== HYBRID PARSED RESULT ===");
-    console.log(JSON.stringify(finalResult, null, 2));
 
     return NextResponse.json(finalResult);
   } catch (error: any) {
