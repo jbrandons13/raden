@@ -26,6 +26,7 @@ export default function StaffManagementPage() {
   const [shifts, setShifts] = useState<Record<string, Record<string, string>>>({});
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{id: string, name: string} | null>(null);
   
   const [showAddStaff, setShowAddStaff] = useState(false);
@@ -89,6 +90,7 @@ export default function StaffManagementPage() {
 
   const handleUpdateShift = (staffId: string, date: string, type: string) => {
     setShifts(prev => ({ ...prev, [staffId]: { ...prev[staffId], [date]: type } }));
+    setHasChanges(true);
   };
 
   const saveShifts = async () => {
@@ -106,6 +108,7 @@ export default function StaffManagementPage() {
            const { error } = await supabase.from('staff_shifts').upsert(payload, { onConflict: 'staff_id,shift_date' });
            if (error) throw error;
            alert("Jadwal Berhasil Disimpan ke Database! ✨");
+           setHasChanges(false);
         }
     } catch (e: any) { alert("Failed to save: " + e.message); }
     finally { setIsSaving(false); }
@@ -119,6 +122,7 @@ export default function StaffManagementPage() {
       });
       return next;
     });
+    setHasChanges(true);
   };
 
   const handleDeleteStaff = async () => {
@@ -151,8 +155,10 @@ export default function StaffManagementPage() {
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <button 
             onClick={saveShifts} 
-            disabled={isSaving}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-raden-green text-white px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50"
+            disabled={isSaving || !hasChanges}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-30 ${
+              hasChanges ? 'bg-raden-green text-white shadow-raden-green/20' : 'bg-gray-100 text-gray-400 shadow-none'
+            }`}
           >
             {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
             {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
@@ -281,7 +287,10 @@ export default function StaffManagementPage() {
            </h3>
            <textarea 
             value={notes} 
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => {
+              setNotes(e.target.value);
+              setHasChanges(true);
+            }}
             placeholder="Tulis instruksi shift untuk staff di sini..."
             className="w-full h-24 p-4 bg-gray-50 rounded-2xl text-[10px] font-bold outline-none border border-transparent focus:border-raden-gold/30 transition-all resize-none"
            />
