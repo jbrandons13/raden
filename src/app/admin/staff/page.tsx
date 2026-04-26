@@ -103,7 +103,9 @@ export default function StaffManagementPage() {
 
     try {
         if (payload.length > 0) {
-           await supabase.from('staff_shifts').upsert(payload, { onConflict: 'staff_id,shift_date' });
+           const { error } = await supabase.from('staff_shifts').upsert(payload, { onConflict: 'staff_id,shift_date' });
+           if (error) throw error;
+           alert("Jadwal Berhasil Disimpan ke Database! ✨");
         }
     } catch (e: any) { alert("Failed to save: " + e.message); }
     finally { setIsSaving(false); }
@@ -147,6 +149,14 @@ export default function StaffManagementPage() {
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Jadwal Shift & Pengaturan Tim.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <button 
+            onClick={saveShifts} 
+            disabled={isSaving}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-raden-green text-white px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50"
+          >
+            {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+            {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+          </button>
           <button onClick={() => setShowAiModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">
             <Sparkles size={18} className="text-raden-gold" /> AI Import
           </button>
