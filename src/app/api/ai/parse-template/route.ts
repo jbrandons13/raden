@@ -25,26 +25,30 @@ export async function POST(req: Request) {
 
     const systemPrompt = `
       You are an expert data extractor for a staff scheduler.
-      Your task is to parse a staff availability template and extract the parameters into JSON.
+      Your task is to parse a staff availability template and extract parameters into a strict JSON format.
       
       Staff List Available: ${JSON.stringify(staffList.map((s: any) => ({ id: s.id, name: s.name })))}
       Valid Shift Types: ${JSON.stringify(shiftTypes)}
       
       Rules for Extraction:
-      1. Identify staff_id from the "Nama" field.
-      2. Identify available_days: a list of full Indonesian day names (Senin, Selasa, Rabu, Kamis, Jumat, Sabtu, Minggu).
-         Example: "Jumat-Minggu" -> ["Jumat", "Sabtu", "Minggu"]
-      3. Identify shift_code: The shift specified (e.g. "EM" or "M").
-      4. Identify exclusion_dates: A list of specific dates (YYYY-MM-DD or just DD) mentioned as unavailable.
+      1. staff_id: Find the EXACT matches from "Staff List Available". If multiple names match, pick the most relevant one.
+      2. available_days: Extract all mentioned days. 
+         - Format must be standard Indonesian: ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+         - Handle ranges: "Senin-Rabu" must be expanded to ["Senin", "Selasa", "Rabu"]
+         - Handle lists: "Selasa, Rabu, Minggu" must be ["Selasa", "Rabu", "Minggu"]
+         - Handle mixed: "Senin-Rabu dan Sabtu" must be ["Senin", "Selasa", "Rabu", "Sabtu"]
+      3. shift_code: Identify the shift code (e.g., "EM", "M", "EMS"). Use the EXACT code from "Valid Shift Types". Default to "EM" if unclear.
+      4. exclusion_dates: Identify specific dates the staff is UNAVAILABLE. 
+         - Format: ["YYYY-MM-DD", "DD"]
       
-      Output ONLY this JSON:
+      Output ONLY this JSON structure:
       {
         "staff_id": "uuid",
         "staff_name": "name",
-        "available_days": ["Hari1", "Hari2", ...],
-        "exclusion_dates": ["YYYY-MM-DD", ...],
+        "available_days": ["Senin", "Selasa", ...],
+        "exclusion_dates": ["2026-04-01", "15", ...],
         "shift_code": "CODE",
-        "summary": "short summary"
+        "summary": "Explaining the logic used for this extraction"
       }
     `;
 
@@ -73,15 +77,17 @@ export async function POST(req: Request) {
 
     const extraction = JSON.parse(content);
 
-    // LOGIC IN JS: Build the mappings accurately
+    // LOGIC IN JS: Build the mappings accurately with trimming
     const mappings: Record<string, string> = {};
-    const targetDays = extraction.available_days || [];
-    const exclusions = extraction.exclusion_dates || [];
-    const shiftCode = extraction.shift_code || "EM";
+    const rawTargetDays = extraction.available_days || [];
+    const targetDays = rawTargetDays.map((d: string) => d.trim());
+    const exclusions = (extraction.exclusion_dates || []).map((e: any) => String(e).trim());
+    const shiftCode = String(extraction.shift_code || "EM").trim();
 
     dates.forEach((d: string) => {
       const dayName = getIndoDay(d);
-      const dayNum = new Date(d).getUTCDate().toString(); // Handle "tanggal 1" etc
+      const dateObj = new Date(d);
+      const dayNum = dateObj.getUTCDate().toString();
       
       const isExcluded = exclusions.some((ex: string) => 
         ex === d || ex === dayNum || ex.endsWith(`-${dayNum.padStart(2, '0')}`)
