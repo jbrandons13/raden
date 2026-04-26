@@ -32,6 +32,7 @@ export default function OrdersPage() {
   const [newCustomerForm, setNewCustomerForm] = useState({ name: '', phone: '' });
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [orderToComplete, setOrderToComplete] = useState<string | null>(null);
+  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -362,38 +363,76 @@ export default function OrdersPage() {
                         {isAddingCustomer ? <X size={10}/> : <Plus size={10}/>} {isAddingCustomer ? 'Batal' : 'Pelanggan Baru'}
                       </button>
                     </div>
-                    <div className="flex gap-3">
-                      <div className="relative flex-1">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><Search size={14}/></div>
-                        <input 
-                          type="text" 
-                          placeholder={newOrder.customerId ? customers.find(c => c.id === newOrder.customerId)?.name : "Cari pelanggan..."} 
-                          value={customerSearch} 
-                          onChange={e => setCustomerSearch(e.target.value)} 
-                          className={`w-full pl-10 pr-4 py-2.5 border rounded-xl font-bold text-xs outline-none transition-all ${
-                            newOrder.customerId ? 'bg-raden-green/5 border-raden-green/20 text-raden-green' : 'bg-white border-gray-100'
-                          }`} 
-                        />
-                        {customerSearch && (
-                          <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] max-h-60 overflow-y-auto p-1 space-y-0.5 divide-y divide-gray-50">
-                            {filteredCustomers.length === 0 && <div className="p-3 text-center text-gray-400 text-[10px] font-bold italic">Tidak ditemukan</div>}
-                            {filteredCustomers.map(c => (
-                              <div key={c.id} className="flex items-center justify-between p-3 hover:bg-raden-green/5 rounded-lg cursor-pointer group/item" onClick={() => { setNewOrder({...newOrder, customerId: c.id}); setCustomerSearch(''); }}>
-                                <div>
-                                  <p className="font-black text-raden-green text-xs uppercase tracking-tight">{c.name}</p>
-                                  <p className="text-[9px] text-gray-400 font-bold">{c.phone || '-'}</p>
+                    <div className="flex gap-3 relative">
+                      <div className="flex-1 relative">
+                        {/* Selector Box */}
+                        <button 
+                          onClick={() => setIsCustomerDropdownOpen(!isCustomerDropdownOpen)}
+                          className={`w-full flex items-center justify-between px-4 py-3 border-2 rounded-2xl font-black text-xs transition-all ${
+                            newOrder.customerId ? 'bg-raden-green/5 border-raden-green/20 text-raden-green' : 'bg-white border-gray-100 text-gray-400'
+                          }`}
+                        >
+                          <span className="truncate uppercase tracking-tight">
+                            {newOrder.customerId ? customers.find(c => c.id === newOrder.customerId)?.name : "Pilih Pelanggan"}
+                          </span>
+                          <Search size={14} className={newOrder.customerId ? 'text-raden-green' : 'text-gray-300'} />
+                        </button>
+
+                        {/* Popover Dropdown */}
+                        <AnimatePresence>
+                          {isCustomerDropdownOpen && (
+                            <>
+                              <div className="fixed inset-0 z-[60]" onClick={() => setIsCustomerDropdownOpen(false)} />
+                              <motion.div 
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                className="absolute z-[70] left-0 right-0 mt-2 bg-white border border-gray-100 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-80"
+                              >
+                                <div className="p-4 border-b border-gray-50 bg-gray-50/50">
+                                  <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                                    <input 
+                                      autoFocus
+                                      type="text" 
+                                      placeholder="Ketik nama pelanggan..." 
+                                      value={customerSearch} 
+                                      onChange={e => setCustomerSearch(e.target.value)}
+                                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-raden-gold/30"
+                                    />
+                                  </div>
                                 </div>
-                                <div className="p-1.5 bg-gray-100 rounded-md group-hover/item:bg-raden-gold group-hover/item:text-white transition-colors">
-                                  <Check size={10} />
+                                <div className="flex-1 overflow-y-auto p-2 divide-y divide-gray-50 no-scrollbar">
+                                  {filteredCustomers.length === 0 && (
+                                    <div className="p-8 text-center text-gray-300 font-bold italic text-[10px]">Pelanggan tidak ditemukan</div>
+                                  )}
+                                  {filteredCustomers.map(c => (
+                                    <div 
+                                      key={c.id} 
+                                      className="p-4 hover:bg-raden-green/5 rounded-xl cursor-pointer group flex items-center justify-between"
+                                      onClick={() => {
+                                        setNewOrder({...newOrder, customerId: c.id});
+                                        setIsCustomerDropdownOpen(false);
+                                        setCustomerSearch('');
+                                      }}
+                                    >
+                                      <div>
+                                        <p className="font-black text-raden-green text-xs uppercase tracking-tight">{c.name}</p>
+                                        <p className="text-[9px] text-gray-400 font-bold">{c.phone || '-'}</p>
+                                      </div>
+                                      <Check size={12} className={`text-raden-gold transition-opacity ${newOrder.customerId === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-30'}`} />
+                                    </div>
+                                  ))}
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                              </motion.div>
+                            </>
+                          )}
+                        </AnimatePresence>
                       </div>
+                      
                       {newOrder.customerId && (
-                        <button onClick={() => { setNewOrder({...newOrder, customerId: ''}); setCustomerSearch(''); }} className="px-4 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors">
-                          <X size={14}/>
+                        <button onClick={() => { setNewOrder({...newOrder, customerId: ''}); setCustomerSearch(''); }} className="px-5 bg-red-50 text-red-500 rounded-2xl hover:bg-red-100 transition-colors border border-red-100/50 shadow-sm">
+                          <X size={16}/>
                         </button>
                       )}
                     </div>
