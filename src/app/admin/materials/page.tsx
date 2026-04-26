@@ -148,7 +148,7 @@ export default function MaterialsPage() {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight">Gudang Bahan</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase">Bahan Baku dan Stok</h1>
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Manajemen Stok & Ketersediaan.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">

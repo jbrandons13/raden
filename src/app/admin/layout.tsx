@@ -30,12 +30,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Pesanan', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Pelanggan', href: '/admin/customers', icon: Users },
-    { name: 'Raden\'s Product', href: '/admin/products', icon: Package },
+    { name: 'Produk dan Stok', href: '/admin/products', icon: Package },
     { name: 'Hot Kitchen', href: '/admin/hot-kitchen', icon: Flame },
-    { name: 'Stok Bahan', href: '/admin/materials', icon: ClipboardCheck },
-    { name: 'Jadwal', href: '/admin/schedules/daily', icon: Calendar },
+    { name: 'Bahan Baku dan Stok', href: '/admin/materials', icon: ClipboardCheck },
+    { name: 'Jadwal Harian', href: '/admin/schedules/daily', icon: Calendar },
     { name: 'Staff & Shift', href: '/admin/staff', icon: Users },
-    { name: 'Master Checklist', href: '/admin/checklist', icon: CheckSquare },
+    { name: 'Checklist Harian', href: '/admin/checklist', icon: CheckSquare },
   ];
 
   return (

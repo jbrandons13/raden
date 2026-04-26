@@ -194,7 +194,7 @@ export default function ProductsPage() {
     <div className="space-y-6 relative pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight">Produk Raden</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase">Produk dan Stok</h1>
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Pusat Inventaris & Harga.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
