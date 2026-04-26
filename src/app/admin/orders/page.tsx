@@ -77,8 +77,16 @@ export default function OrdersPage() {
 
   const handleDispatchPreview = async (order: any) => {
     setSelectedOrder(order);
-    const { data } = await supabase.from('order_items').select('*, products(name, price, unit)').eq('order_id', order.id);
-    if (data) setOrderItems(data);
+    const { data } = await supabase
+      .from('order_items')
+      .select('*, products(name, price, unit, sort_order)')
+      .eq('order_id', order.id);
+    
+    if (data) {
+      // Sort items based on product sort_order
+      const sorted = [...data].sort((a, b) => (a.products?.sort_order || 0) - (b.products?.sort_order || 0));
+      setOrderItems(sorted);
+    }
     setShowPrintModal(true);
   };
 
@@ -224,7 +232,7 @@ export default function OrdersPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Pesanan & Omzet</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Pesanan</h1>
           <p className="text-gray-500 text-xs sm:text-sm font-medium">Navigasi instan manajemen distribusi.</p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-5 py-3.5 sm:py-3 rounded-2xl font-black shadow-lg active:scale-95 transition-all text-[11px] sm:text-xs uppercase tracking-widest">
@@ -357,23 +365,36 @@ export default function OrdersPage() {
                     <div className="flex gap-3">
                       <div className="relative flex-1">
                         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><Search size={14}/></div>
-                        <input type="text" placeholder="Cari..." value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-white border border-gray-100 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-raden-gold/20" />
+                        <input 
+                          type="text" 
+                          placeholder={newOrder.customerId ? customers.find(c => c.id === newOrder.customerId)?.name : "Cari pelanggan..."} 
+                          value={customerSearch} 
+                          onChange={e => setCustomerSearch(e.target.value)} 
+                          className={`w-full pl-10 pr-4 py-2.5 border rounded-xl font-bold text-xs outline-none transition-all ${
+                            newOrder.customerId ? 'bg-raden-green/5 border-raden-green/20 text-raden-green' : 'bg-white border-gray-100'
+                          }`} 
+                        />
                         {customerSearch && (
-                          <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-2xl max-h-40 overflow-y-auto p-1 space-y-0.5">
+                          <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] max-h-60 overflow-y-auto p-1 space-y-0.5 divide-y divide-gray-50">
+                            {filteredCustomers.length === 0 && <div className="p-3 text-center text-gray-400 text-[10px] font-bold italic">Tidak ditemukan</div>}
                             {filteredCustomers.map(c => (
-                              <div key={c.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg cursor-pointer group/item" onClick={() => { setNewOrder({...newOrder, customerId: c.id}); setCustomerSearch(''); }}>
-                                <div><p className="font-bold text-raden-green text-xs">{c.name}</p><p className="text-[9px] text-gray-400 font-bold">{c.phone || '-'}</p></div>
-                                <Check size={12} className="text-raden-gold opacity-0 group-hover/item:opacity-100" />
+                              <div key={c.id} className="flex items-center justify-between p-3 hover:bg-raden-green/5 rounded-lg cursor-pointer group/item" onClick={() => { setNewOrder({...newOrder, customerId: c.id}); setCustomerSearch(''); }}>
+                                <div>
+                                  <p className="font-black text-raden-green text-xs uppercase tracking-tight">{c.name}</p>
+                                  <p className="text-[9px] text-gray-400 font-bold">{c.phone || '-'}</p>
+                                </div>
+                                <div className="p-1.5 bg-gray-100 rounded-md group-hover/item:bg-raden-gold group-hover/item:text-white transition-colors">
+                                  <Check size={10} />
+                                </div>
                               </div>
                             ))}
                           </div>
                         )}
                       </div>
-                      {newOrder.customerId && !isAddingCustomer && (
-                        <div className="flex-1 bg-raden-green text-white px-4 py-2 rounded-xl flex justify-between items-center shadow-sm max-w-[200px]">
-                          <p className="font-bold text-xs truncate uppercase tracking-tight">{customers.find(c => c.id === newOrder.customerId)?.name}</p>
-                          <button onClick={() => setNewOrder({...newOrder, customerId: ''})} className="ml-2 hover:bg-white/10 rounded-full p-1"><X size={14}/></button>
-                        </div>
+                      {newOrder.customerId && (
+                        <button onClick={() => { setNewOrder({...newOrder, customerId: ''}); setCustomerSearch(''); }} className="px-4 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors">
+                          <X size={14}/>
+                        </button>
                       )}
                     </div>
                     {isAddingCustomer && (
@@ -474,16 +495,21 @@ export default function OrdersPage() {
                   <div className="flex justify-between text-gray-400"><span>INV NO.</span> <span className="text-black">#{selectedOrder?.id.split('-')[0]}</span></div>
                   <div className="flex justify-between text-gray-400"><span>CLIENT</span> <span className="text-black">{selectedOrder?.customers?.name}</span></div>
                 </div>
-                <div className="space-y-4 mb-10">
+                <div className="space-y-2 mb-8 bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
                   {orderItems.map(item => (
-                    <div key={item.id} className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
-                      <div><p className="font-black text-raden-green">{item.products?.name}</p><p className="text-[10px] text-gray-400 font-bold">NTD {item.products?.price?.toLocaleString()} x {item.qty}</p></div>
-                      <span className="font-bold">NTD {(item.qty * (item.products?.price || 0)).toLocaleString()}</span>
+                    <div key={item.id} className="flex justify-between items-start gap-4 text-sm border-b border-gray-100/50 pb-2 last:border-0 last:pb-0">
+                      <div className="flex-1">
+                        <p className="font-black text-raden-green leading-tight text-[12px] uppercase">{item.products?.name}</p>
+                        <p className="text-[9px] text-gray-400 font-black tracking-widest mt-0.5">
+                          {item.qty} {item.products?.unit || 'PCS'} @ {item.products?.price?.toLocaleString()}
+                        </p>
+                      </div>
+                      <span className="font-black text-raden-green text-[12px]">{(item.qty * (item.products?.price || 0)).toLocaleString()}</span>
                     </div>
                   ))}
-                  <div className="flex justify-between pt-6 font-black text-xl text-raden-green border-t-2 border-dashed">
-                    <span>TOTAL</span>
-                    <span className="text-raden-gold font-black">NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
+                  <div className="flex justify-between pt-4 mt-2 font-black text-lg text-raden-green border-t border-dashed border-gray-300">
+                    <span className="text-[10px] uppercase tracking-[0.2em] self-center opacity-40">Total Tagihan</span>
+                    <span className="text-raden-gold font-black text-2xl tracking-tighter">NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
