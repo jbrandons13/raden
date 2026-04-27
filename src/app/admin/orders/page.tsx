@@ -78,13 +78,13 @@ export default function OrdersPage() {
 
   const handleDispatchPreview = async (order: any) => {
     setSelectedOrder(order);
+    setOrderItems([]); // BUG FIX: Reset state before new fetch
     const { data } = await supabase
       .from('order_items')
-      .select('*, products(name, price, unit, sort_order)')
+      .select('*, products(name, price, unit, sort_order, category)')
       .eq('order_id', order.id);
     
     if (data) {
-      // Sort items based on product sort_order
       const sorted = [...data].sort((a, b) => (a.products?.sort_order || 0) - (b.products?.sort_order || 0));
       setOrderItems(sorted);
     }
@@ -527,81 +527,125 @@ export default function OrdersPage() {
 
       <AnimatePresence>
         {showPrintModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPrintModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-md" />
-            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="relative bg-white rounded-[3rem] p-4 sm:p-12 w-full max-w-2xl shadow-[0_30px_100px_rgba(0,0,0,0.3)] flex flex-col max-h-[95vh] overflow-hidden">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPrintModal(false)} className="absolute inset-0 bg-raden-green/70 backdrop-blur-md" />
+            <motion.div initial={{ scale: 0.95, opacity: 0, y: 30 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 30 }} className="relative bg-gray-100 rounded-[3rem] p-4 sm:p-6 w-full max-w-5xl shadow-[0_40px_120px_rgba(0,0,0,0.4)] flex flex-col max-h-[96vh] overflow-hidden">
               
-              {/* Receipt Visual Container */}
-              <div id="print-area" className="flex-1 overflow-y-auto no-scrollbar bg-white p-2">
-                <div className="max-w-md mx-auto border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] p-8 sm:p-12 bg-white rounded-[2rem] relative">
-                  {/* Decorative Scissors Or Dash Line can go here */}
-                  <div className="text-center border-b-2 border-dashed border-gray-100 pb-8 mb-8">
-                    <h2 className="text-3xl font-black text-raden-green tracking-tighter uppercase mb-1">RADEN</h2>
-                    <p className="text-[10px] text-raden-gold font-black tracking-[0.4em] uppercase opacity-80">Official Manufacturing</p>
-                  </div>
+              {/* Toolbar */}
+              <div className="flex justify-between items-center mb-6 px-4 print:hidden">
+                <div>
+                  <h2 className="text-xl font-black text-raden-green uppercase tracking-tighter">Invoice Preview (A4)</h2>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Layout siap cetak untuk manajemen.</p>
+                </div>
+                <button onClick={() => setShowPrintModal(false)} className="p-3 bg-white text-gray-400 rounded-2xl hover:text-red-500 shadow-sm transition-all"><X size={20}/></button>
+              </div>
+
+              {/* A4 Paper Emulator */}
+              <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
+                <div id="print-area" className="w-full max-w-[210mm] mx-auto bg-white shadow-2xl min-h-[297mm] p-12 sm:p-20 flex flex-col print:shadow-none print:p-0">
                   
-                  <div className="grid grid-cols-2 gap-4 mb-10 text-[10px] font-black uppercase tracking-widest">
-                    <div className="space-y-1">
-                      <p className="text-gray-300">Invoice No.</p>
-                      <p className="text-raden-green">#{selectedOrder?.id.split('-')[0]}</p>
+                  {/* Business Header */}
+                  <div className="flex justify-between items-start border-b-4 border-raden-green pb-10 mb-12">
+                    <div className="space-y-2">
+                       <h2 className="text-5xl font-black text-raden-green tracking-tighter italic">RADEN.</h2>
+                       <div className="bg-raden-gold text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.3em] w-fit">Manufacturing Official</div>
                     </div>
-                    <div className="space-y-1 text-right">
-                      <p className="text-gray-300">Client Name</p>
-                      <p className="text-raden-green">{selectedOrder?.customers?.name}</p>
+                    <div className="text-right space-y-1">
+                      <h3 className="text-2xl font-black text-raden-green uppercase tracking-tighter">INVOICE</h3>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">#{selectedOrder?.id.split('-')[0]}</p>
+                      <p className="text-[10px] font-black text-raden-gold">{new Date(selectedOrder?.order_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
                     </div>
                   </div>
 
-                  <div className="space-y-4 mb-10 min-h-[150px]">
-                    <div className="flex justify-between text-[9px] font-black text-gray-300 uppercase tracking-widest border-b border-gray-50 pb-2">
-                      <span>Item Description</span>
-                      <span>Subtotal</span>
-                    </div>
-                    {orderItems.map(item => (
-                      <div key={item.id} className="flex justify-between items-start gap-6 border-b border-gray-50/50 pb-4 last:border-0">
-                        <div className="flex-1">
-                          <p className="font-black text-raden-green text-[13px] uppercase leading-tight">{item.products?.name}</p>
-                          <p className="text-[9px] text-gray-400 font-bold mt-1 uppercase tracking-tight">
-                            {item.qty} {item.products?.unit} @ {item.products?.price?.toLocaleString()}
-                          </p>
-                        </div>
-                        <span className="font-black text-raden-green text-sm">{(item.qty * (item.products?.price || 0)).toLocaleString()}</span>
+                  {/* Client Info */}
+                  <div className="grid grid-cols-2 gap-20 mb-16">
+                    <div className="space-y-4">
+                      <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest border-b pb-2">Ditujukan Untuk:</p>
+                      <div>
+                        <h4 className="text-2xl font-black text-raden-green uppercase truncate">{selectedOrder?.customers?.name}</h4>
+                        <p className="text-xs font-bold text-gray-400 mt-1">{selectedOrder?.customers?.phone || 'No Phone Registered'}</p>
                       </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-8 mt-4 border-t-2 border-dashed border-gray-100">
-                    <div className="flex justify-between items-center bg-raden-green/5 p-6 rounded-2xl">
-                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-raden-green opacity-50">Total Bill</span>
-                      <span className="text-raden-gold font-black text-3xl tracking-tighter">NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
+                    </div>
+                    <div className="space-y-4 text-right">
+                       <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest border-b pb-2">Status Pembayaran:</p>
+                       <div className="inline-block px-6 py-2 bg-raden-green/5 border-2 border-raden-green/10 rounded-2xl text-raden-green font-black text-xs uppercase tracking-widest italic leading-none">
+                         {selectedOrder?.status === 'Draft' ? 'Pending Verification' : 'Confirmed Distribution'}
+                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-12 text-center text-[8px] font-bold text-gray-300 uppercase tracking-[0.2em] italic">
-                    Terima kasih telah mempercayakan produksi Anda pada Raden.
+                  {/* Production Table */}
+                  <div className="flex-1">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-y-2 border-gray-100">
+                          <th className="px-6 py-4">Produk</th>
+                          <th className="px-6 py-4 text-center">Jumlah</th>
+                          <th className="px-6 py-4 text-right">Harga Satuan</th>
+                          <th className="px-6 py-4 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {orderItems.map((item, idx) => (
+                          <tr key={idx} className="group">
+                            <td className="px-6 py-5">
+                              <p className="font-black text-raden-green text-sm uppercase">{item.products?.name}</p>
+                              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{item.products?.category || 'General'}</p>
+                            </td>
+                            <td className="px-6 py-5 text-center font-black text-raden-green text-sm">{item.qty} {item.products?.unit}</td>
+                            <td className="px-6 py-5 text-right font-bold text-gray-400 text-xs">NTD {item.products?.price?.toLocaleString()}</td>
+                            <td className="px-6 py-5 text-right font-black text-raden-green text-sm">NTD {(item.qty * (item.products?.price || 0)).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Summary Area */}
+                  <div className="mt-12 flex justify-end">
+                    <div className="w-full max-w-sm space-y-4">
+                      <div className="flex justify-between items-center text-gray-400 font-bold text-xs uppercase tracking-widest px-6">
+                        <span>Grand Subtotal</span>
+                        <span>NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-raden-green text-white p-8 rounded-[2rem] shadow-xl shadow-raden-green/20">
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-60">Total Bill</span>
+                        <div className="text-right">
+                          <span className="text-3xl font-black tracking-tighter">NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
+                          <p className="text-[10px] font-bold opacity-60 mt-1 uppercase">Selesai Diverifikasi</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer Terms */}
+                  <div className="mt-20 pt-10 border-t border-gray-100 flex justify-between items-end italic">
+                    <div className="text-[10px] font-bold text-gray-300 space-y-1">
+                      <p>Dokumen ini adalah bukti sah produksi RADEN.</p>
+                      <p>Waktu Cetak: {new Date().toLocaleString('id-ID')}</p>
+                    </div>
+                    <div className="text-right">
+                       <div className="w-32 h-1 bg-raden-gold mb-2 ml-auto" />
+                       <p className="text-xs font-black text-raden-green uppercase tracking-widest">Authorized Signature</p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="mt-10 flex gap-4 shrink-0 px-2 print:hidden">
-                <button 
-                  onClick={() => setShowPrintModal(false)}
-                  className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-gray-100 transition-all"
-                >
-                  Kembali
-                </button>
+              {/* Action Floating Buttons */}
+              <div className="mt-4 flex gap-4 shrink-0 px-4 print:hidden">
                 <button 
                   onClick={() => window.print()} 
-                  className="flex-1 py-4 bg-white border-2 border-raden-green text-raden-green rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-raden-green hover:text-white transition-all group"
+                  className="flex-1 py-5 bg-white border-2 border-raden-green text-raden-green rounded-[1.5rem] font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 hover:bg-raden-green hover:text-white transition-all shadow-xl"
                 >
-                  <Printer size={18} className="group-hover:scale-110 transition-transform" /> Cetak Struk
+                  <Printer size={20} /> Cetak Invoice (A4)
                 </button>
                 {selectedOrder?.status === 'Draft' && (
                   <button 
                     onClick={confirmDispatch} 
-                    className="flex-[1.5] py-4 bg-raden-green text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-raden-green/20 hover:scale-105 transition-all"
+                    className="flex-[1.5] py-5 bg-raden-green text-white rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-2xl shadow-raden-green/30 hover:scale-[1.02] active:scale-95 transition-all"
                   >
-                    Konfirmasi Dispatch
+                    Konfirmasi & Update Stok
                   </button>
                 )}
               </div>
