@@ -564,92 +564,86 @@ export default function OrdersPage() {
 
               {/* A4 Paper Emulator */}
               <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
-                <div id="print-area" className="w-full max-w-[210mm] mx-auto bg-white shadow-2xl min-h-[297mm] p-12 sm:p-20 flex flex-col print:shadow-none print:p-0">
+                <div id="print-area" className="w-full max-w-[210mm] mx-auto bg-white shadow-2xl min-h-[297mm] p-10 sm:p-14 flex flex-col print:shadow-none print:p-0">
                   
-                  {/* Business Header */}
-                  <div className="flex justify-between items-start border-b-4 border-raden-green pb-10 mb-12">
-                    <div className="space-y-2">
-                       <h2 className="text-5xl font-black text-raden-green tracking-tighter italic">RADEN.</h2>
-                       <div className="bg-raden-gold text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.3em] w-fit">Manufacturing Official</div>
-                    </div>
-                    <div className="text-right space-y-1">
-                      <h3 className="text-2xl font-black text-raden-green uppercase tracking-tighter">INVOICE</h3>
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">#{selectedOrder?.id.split('-')[0]}</p>
-                      <p className="text-[10px] font-black text-raden-gold">{new Date(selectedOrder?.order_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                    </div>
-                  </div>
-
-                  {/* Client Info */}
-                  <div className="grid grid-cols-2 gap-20 mb-16">
-                    <div className="space-y-4">
-                      <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest border-b pb-2">Ditujukan Untuk:</p>
-                      <div>
-                        <h4 className="text-2xl font-black text-raden-green uppercase truncate">{selectedOrder?.customers?.name}</h4>
-                        <p className="text-xs font-bold text-gray-400 mt-1">{selectedOrder?.customers?.phone || 'No Phone Registered'}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-4 text-right">
-                       <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest border-b pb-2">Status Pembayaran:</p>
-                       <div className="inline-block px-6 py-2 bg-raden-green/5 border-2 border-raden-green/10 rounded-2xl text-raden-green font-black text-xs uppercase tracking-widest italic leading-none">
-                         {selectedOrder?.status === 'Draft' ? 'Pending Verification' : 'Confirmed Distribution'}
-                       </div>
-                    </div>
-                  </div>
-
-                  {/* Production Table */}
-                  <div className="flex-1">
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-y-2 border-gray-100">
-                          <th className="px-6 py-4">Produk</th>
-                          <th className="px-6 py-4 text-center">Jumlah</th>
-                          <th className="px-6 py-4 text-right">Harga Satuan</th>
-                          <th className="px-6 py-4 text-right">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {orderItems.map((item, idx) => (
-                          <tr key={idx} className="group">
-                            <td className="px-6 py-5">
-                              <p className="font-black text-raden-green text-sm uppercase">{item.products?.name}</p>
-                              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{item.products?.category || 'General'}</p>
-                            </td>
-                            <td className="px-6 py-5 text-center font-black text-raden-green text-sm">{item.qty} {item.products?.unit}</td>
-                            <td className="px-6 py-5 text-right font-bold text-gray-400 text-xs">NTD {item.products?.price?.toLocaleString()}</td>
-                            <td className="px-6 py-5 text-right font-black text-raden-green text-sm">NTD {(item.qty * (item.products?.price || 0)).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Summary Area */}
-                  <div className="mt-12 flex justify-end">
-                    <div className="w-full max-w-sm space-y-4">
-                      <div className="flex justify-between items-center text-gray-400 font-bold text-xs uppercase tracking-widest px-6">
-                        <span>Grand Subtotal</span>
-                        <span>NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-raden-green text-white p-8 rounded-[2rem] shadow-xl shadow-raden-green/20">
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-60">Total Bill</span>
-                        <div className="text-right">
-                          <span className="text-3xl font-black tracking-tighter">NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
-                          <p className="text-[10px] font-bold opacity-60 mt-1 uppercase">Selesai Diverifikasi</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer Terms */}
-                  <div className="mt-20 pt-10 border-t border-gray-100 flex justify-between items-end italic">
-                    <div className="text-[10px] font-bold text-gray-300 space-y-1">
-                      <p>Dokumen ini adalah bukti sah produksi RADEN.</p>
-                      <p>Waktu Cetak: {new Date().toLocaleString('id-ID')}</p>
+                  {/* Business Header - More Compact */}
+                  <div className="flex justify-between items-start border-b-2 border-raden-green pb-6 mb-8">
+                    <div className="space-y-1">
+                       <h2 className="text-4xl font-black text-raden-green tracking-tighter italic">RADEN.</h2>
+                       <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Quality Production Official</p>
                     </div>
                     <div className="text-right">
-                       <div className="w-32 h-1 bg-raden-gold mb-2 ml-auto" />
-                       <p className="text-xs font-black text-raden-green uppercase tracking-widest">Authorized Signature</p>
+                      <h3 className="text-xl font-black text-raden-green uppercase">INVOICE</h3>
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">#{selectedOrder?.id.split('-')[0]} | {new Date(selectedOrder?.order_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
                     </div>
+                  </div>
+
+                  {/* Client Info - Condensed */}
+                  <div className="mb-8">
+                    <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest border-b pb-1 mb-2">Customer Info:</p>
+                    <h4 className="text-xl font-black text-raden-green uppercase">{selectedOrder?.customers?.name}</h4>
+                    <p className="text-[10px] font-bold text-gray-400">{selectedOrder?.customers?.phone || '-'}</p>
+                  </div>
+
+                  {/* Production Table with Grouping */}
+                  <div className="flex-1">
+                    <div className="w-full">
+                      <div className="grid grid-cols-12 bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-y py-3 px-4">
+                        <div className="col-span-6">Deskripsi Produk</div>
+                        <div className="col-span-2 text-center">Jumlah</div>
+                        <div className="col-span-2 text-right">Harga</div>
+                        <div className="col-span-2 text-right">Total</div>
+                      </div>
+                      
+                      {orderItems.length === 0 ? (
+                        <div className="py-20 text-center text-gray-300 font-bold italic text-xs">Memuat data pesanan...</div>
+                      ) : (
+                        Object.entries(
+                          orderItems.reduce((acc: any, item: any) => {
+                            const cat = item.products?.category || 'UMUM';
+                            if (!acc[cat]) acc[cat] = [];
+                            acc[cat].push(item);
+                            return acc;
+                          }, {})
+                        ).map(([category, items]: [string, any]) => (
+                          <div key={category} className="mt-4">
+                            <div className="bg-gray-100/50 px-4 py-1 text-[9px] font-black text-raden-green uppercase tracking-[0.2em]">{category}</div>
+                            <div className="divide-y divide-gray-50 border-x border-gray-50">
+                              {items.map((item: any, idx: number) => (
+                                <div key={idx} className="grid grid-cols-12 px-4 py-3 items-center hover:bg-gray-50/30">
+                                  <div className="col-span-6">
+                                    <p className="font-black text-raden-green text-xs uppercase">{item.products?.name}</p>
+                                  </div>
+                                  <div className="col-span-2 text-center font-black text-raden-green text-xs">{item.qty} {item.products?.unit}</div>
+                                  <div className="col-span-2 text-right font-bold text-gray-400 text-[10px]">{item.products?.price?.toLocaleString()}</div>
+                                  <div className="col-span-2 text-right font-black text-raden-green text-xs">{(item.qty * (item.products?.price || 0)).toLocaleString()}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Summary Area - Ultra Compact */}
+                  <div className="mt-8 flex justify-end">
+                    <div className="w-full max-w-[250px] space-y-1">
+                      <div className="flex justify-between items-center text-gray-400 font-bold text-[9px] uppercase tracking-widest px-4 border-b pb-1">
+                        <span>Subtotal</span>
+                        <span>NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-raden-green text-white p-5 rounded-xl shadow-lg">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Total</span>
+                        <span className="text-xl font-black tracking-tighter">NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Simple Footer */}
+                  <div className="mt-10 pt-6 border-t border-gray-100 flex justify-between items-center opacity-50">
+                    <p className="text-[8px] font-bold text-gray-400 italic">Printed on: {new Date().toLocaleString('id-ID')}</p>
+                    <p className="text-[8px] font-black text-raden-green uppercase tracking-widest">Raden Official Invoice</p>
                   </div>
                 </div>
               </div>
