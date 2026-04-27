@@ -283,12 +283,16 @@ export default function OrdersPage() {
                         <>
                           <button onClick={() => handleEditClick(order)} className="p-2 text-gray-400 border rounded-xl hover:bg-gray-50 transition-colors"><Edit3 size={16} /></button>
                           <button onClick={() => setOrderToDelete(order.id)} className="p-2 text-red-400 border border-red-100 rounded-xl hover:bg-red-50 transition-colors"><Trash2 size={16} /></button>
-                          <button onClick={() => handleDispatchPreview(order)} className="bg-raden-green text-white px-4 py-2 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest hover:scale-105 transition-transform">Dispatch</button>
+                          <button onClick={() => handleDispatchPreview(order)} className="bg-raden-green text-white px-5 py-2.5 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest hover:scale-105 transition-transform flex items-center gap-2"><Receipt size={14} /> Dispatch</button>
                         </>
-                      ) : order.status === 'Siap Kirim' ? (
-                        <button onClick={() => completeOrder(order.id)} className="bg-raden-gold text-white px-4 py-2 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest hover:scale-105 transition-transform">Tuntas</button>
-                      ) : null}
-                      <button onClick={() => handleDispatchPreview(order)} className="p-2 text-gray-400 border rounded-xl hover:bg-gray-50 transition-colors"><Receipt size={16} /></button>
+                      ) : (
+                        <button onClick={() => handleDispatchPreview(order)} className="p-2.5 text-raden-green border-2 border-raden-green/10 rounded-xl hover:bg-raden-green/5 transition-colors flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
+                          <Printer size={16} /> Lihat Struk
+                        </button>
+                      )}
+                      {order.status === 'Siap Kirim' && (
+                        <button onClick={() => completeOrder(order.id)} className="bg-raden-gold text-white px-5 py-2.5 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest hover:scale-105 transition-transform">Tuntas</button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -322,13 +326,14 @@ export default function OrdersPage() {
                   {order.status === 'Draft' ? (
                     <>
                       <button onClick={() => handleEditClick(order)} className="p-3 bg-gray-50 text-gray-400 rounded-xl border border-gray-100"><Edit3 size={18} /></button>
-                      <button onClick={() => setOrderToDelete(order.id)} className="p-3 bg-red-50 text-red-500 rounded-xl border border-red-100"><Trash2 size={18} /></button>
-                      <button onClick={() => handleDispatchPreview(order)} className="px-5 py-3 bg-raden-green text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg">Dispatch</button>
+                      <button onClick={() => handleDispatchPreview(order)} className="flex-1 py-3 bg-raden-green text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg flex items-center justify-center gap-2"><Receipt size={16} /> Dispatch</button>
                     </>
-                  ) : order.status === 'Siap Kirim' ? (
-                    <button onClick={() => completeOrder(order.id)} className="px-5 py-3 bg-raden-gold text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg">Tuntas</button>
-                  ) : null}
-                  <button onClick={() => handleDispatchPreview(order)} className="p-3 bg-gray-50 text-gray-400 rounded-xl border border-gray-100"><Receipt size={18} /></button>
+                  ) : (
+                    <button onClick={() => handleDispatchPreview(order)} className="flex-1 py-3 bg-white border-2 border-raden-green/10 text-raden-green rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2"><Printer size={16} /> Struk</button>
+                  )}
+                  {order.status === 'Siap Kirim' && (
+                    <button onClick={() => completeOrder(order.id)} className="flex-1 py-3 bg-raden-gold text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg">Tuntas</button>
+                  )}
                 </div>
               </div>
             </div>
@@ -523,38 +528,82 @@ export default function OrdersPage() {
       <AnimatePresence>
         {showPrintModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPrintModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
-              <div id="print-area" className="flex-1 overflow-y-auto pr-2">
-                <div className="text-center border-b-2 border-dashed pb-6 mb-8">
-                  <h2 className="text-2xl font-black text-raden-green tracking-tighter uppercase">RADEN OFFICIAL</h2>
-                  <p className="text-[10px] text-gray-400 font-black tracking-[0.3em]">MANUFACTURING RECEIPT</p>
-                </div>
-                <div className="space-y-3 mb-8 text-[10px] font-black uppercase tracking-widest">
-                  <div className="flex justify-between text-gray-400"><span>INV NO.</span> <span className="text-black">#{selectedOrder?.id.split('-')[0]}</span></div>
-                  <div className="flex justify-between text-gray-400"><span>CLIENT</span> <span className="text-black">{selectedOrder?.customers?.name}</span></div>
-                </div>
-                <div className="space-y-2 mb-8 bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
-                  {orderItems.map(item => (
-                    <div key={item.id} className="flex justify-between items-start gap-4 text-sm border-b border-gray-100/50 pb-2 last:border-0 last:pb-0">
-                      <div className="flex-1">
-                        <p className="font-black text-raden-green leading-tight text-[12px] uppercase">{item.products?.name}</p>
-                        <p className="text-[9px] text-gray-400 font-black tracking-widest mt-0.5">
-                          {item.qty} {item.products?.unit || 'PCS'} @ {item.products?.price?.toLocaleString()}
-                        </p>
-                      </div>
-                      <span className="font-black text-raden-green text-[12px]">{(item.qty * (item.products?.price || 0)).toLocaleString()}</span>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPrintModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-md" />
+            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="relative bg-white rounded-[3rem] p-4 sm:p-12 w-full max-w-2xl shadow-[0_30px_100px_rgba(0,0,0,0.3)] flex flex-col max-h-[95vh] overflow-hidden">
+              
+              {/* Receipt Visual Container */}
+              <div id="print-area" className="flex-1 overflow-y-auto no-scrollbar bg-white p-2">
+                <div className="max-w-md mx-auto border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] p-8 sm:p-12 bg-white rounded-[2rem] relative">
+                  {/* Decorative Scissors Or Dash Line can go here */}
+                  <div className="text-center border-b-2 border-dashed border-gray-100 pb-8 mb-8">
+                    <h2 className="text-3xl font-black text-raden-green tracking-tighter uppercase mb-1">RADEN</h2>
+                    <p className="text-[10px] text-raden-gold font-black tracking-[0.4em] uppercase opacity-80">Official Manufacturing</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-10 text-[10px] font-black uppercase tracking-widest">
+                    <div className="space-y-1">
+                      <p className="text-gray-300">Invoice No.</p>
+                      <p className="text-raden-green">#{selectedOrder?.id.split('-')[0]}</p>
                     </div>
-                  ))}
-                  <div className="flex justify-between pt-4 mt-2 font-black text-lg text-raden-green border-t border-dashed border-gray-300">
-                    <span className="text-[10px] uppercase tracking-[0.2em] self-center opacity-40">Total Tagihan</span>
-                    <span className="text-raden-gold font-black text-2xl tracking-tighter">NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
+                    <div className="space-y-1 text-right">
+                      <p className="text-gray-300">Client Name</p>
+                      <p className="text-raden-green">{selectedOrder?.customers?.name}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 mb-10 min-h-[150px]">
+                    <div className="flex justify-between text-[9px] font-black text-gray-300 uppercase tracking-widest border-b border-gray-50 pb-2">
+                      <span>Item Description</span>
+                      <span>Subtotal</span>
+                    </div>
+                    {orderItems.map(item => (
+                      <div key={item.id} className="flex justify-between items-start gap-6 border-b border-gray-50/50 pb-4 last:border-0">
+                        <div className="flex-1">
+                          <p className="font-black text-raden-green text-[13px] uppercase leading-tight">{item.products?.name}</p>
+                          <p className="text-[9px] text-gray-400 font-bold mt-1 uppercase tracking-tight">
+                            {item.qty} {item.products?.unit} @ {item.products?.price?.toLocaleString()}
+                          </p>
+                        </div>
+                        <span className="font-black text-raden-green text-sm">{(item.qty * (item.products?.price || 0)).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-8 mt-4 border-t-2 border-dashed border-gray-100">
+                    <div className="flex justify-between items-center bg-raden-green/5 p-6 rounded-2xl">
+                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-raden-green opacity-50">Total Bill</span>
+                      <span className="text-raden-gold font-black text-3xl tracking-tighter">NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-12 text-center text-[8px] font-bold text-gray-300 uppercase tracking-[0.2em] italic">
+                    Terima kasih telah mempercayakan produksi Anda pada Raden.
                   </div>
                 </div>
               </div>
-              <div className="mt-8 flex gap-4 print:hidden">
-                <button onClick={() => window.print()} className="flex-1 py-4 bg-white border-2 border-raden-green text-raden-green rounded-2xl font-bold flex items-center justify-center gap-2"><Printer size={18} /> Print</button>
-                {selectedOrder?.status === 'Draft' && <button onClick={confirmDispatch} className="flex-1 py-4 bg-raden-green text-white rounded-2xl font-black uppercase tracking-widest">Dispatch Now</button>}
+
+              {/* Action Buttons */}
+              <div className="mt-10 flex gap-4 shrink-0 px-2 print:hidden">
+                <button 
+                  onClick={() => setShowPrintModal(false)}
+                  className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-bold uppercase text-xs tracking-widest hover:bg-gray-100 transition-all"
+                >
+                  Kembali
+                </button>
+                <button 
+                  onClick={() => window.print()} 
+                  className="flex-1 py-4 bg-white border-2 border-raden-green text-raden-green rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-raden-green hover:text-white transition-all group"
+                >
+                  <Printer size={18} className="group-hover:scale-110 transition-transform" /> Cetak Struk
+                </button>
+                {selectedOrder?.status === 'Draft' && (
+                  <button 
+                    onClick={confirmDispatch} 
+                    className="flex-[1.5] py-4 bg-raden-green text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-raden-green/20 hover:scale-105 transition-all"
+                  >
+                    Konfirmasi Dispatch
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
