@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Plus, Search, Printer, Send, Clock, CheckCircle2, X, Loader2, User as UserIcon, Receipt, History, AlertCircle, Trash2, Edit3, Check } from 'lucide-react';
+import { Package, ClipboardList, Calendar, Users, ShoppingCart, Plus, Search, Edit3, Trash2, Printer, Check, X, Loader2, Receipt, ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function OrdersPage() {
@@ -549,9 +549,28 @@ export default function OrdersPage() {
 
       <AnimatePresence>
         {showPrintModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPrintModal(false)} className="absolute inset-0 bg-raden-green/70 backdrop-blur-md" />
-            <motion.div initial={{ scale: 0.95, opacity: 0, y: 30 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 30 }} className="relative bg-gray-100 rounded-[3rem] p-4 sm:p-6 w-full max-w-5xl shadow-[0_40px_120px_rgba(0,0,0,0.4)] flex flex-col max-h-[96vh] overflow-hidden">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 no-print-background">
+            {/* Global Print Styles */}
+            <style dangerouslySetInnerHTML={{ __html: `
+              @media print {
+                body * { visibility: hidden !important; }
+                #print-area, #print-area * { visibility: visible !important; }
+                #print-area {
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  margin: 0 !important;
+                  padding: 10mm !important;
+                  height: auto !important;
+                }
+                .print-hidden { display: none !important; }
+                @page { size: A4; margin: 0; }
+              }
+            ` }} />
+
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPrintModal(false)} className="absolute inset-0 bg-raden-green/70 backdrop-blur-md print:hidden" />
+            <motion.div initial={{ scale: 0.95, opacity: 0, y: 30 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 30 }} className="relative bg-gray-100 rounded-[3rem] p-4 sm:p-6 w-full max-w-5xl shadow-[0_40px_120px_rgba(0,0,0,0.4)] flex flex-col max-h-[96vh] overflow-hidden print:bg-white print:p-0 print:shadow-none print:max-h-none">
               
               {/* Toolbar */}
               <div className="flex justify-between items-center mb-6 px-4 print:hidden">
@@ -563,8 +582,8 @@ export default function OrdersPage() {
               </div>
 
               {/* A4 Paper Emulator */}
-              <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
-                <div id="print-area" className="w-full max-w-[210mm] mx-auto bg-white shadow-2xl min-h-[297mm] p-10 sm:p-14 flex flex-col print:shadow-none print:p-0">
+              <div className="flex-1 overflow-y-auto no-scrollbar pb-10 print:overflow-visible print:pb-0">
+                <div id="print-area" className="w-full max-w-[210mm] mx-auto bg-white shadow-2xl min-h-[297mm] p-10 sm:p-14 flex flex-col print:shadow-none print:p-0 print:w-full print:max-w-none print:min-h-0">
                   
                   {/* Business Header - More Compact */}
                   <div className="flex justify-between items-start border-b-2 border-raden-green pb-6 mb-8">
