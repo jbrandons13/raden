@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, ClipboardList, Calendar, Users, ShoppingCart, Plus, Search, Edit3, Trash2, Printer, Check, X, Loader2, Receipt, ArrowRight } from 'lucide-react';
+import { Package, ClipboardList, Calendar, Users, ShoppingCart, Plus, Search, Edit3, Trash2, Printer, Check, X, Loader2, Receipt, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function OrdersPage() {
