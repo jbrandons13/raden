@@ -43,10 +43,10 @@ export default function OrdersPage() {
         setTimeout(() => reject(new Error("Koneksi Database Timeout (15s)")), 15000)
       );
 
-      // Race the main data fetch
+      // Eager load everything: orders + items + products
       const [ordsRes, prodsRes, custsRes, posSectionsRes]: any = await Promise.race([
         Promise.all([
-          supabase.from('orders').select('*, customers(name)').order('created_at', { ascending: false }),
+          supabase.from('orders').select('*, customers(name), order_items(*, products(*))').order('created_at', { ascending: false }),
           supabase.from('products').select('*').order('sort_order', { ascending: true }),
           supabase.from('customers').select('*').order('name'),
           supabase.from('pos_sections').select('*, items:pos_section_items(*, products(*))').order('sort_order')
@@ -88,36 +88,16 @@ export default function OrdersPage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const handleDispatchPreview = async (order: any) => {
+  const handleDispatchPreview = (order: any) => {
     if (!order) return;
     
-    try {
-      setIsFetchingItems(true);
-      setSelectedOrder(order);
-      setOrderItems([]); 
-      setShowPrintModal(true);
-      
-      const { data, error } = await supabase
-        .from('order_items')
-        .select('*, products(*)')
-        .eq('order_id', order.id);
-      
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        // Sort items by sort_order manually
-        const sorted = [...data].sort((a, b) => (a.products?.sort_order || 0) - (b.products?.sort_order || 0));
-        setOrderItems(sorted);
-      } else {
-        setOrderItems([]);
-      }
-    } catch (e: any) {
-      console.error("Fetch Items Error:", e);
-      alert("Gagal memuat barang: " + e.message);
-      setShowPrintModal(false);
-    } finally {
-      setIsFetchingItems(false);
-    }
+    // We already have the items from the eager load in fetchData
+    const items = order.order_items || [];
+    const sorted = [...items].sort((a: any, b: any) => (a.products?.sort_order || 0) - (b.products?.sort_order || 0));
+    
+    setSelectedOrder(order);
+    setOrderItems(sorted);
+    setShowPrintModal(true);
   };
 
   const confirmDispatch = async () => {
@@ -643,12 +623,7 @@ export default function OrdersPage() {
                         <div className="col-span-2 text-right">Total</div>
                       </div>
                       
-                      {isFetchingItems ? (
-                        <div className="py-20 flex flex-col items-center justify-center gap-4">
-                          <Loader2 className="w-8 h-8 animate-spin text-raden-gold" />
-                          <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Sinkronisasi Data...</p>
-                        </div>
-                      ) : orderItems.length === 0 ? (
+                      {orderItems.length === 0 ? (
                         <div className="py-20 text-center text-gray-300 font-bold italic text-xs">Pesanan ini tidak memiliki rincian produk.</div>
                       ) : (
                         Object.entries(
