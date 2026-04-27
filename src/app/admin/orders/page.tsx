@@ -268,7 +268,8 @@ export default function OrdersPage() {
   const filteredOrders = orders.filter(o => activeTab === 'active' ? o.status !== 'Selesai' : o.status === 'Selesai');
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6 print:hidden">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Pesanan</h1>
@@ -562,46 +563,55 @@ export default function OrdersPage() {
             {/* Global Print Styles */}
             <style dangerouslySetInnerHTML={{ __html: `
               @media print {
-                html, body { 
+                /* Hide layout wrappers natively */
+                aside, header, nav { display: none !important; }
+                
+                /* Reset layout containers to natural flow for pagination */
+                html, body, main { 
                   height: auto !important; 
                   overflow: visible !important; 
                   background: white !important; 
+                  position: static !important;
                 }
+                main { padding: 0 !important; margin: 0 !important; }
+                
+                /* Reset transforms which break print flow */
                 * {
                   transform: none !important;
                   transition: none !important;
                   animation: none !important;
                 }
-                body * { 
-                  visibility: hidden; 
-                }
-                /* Reset modal wrapper flex centering so it starts at the top edge */
+                
+                /* Force full height visibility for modal components */
                 .no-print-background {
-                  position: absolute !important;
-                  top: 0 !important;
-                  left: 0 !important;
+                  position: static !important;
                   display: block !important;
                   padding: 0 !important;
                   margin: 0 !important;
                 }
                 .no-print-background > div {
                   position: static !important;
-                  transform: none !important;
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  box-shadow: none !important;
                 }
-                #print-area, #print-area * { 
-                  visibility: visible; 
-                }
+                .overflow-y-auto { overflow: visible !important; }
+                
                 #print-area {
-                  position: absolute;
-                  left: 0;
-                  top: 0;
-                  width: 100%;
-                  margin: 0;
-                  padding: 10mm;
-                  min-height: 100%;
+                  position: static !important;
+                  width: 100% !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
                 }
+                
+                /* Prevent table rows from being sliced in half across pages */
+                .print-row {
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                }
+
                 .print-hidden { display: none !important; }
-                @page { size: A4; margin: 0; }
+                @page { size: A4; margin: 15mm; }
               }
             ` }} />
 
@@ -666,7 +676,7 @@ export default function OrdersPage() {
                             <div className="bg-gray-100/50 px-4 py-1 text-[9px] font-black text-raden-green uppercase tracking-[0.2em]">{category}</div>
                             <div className="divide-y divide-gray-50 border-x border-gray-50">
                               {items.map((item: any, idx: number) => (
-                                <div key={idx} className="grid grid-cols-12 px-4 py-3 items-center hover:bg-gray-50/30">
+                                <div key={idx} className="grid grid-cols-12 px-4 py-3 items-center hover:bg-gray-50/30 print-row">
                                   <div className="col-span-6">
                                     <p className="font-black text-raden-green text-xs uppercase">{item.products?.name}</p>
                                   </div>
