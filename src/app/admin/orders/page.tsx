@@ -268,8 +268,7 @@ export default function OrdersPage() {
   const filteredOrders = orders.filter(o => activeTab === 'active' ? o.status !== 'Selesai' : o.status === 'Selesai');
 
   return (
-    <div className="relative min-h-screen">
-      <div className="space-y-6 print:hidden">
+    <div className="relative min-h-screen space-y-6 print:hidden">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Pesanan</h1>
