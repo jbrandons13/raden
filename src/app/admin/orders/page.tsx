@@ -562,24 +562,39 @@ export default function OrdersPage() {
             {/* Global Print Styles */}
             <style dangerouslySetInnerHTML={{ __html: `
               @media print {
-                body * { visibility: hidden !important; }
-                #print-area, #print-area * { visibility: visible !important; }
+                html, body { 
+                  height: auto !important; 
+                  overflow: visible !important; 
+                  background: white !important; 
+                }
+                * {
+                  transform: none !important;
+                  transition: none !important;
+                  animation: none !important;
+                }
+                body * { 
+                  visibility: hidden; 
+                }
+                #print-area, #print-area * { 
+                  visibility: visible; 
+                }
                 #print-area {
-                  position: absolute !important;
-                  left: 0 !important;
-                  top: 0 !important;
-                  width: 100% !important;
-                  margin: 0 !important;
-                  padding: 10mm !important;
-                  height: auto !important;
+                  position: absolute;
+                  left: 0;
+                  top: 0;
+                  width: 100%;
+                  margin: 0;
+                  padding: 10mm;
+                  min-height: 100%;
                 }
                 .print-hidden { display: none !important; }
                 @page { size: A4; margin: 0; }
               }
             ` }} />
 
+
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPrintModal(false)} className="absolute inset-0 bg-raden-green/70 backdrop-blur-md print:hidden" />
-            <motion.div initial={{ scale: 0.95, opacity: 0, y: 30 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 30 }} className="relative bg-gray-100 rounded-[3rem] p-4 sm:p-6 w-full max-w-5xl shadow-[0_40px_120px_rgba(0,0,0,0.4)] flex flex-col max-h-[96vh] overflow-hidden print:bg-white print:p-0 print:shadow-none print:max-h-none">
+            <motion.div initial={{ scale: 0.95, opacity: 0, y: 30 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 30 }} className="relative bg-gray-100 rounded-[3rem] p-4 sm:p-6 w-full max-w-5xl shadow-[0_40px_120px_rgba(0,0,0,0.4)] flex flex-col max-h-[96vh] overflow-hidden print:bg-white print:p-0 print:shadow-none print:max-h-none print:overflow-visible print:block">
               
               {/* Toolbar */}
               <div className="flex justify-between items-center mb-6 px-4 print:hidden">
@@ -741,9 +756,6 @@ export default function OrdersPage() {
         )}
       </AnimatePresence>
 
-      <style jsx global>{`
-        @media print { body * { visibility: hidden; } #print-area, #print-area * { visibility: visible; } #print-area { position: absolute; left: 0; top: 0; width: 100%; border: none !important; } }
-      `}</style>
     </div>
   );
 }
