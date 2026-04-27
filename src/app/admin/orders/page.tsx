@@ -37,11 +37,21 @@ export default function OrdersPage() {
 
   const fetchData = async () => {
     try {
-      const [ordsRes, prodsRes, custsRes, posSectionsRes] = await Promise.all([
-        supabase.from('orders').select('*, customers(name)').order('created_at', { ascending: false }),
-        supabase.from('products').select('*').order('sort_order', { ascending: true }),
-        supabase.from('customers').select('*').order('name'),
-        supabase.from('pos_sections').select('*, items:pos_section_items(*, products(*))').order('sort_order')
+      setLoading(true);
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Koneksi Database Timeout (15s)")), 15000)
+      );
+
+      // Race the main data fetch
+      const [ordsRes, prodsRes, custsRes, posSectionsRes]: any = await Promise.race([
+        Promise.all([
+          supabase.from('orders').select('*, customers(name)').order('created_at', { ascending: false }),
+          supabase.from('products').select('*').order('sort_order', { ascending: true }),
+          supabase.from('customers').select('*').order('name'),
+          supabase.from('pos_sections').select('*, items:pos_section_items(*, products(*))').order('sort_order')
+        ]),
+        timeoutPromise
       ]);
 
       if (ordsRes.data) setOrders(ordsRes.data);
@@ -49,7 +59,7 @@ export default function OrdersPage() {
       if (custsRes.data) setCustomers(custsRes.data);
       if (posSectionsRes.data) setPosSections(posSectionsRes.data);
 
-      const draftOrderIds = ordsRes.data?.filter(o => o.status === 'Draft').map(o => o.id) || [];
+      const draftOrderIds = ordsRes.data?.filter((o: any) => o.status === 'Draft').map((o: any) => o.id) || [];
       if (draftOrderIds.length > 0) {
         const { data: items } = await supabase.from('order_items').select('product_id, qty').in('order_id', draftOrderIds);
         if (items) {
@@ -62,8 +72,9 @@ export default function OrdersPage() {
       } else {
         setReservedStock({});
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Fetch Data Error:", e);
+      if (e.message.includes("Timeout")) alert(e.message);
     } finally {
       setLoading(false);
     }
@@ -78,39 +89,34 @@ export default function OrdersPage() {
   }, []);
 
   const handleDispatchPreview = async (order: any) => {
+    if (!order) return;
+    
     try {
       setIsFetchingItems(true);
       setSelectedOrder(order);
       setOrderItems([]); 
       setShowPrintModal(true);
       
-      console.log("Fetching items for order:", order.id);
-
-      // Create a timeout promise
+      // Use a slightly longer timeout for items
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Waktu tunggu habis (Timeout 10s)")), 10000)
+        setTimeout(() => reject(new Error("Timeout (10s)")), 10000)
       );
 
-      // Race the supabase call against the timeout
-      const fetchPromise = supabase
-        .from('order_items')
-        .select('*, products(name, price, unit, sort_order, category)')
-        .eq('order_id', order.id);
-
-      const result: any = await Promise.race([fetchPromise, timeoutPromise]);
+      const { data, error }: any = await Promise.race([
+        supabase.from('order_items').select('*, products(*)').eq('order_id', order.id),
+        timeoutPromise
+      ]);
       
-      if (result.error) throw result.error;
+      if (error) throw error;
       
-      const data = result.data;
       if (data && data.length > 0) {
+        // Sort manually to avoid heavy join
         const sorted = [...data].sort((a, b) => (a.products?.sort_order || 0) - (b.products?.sort_order || 0));
         setOrderItems(sorted);
-      } else {
-        setOrderItems([]);
       }
     } catch (e: any) {
-      console.error("Fetch Error:", e);
-      alert("Gagal memuat barang: " + e.message);
+      console.error("Preview Fetch Error:", e);
+      alert("Gagal memuat rincian: " + e.message);
       setShowPrintModal(false);
     } finally {
       setIsFetchingItems(false);
