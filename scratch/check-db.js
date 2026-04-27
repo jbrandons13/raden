@@ -2,7 +2,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 
-// Manually parse .env.local
 let envContent = '';
 try {
     envContent = fs.readFileSync('.env.local', 'utf8');
@@ -21,27 +20,19 @@ envContent.split('\n').forEach(line => {
 const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-    console.error('Missing Supabase credentials in .env.local');
-    process.exit(1);
-}
-
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function checkConnection() {
-    console.log('Connecting to Supabase:', supabaseUrl);
+async function checkColumns() {
     try {
-        const { count, error } = await supabase.from('products').select('*', { count: 'exact', head: true });
-        
+        const { data, error } = await supabase.from('products').select('*').limit(1).single();
         if (error) {
-            console.error('Database Connection Error:', error.message);
+            console.error('Error:', error.message);
         } else {
-            console.log('Connection Successful!');
-            console.log('Total Products in Database:', count);
+            console.log('Columns in products table:', Object.keys(data));
         }
     } catch (e) {
         console.error('Unexpected error:', e.message);
     }
 }
 
-checkConnection();
+checkColumns();
