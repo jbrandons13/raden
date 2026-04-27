@@ -575,6 +575,19 @@ export default function OrdersPage() {
                 body * { 
                   visibility: hidden; 
                 }
+                /* Reset modal wrapper flex centering so it starts at the top edge */
+                .no-print-background {
+                  position: absolute !important;
+                  top: 0 !important;
+                  left: 0 !important;
+                  display: block !important;
+                  padding: 0 !important;
+                  margin: 0 !important;
+                }
+                .no-print-background > div {
+                  position: static !important;
+                  transform: none !important;
+                }
                 #print-area, #print-area * { 
                   visibility: visible; 
                 }
