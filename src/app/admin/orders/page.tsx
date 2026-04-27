@@ -33,6 +33,7 @@ export default function OrdersPage() {
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [orderToComplete, setOrderToComplete] = useState<string | null>(null);
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+  const [isFetchingItems, setIsFetchingItems] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -77,18 +78,30 @@ export default function OrdersPage() {
   }, []);
 
   const handleDispatchPreview = async (order: any) => {
-    setSelectedOrder(order);
-    setOrderItems([]); // BUG FIX: Reset state before new fetch
-    const { data } = await supabase
-      .from('order_items')
-      .select('*, products(name, price, unit, sort_order, category)')
-      .eq('order_id', order.id);
-    
-    if (data) {
-      const sorted = [...data].sort((a, b) => (a.products?.sort_order || 0) - (b.products?.sort_order || 0));
-      setOrderItems(sorted);
+    try {
+      setIsFetchingItems(true);
+      setSelectedOrder(order);
+      setOrderItems([]); 
+      setShowPrintModal(true);
+      
+      const { data, error } = await supabase
+        .from('order_items')
+        .select('*, products(name, price, unit, sort_order, category)')
+        .eq('order_id', order.id);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        const sorted = [...data].sort((a, b) => (a.products?.sort_order || 0) - (b.products?.sort_order || 0));
+        setOrderItems(sorted);
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert("Gagal memuat barang: " + e.message);
+      setShowPrintModal(false);
+    } finally {
+      setIsFetchingItems(false);
     }
-    setShowPrintModal(true);
   };
 
   const confirmDispatch = async () => {
@@ -614,8 +627,13 @@ export default function OrdersPage() {
                         <div className="col-span-2 text-right">Total</div>
                       </div>
                       
-                      {orderItems.length === 0 ? (
-                        <div className="py-20 text-center text-gray-300 font-bold italic text-xs">Memuat data pesanan...</div>
+                      {isFetchingItems ? (
+                        <div className="py-20 flex flex-col items-center justify-center gap-4">
+                          <Loader2 className="w-8 h-8 animate-spin text-raden-gold" />
+                          <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Sinkronisasi Data...</p>
+                        </div>
+                      ) : orderItems.length === 0 ? (
+                        <div className="py-20 text-center text-gray-300 font-bold italic text-xs">Pesanan ini tidak memiliki rincian produk.</div>
                       ) : (
                         Object.entries(
                           orderItems.reduce((acc: any, item: any) => {
