@@ -285,42 +285,37 @@ export default function OrdersPage() {
           <table className="w-full text-left min-w-[700px]">
             <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b">
               <tr>
-                <th className="px-8 py-5">Pelanggan</th>
-                <th className="px-8 py-5">Nilai Pesanan</th>
-                <th className="px-8 py-5">Status</th>
-                <th className="px-8 py-5 text-right">Aksi</th>
+                <th className="px-6 py-4 text-left">Pelanggan</th>
+                <th className="px-6 py-4 text-right">Total Tagihan</th>
+                <th className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredOrders.length === 0 && !loading && <tr><td colSpan={4} className="px-6 sm:px-8 py-20 text-center text-gray-300 italic">Belum ada data pesanan.</td></tr>}
+              {filteredOrders.length === 0 && !loading && <tr><td colSpan={3} className="px-6 sm:px-8 py-20 text-center text-gray-300 italic">Belum ada data pesanan.</td></tr>}
               {filteredOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-8 py-6">
+                  <td className="px-6 py-4">
                     <div className="flex flex-col">
                       <p className="font-mono text-[9px] text-gray-400 mb-1">#{order.id.split('-')[0]}</p>
                       <p className="text-[10px] font-bold text-raden-gold uppercase tracking-widest">{new Date(order.order_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                     </div>
                     <p className="font-bold text-raden-green text-base mt-1">{order.customers?.name}</p>
                   </td>
-                  <td className="px-8 py-6 font-black text-raden-green text-base">NTD {order.total_revenue?.toLocaleString()}</td>
-                  <td className="px-8 py-6">
-                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${order.status === 'Draft' ? 'bg-gray-100 text-gray-400' : 'bg-blue-100 text-blue-600'}`}>{order.status}</span>
+                  <td className="px-6 py-4 text-right">
+                    <p className="font-black text-raden-green text-sm">NTD {order.total_revenue?.toLocaleString()}</p>
                   </td>
-                  <td className="px-8 py-6 text-right">
-                    <div className="flex justify-end gap-2 text-xs">
-                      {order.status === 'Draft' ? (
-                        <>
-                          <button onClick={() => handleEditClick(order)} className="p-2 text-gray-400 border rounded-xl hover:bg-gray-50 transition-colors"><Edit3 size={16} /></button>
-                          <button onClick={() => setOrderToDelete(order.id)} className="p-2 text-red-400 border border-red-100 rounded-xl hover:bg-red-50 transition-colors"><Trash2 size={16} /></button>
-                          <button onClick={() => handleDispatchPreview(order)} className="bg-raden-green text-white px-5 py-2.5 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest hover:scale-105 transition-transform flex items-center gap-2"><Receipt size={14} /> Dispatch</button>
-                        </>
-                      ) : (
-                        <button onClick={() => handleDispatchPreview(order)} className="p-2.5 text-raden-green border-2 border-raden-green/10 rounded-xl hover:bg-raden-green/5 transition-colors flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
-                          <Printer size={16} /> Lihat Struk
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2 items-center">
+                      <button onClick={() => handleEditClick(order)} title="Edit" className="p-2 text-gray-400 border rounded-xl hover:bg-raden-gold/10 hover:text-raden-gold transition-colors"><Edit3 size={14} /></button>
+                      <button onClick={() => setOrderToDelete(order.id)} title="Hapus" className="p-2 text-gray-400 border rounded-xl hover:bg-red-50 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                      <button onClick={() => handleDispatchPreview(order)} title="Print Invoice" className="p-2 text-gray-400 border rounded-xl hover:bg-raden-green/10 hover:text-raden-green transition-colors"><Printer size={14} /></button>
+                      {order.status !== 'Selesai' && (
+                        <button 
+                          onClick={() => completeOrder(order.id)} 
+                          className="ml-2 bg-raden-green text-white px-3 py-1.5 rounded-lg font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-transform shadow-sm"
+                        >
+                          Tuntas
                         </button>
-                      )}
-                      {order.status === 'Siap Kirim' && (
-                        <button onClick={() => completeOrder(order.id)} className="bg-raden-gold text-white px-5 py-2.5 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest hover:scale-105 transition-transform">Tuntas</button>
                       )}
                     </div>
                   </td>
@@ -352,17 +347,15 @@ export default function OrdersPage() {
                   <p className="font-black text-raden-gold text-base">NTD {order.total_revenue?.toLocaleString()}</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  {order.status === 'Draft' ? (
-                    <>
-                      <button onClick={() => handleEditClick(order)} className="p-3 bg-gray-50 text-gray-400 rounded-xl border border-gray-100"><Edit3 size={18} /></button>
-                      <button onClick={() => handleDispatchPreview(order)} className="flex-1 py-3 bg-raden-green text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg flex items-center justify-center gap-2"><Receipt size={16} /> Dispatch</button>
-                    </>
-                  ) : (
-                    <button onClick={() => handleDispatchPreview(order)} className="flex-1 py-3 bg-white border-2 border-raden-green/10 text-raden-green rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2"><Printer size={16} /> Struk</button>
-                  )}
-                  {order.status === 'Siap Kirim' && (
-                    <button onClick={() => completeOrder(order.id)} className="flex-1 py-3 bg-raden-gold text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg">Tuntas</button>
-                  )}
+                  {/* Direct Mobile Actions */}
+                  <div className="flex gap-2 w-full">
+                    <button onClick={() => handleEditClick(order)} className="flex-1 py-3 bg-gray-50 text-gray-400 rounded-xl border border-gray-100 flex items-center justify-center"><Edit3 size={16} /></button>
+                    <button onClick={() => setOrderToDelete(order.id)} className="flex-1 py-3 bg-gray-50 text-gray-400 rounded-xl border border-gray-100 flex items-center justify-center"><Trash2 size={16} /></button>
+                    <button onClick={() => handleDispatchPreview(order)} className="flex-[1.5] py-3 bg-white border-2 border-raden-green/20 text-raden-green rounded-xl font-black uppercase text-[9px] tracking-widest flex items-center justify-center gap-2"><Printer size={16} /> Invoice</button>
+                    {order.status !== 'Selesai' && (
+                      <button onClick={() => completeOrder(order.id)} className="flex-[2] py-3 bg-raden-green text-white rounded-xl font-black uppercase text-[9px] tracking-widest shadow-md">Tuntas</button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
