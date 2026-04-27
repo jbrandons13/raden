@@ -97,26 +97,23 @@ export default function OrdersPage() {
       setOrderItems([]); 
       setShowPrintModal(true);
       
-      // Use a slightly longer timeout for items
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout (10s)")), 10000)
-      );
-
-      const { data, error }: any = await Promise.race([
-        supabase.from('order_items').select('*, products(*)').eq('order_id', order.id),
-        timeoutPromise
-      ]);
+      const { data, error } = await supabase
+        .from('order_items')
+        .select('*, products(*)')
+        .eq('order_id', order.id);
       
       if (error) throw error;
       
       if (data && data.length > 0) {
-        // Sort manually to avoid heavy join
+        // Sort items by sort_order manually
         const sorted = [...data].sort((a, b) => (a.products?.sort_order || 0) - (b.products?.sort_order || 0));
         setOrderItems(sorted);
+      } else {
+        setOrderItems([]);
       }
     } catch (e: any) {
-      console.error("Preview Fetch Error:", e);
-      alert("Gagal memuat rincian: " + e.message);
+      console.error("Fetch Items Error:", e);
+      alert("Gagal memuat barang: " + e.message);
       setShowPrintModal(false);
     } finally {
       setIsFetchingItems(false);
