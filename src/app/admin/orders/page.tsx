@@ -92,18 +92,47 @@ export default function OrdersPage() {
   };
 
   const confirmDispatch = async () => {
+    if (!selectedOrder || orderItems.length === 0) return;
+    
     try {
       setLoading(true);
-      for (const item of orderItems) {
-        const { data: prod } = await supabase.from('products').select('current_stock').eq('id', item.product_id).single();
+      
+      // OPTIMIZED: Update all stocks in parallel for speed
+      await Promise.all(orderItems.map(async (item) => {
+        const { data: prod, error: fetchError } = await supabase
+          .from('products')
+          .select('current_stock')
+          .eq('id', item.product_id)
+          .single();
+        
+        if (fetchError) throw new Error(`Gagal mengambil stok ${item.products?.name}`);
+        
         const newStock = (prod?.current_stock || 0) - item.qty;
-        await supabase.from('products').update({ current_stock: Math.max(0, newStock) }).eq('id', item.product_id);
-      }
-      await supabase.from('orders').update({ status: 'Siap Kirim' }).eq('id', selectedOrder.id);
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ current_stock: Math.max(0, newStock) })
+          .eq('id', item.product_id);
+          
+        if (updateError) throw new Error(`Gagal update stok ${item.products?.name}`);
+      }));
+
+      // Update Order Status
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({ status: 'Siap Kirim' })
+        .eq('id', selectedOrder.id);
+        
+      if (orderError) throw orderError;
+
       setShowPrintModal(false);
-      fetchData();
-    } catch (e: any) { alert(e.message); }
-    finally { setLoading(false); }
+      await fetchData();
+      alert("Pesanan berhasil dikonfirmasi & Stok diperbarui! ✨");
+    } catch (e: any) { 
+      console.error(e);
+      alert("Gagal Konfirmasi: " + e.message); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const completeOrder = async (orderId: string) => {
@@ -643,9 +672,19 @@ export default function OrdersPage() {
                 {selectedOrder?.status === 'Draft' && (
                   <button 
                     onClick={confirmDispatch} 
-                    className="flex-[1.5] py-5 bg-raden-green text-white rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-2xl shadow-raden-green/30 hover:scale-[1.02] active:scale-95 transition-all"
+                    disabled={loading}
+                    className={`flex-[1.5] py-5 text-white rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-2xl transition-all flex items-center justify-center gap-3 ${
+                      loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-raden-green shadow-raden-green/30 hover:scale-[1.02] active:scale-95'
+                    }`}
                   >
-                    Konfirmasi & Update Stok
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Konfirmasi & Update Stok'
+                    )}
                   </button>
                 )}
               </div>
