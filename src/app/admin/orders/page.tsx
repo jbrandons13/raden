@@ -670,29 +670,17 @@ export default function OrdersPage() {
               {/* Action Floating Buttons */}
               <div className="mt-4 flex gap-4 shrink-0 px-4 print:hidden">
                 <button 
+                  onClick={() => setShowPrintModal(false)}
+                  className="flex-1 py-5 bg-gray-50 text-gray-400 rounded-[1.5rem] font-bold uppercase text-xs tracking-widest hover:bg-gray-100 transition-all"
+                >
+                  Kembali
+                </button>
+                <button 
                   onClick={() => window.print()} 
-                  className="flex-1 py-5 bg-white border-2 border-raden-green text-raden-green rounded-[1.5rem] font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 hover:bg-raden-green hover:text-white transition-all shadow-xl"
+                  className="flex-[2] py-5 bg-raden-green text-white rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-2xl shadow-raden-green/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
                 >
                   <Printer size={20} /> Cetak Invoice (A4)
                 </button>
-                {selectedOrder?.status === 'Draft' && (
-                  <button 
-                    onClick={confirmDispatch} 
-                    disabled={loading}
-                    className={`flex-[1.5] py-5 text-white rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-2xl transition-all flex items-center justify-center gap-3 ${
-                      loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-raden-green shadow-raden-green/30 hover:scale-[1.02] active:scale-95'
-                    }`}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      'Konfirmasi & Update Stok'
-                    )}
-                  </button>
-                )}
               </div>
             </motion.div>
           </div>
