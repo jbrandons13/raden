@@ -268,7 +268,7 @@ export default function OrdersPage() {
   const filteredOrders = orders.filter(o => activeTab === 'active' ? o.status !== 'Selesai' : o.status === 'Selesai');
 
   return (
-    <>
+    <div className="relative min-h-screen">
       <div className="space-y-6 print:hidden">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -778,6 +778,6 @@ export default function OrdersPage() {
           </div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 }
