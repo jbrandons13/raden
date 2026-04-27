@@ -778,7 +778,6 @@ export default function OrdersPage() {
           </div>
         )}
       </AnimatePresence>
-
-    </div>
+    </>
   );
 }
