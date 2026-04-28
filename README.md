@@ -45,9 +45,17 @@ Visual stock management with real-time status indicators.
 Efficient scheduling for daily bakehouse targets.
 ![Calendar Page](./public/screenshots/calendar.png)
 
-### 📝 Kitchen Operations
+### 👨‍🍳 Kitchen Operations
 Simplified task management for the production team.
 ![Staff Interface](./public/screenshots/staff-interface.png)
+
+### 🗓️ Staff & Shift Management
+Comprehensive 30-day shift matrix and daily staff scheduling.
+![Staff Shifts](./public/screenshots/staff-shifts.png)
+
+### 📅 Daily Jobdesk Calendar
+Visual task assignment for specific production goals.
+![Daily Schedule](./public/screenshots/daily-schedule.png)
 
 ---
 
