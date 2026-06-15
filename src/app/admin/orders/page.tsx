@@ -18,6 +18,8 @@ export default function OrdersPage() {
   const [reservedStock, setReservedStock] = useState<Record<string, number>>({});
   const [posSections, setPosSections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordersLimit, setOrdersLimit] = useState(50);
+  const [ordersTotalCount, setOrdersTotalCount] = useState(0);
 
   const [newOrder, setNewOrder] = useState({
     customerId: '',
@@ -31,8 +33,6 @@ export default function OrdersPage() {
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<{id: string, name: string} | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
-  const [isAddingCustomer, setIsAddingCustomer] = useState(false);
-  const [newCustomerForm, setNewCustomerForm] = useState({ name: '', phone: '' });
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [orderToComplete, setOrderToComplete] = useState<string | null>(null);
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
@@ -48,12 +48,13 @@ export default function OrdersPage() {
       );
 
       // Eager load everything: orders + items + products
-      const [ordsRes, prodsRes, custsRes, posSectionsRes]: any = await Promise.race([
+      const [ordsRes, prodsRes, custsRes, posSectionsRes, countRes]: any = await Promise.race([
         Promise.all([
-          supabase.from('orders').select('*, customers(name), order_items(*, products(*))').order('created_at', { ascending: false }),
+          supabase.from('orders').select('*, customers(name), order_items(*, products(*))').order('created_at', { ascending: false }).limit(ordersLimit),
           supabase.from('products').select('*').order('sort_order', { ascending: true }),
           supabase.from('customers').select('*').order('name'),
-          supabase.from('pos_sections').select('*, items:pos_section_items(*, products(*))').order('sort_order')
+          supabase.from('pos_sections').select('*, items:pos_section_items(*, products(*))').order('sort_order'),
+          supabase.from('orders').select('*', { count: 'exact', head: true })
         ]),
         timeoutPromise
       ]);
@@ -62,6 +63,7 @@ export default function OrdersPage() {
       if (prodsRes.data) setProducts(prodsRes.data);
       if (custsRes.data) setCustomers(custsRes.data);
       if (posSectionsRes.data) setPosSections(posSectionsRes.data);
+      setOrdersTotalCount(countRes?.count || 0);
 
       const draftOrderIds = ordsRes.data?.filter((o: any) => o.status === 'Draft').map((o: any) => o.id) || [];
       if (draftOrderIds.length > 0) {
@@ -90,7 +92,7 @@ export default function OrdersPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [ordersLimit]);
 
   const handleDispatchPreview = (order: any) => {
     if (!order) return;
@@ -282,25 +284,12 @@ export default function OrdersPage() {
       
       setNewOrder({ customerId: '', customerName: '', mode: 'partner', date: new Date().toISOString().split('T')[0], items: {}, variants: {} });
       setCustomerSearch('');
-      setIsAddingCustomer(false);
       setIsEditing(false);
       setEditingOrderId(null);
       setShowAddModal(false);
       await fetchData();
     } catch (e: any) { alert(e.message); }
     finally { setLoading(false); }
-  };
-
-  const handleAddCustomer = async () => {
-    if (!newCustomerForm.name) return;
-    try {
-      const { data, error } = await supabase.from('customers').insert([newCustomerForm]).select().single();
-      if (error) throw error;
-      setNewCustomerForm({ name: '', phone: '' });
-      setIsAddingCustomer(false);
-      setNewOrder({ ...newOrder, customerId: data.id });
-      await fetchData();
-    } catch (e: any) { alert(e.message); }
   };
 
   const handleDeleteCustomer = async () => {
@@ -426,13 +415,21 @@ export default function OrdersPage() {
           ))}
           {filteredOrders.length === 0 && !loading && <div className="p-10 text-center text-gray-400 font-bold italic text-sm">Belum ada data pesanan.</div>}
         </div>
+
+        {orders.length < ordersTotalCount && (
+          <div className="p-4 border-t border-gray-50 text-center">
+            <button onClick={() => setOrdersLimit(v => v + 50)} className="px-6 py-3 bg-gray-50 text-raden-green rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors">
+              Muat lebih banyak ({orders.length} / {ordersTotalCount})
+            </button>
+          </div>
+        )}
         </div>
       </div>
 
       <AnimatePresence>
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setShowAddModal(false); setIsEditing(false); setEditingOrderId(null); setNewOrder({customerId: '', customerName: '', mode: 'partner', date: new Date().toISOString().split('T')[0], items: {}, variants: {}}); setCustomerSearch(''); setIsAddingCustomer(false); }} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setShowAddModal(false); setIsEditing(false); setEditingOrderId(null); setNewOrder({customerId: '', customerName: '', mode: 'partner', date: new Date().toISOString().split('T')[0], items: {}, variants: {}}); setCustomerSearch(''); }} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
             
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white rounded-[2.5rem] p-4 sm:p-6 w-full max-w-[98vw] h-[96vh] shadow-2xl flex flex-col overflow-hidden">
               {/* Minimalist Header */}
@@ -442,7 +439,7 @@ export default function OrdersPage() {
                   <div className="h-4 w-[1px] bg-gray-200 hidden sm:block" />
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] hidden sm:block">POS Dashboard</p>
                 </div>
-                <button onClick={() => { setShowAddModal(false); setIsEditing(false); setEditingOrderId(null); setNewOrder({customerId: '', customerName: '', mode: 'partner', date: new Date().toISOString().split('T')[0], items: {}, variants: {}}); setCustomerSearch(''); setIsAddingCustomer(false); }} className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-400"><X /></button>
+                <button onClick={() => { setShowAddModal(false); setIsEditing(false); setEditingOrderId(null); setNewOrder({customerId: '', customerName: '', mode: 'partner', date: new Date().toISOString().split('T')[0], items: {}, variants: {}}); setCustomerSearch(''); }} className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-400"><X /></button>
               </div>
 
               {/* Compact Selection Bar */}
@@ -644,7 +641,7 @@ export default function OrdersPage() {
                   <p className="text-2xl font-black text-raden-gold tracking-tighter leading-none">NT$ {calculateTotal().toLocaleString('zh-TW')}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => { setShowAddModal(false); setIsEditing(false); setEditingOrderId(null); setNewOrder({customerId: '', customerName: '', mode: 'partner', date: new Date().toISOString().split('T')[0], items: {}, variants: {}}); setCustomerSearch(''); setIsAddingCustomer(false); }} className="px-6 py-3 bg-gray-100 text-gray-400 rounded-xl font-bold uppercase text-[9px]">Batal</button>
+                  <button onClick={() => { setShowAddModal(false); setIsEditing(false); setEditingOrderId(null); setNewOrder({customerId: '', customerName: '', mode: 'partner', date: new Date().toISOString().split('T')[0], items: {}, variants: {}}); setCustomerSearch(''); }} className="px-6 py-3 bg-gray-100 text-gray-400 rounded-xl font-bold uppercase text-[9px]">Batal</button>
                   <button onClick={handleSaveOrder} className="px-10 py-3 bg-raden-gold text-white rounded-xl font-black uppercase text-[9px] shadow-lg shadow-raden-gold/20">
                     {isEditing ? 'Simpan' : 'Selesaikan'}
                   </button>

@@ -1,154 +1,231 @@
--- Enable RLS
--- (Note: For MVP with a fixed 4-digit PIN, we can keep it simple, but schema should be robust)
+-- =============================================================================
+-- RADEN ERP — Consolidated database schema (synced 2026-06-15)
+-- Generated to match the LIVE Supabase DB (introspected via scripts/dump-schema.mjs).
+--
+-- This file documents the TABLE STRUCTURE. RLS policies, the `user_role()` &
+-- `submit_task_result()` functions, and performance indexes live in
+-- `supabase/migrations/` (run those after creating tables to reproduce the DB).
+-- =============================================================================
 
--- Customers Table
-CREATE TABLE customers (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  address TEXT,
-  phone TEXT,
-  total_orders INTEGER DEFAULT 0,
-  total_revenue NUMERIC DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── Catalog ──────────────────────────────────────────────────────────────────
+
+-- Sellable products (is_hot_kitchen=false) AND internal Hot Kitchen prep (is_hot_kitchen=true).
+create table if not exists products (
+  id              uuid primary key default gen_random_uuid(),
+  name            text not null,
+  category        text,
+  cat_order       integer default 0,
+  initial_stock   integer default 0,
+  current_stock   integer default 0,
+  price           numeric default 0,          -- retail / eceran (Online & own-store)
+  price_agent     numeric default 0,          -- Agent channel price
+  price_branch    numeric default 0,          -- Branch channel price
+  unit            text default 'Pcs',
+  sort_order      integer default 0,
+  yield_per_batch integer default 0,          -- pcs per 1 adonan
+  weekly_target   integer default 0,          -- pcs needed per week (drives jobdesk recs)
+  tracks_stock    boolean not null default true,  -- false = fresh / made-to-order (no stock)
+  is_hot_kitchen  boolean default false,       -- true = internal prep, not sold
+  options         jsonb not null default '[]'::jsonb,  -- optional isian/variants (price-neutral)
+  notes           text,
+  weekly_plan     text,                        -- free-text plan (Hot Kitchen items)
+  image_url       text,
+  created_at      timestamptz default now()
 );
 
--- Products Table (Barang Jadi)
-CREATE TABLE products (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  category TEXT,
-  initial_stock INTEGER DEFAULT 0,
-  current_stock INTEGER DEFAULT 0,
-  image_url TEXT,
-  sort_order INTEGER DEFAULT 0,
-  yield_per_batch INTEGER DEFAULT 0,
-  weekly_target INTEGER DEFAULT 0,
-  is_hot_kitchen BOOLEAN DEFAULT FALSE,
-  notes TEXT,
-  weekly_plan TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+create table if not exists product_categories (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  created_at  timestamptz default now()
 );
 
--- Materials Table (Bahan Baku)
-CREATE TABLE materials (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  category TEXT, -- For custom tabs
-  qty NUMERIC DEFAULT 0,
-  unit TEXT,
-  weekly_target NUMERIC DEFAULT 0,
-  notes TEXT, -- For purchase recommendations
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+create table if not exists material_categories (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  created_at  timestamptz default now()
 );
 
--- Staff Table
-CREATE TABLE staff (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  position TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- Raw materials / bahan baku (stock checked manually).
+create table if not exists materials (
+  id            uuid primary key default gen_random_uuid(),
+  name          text not null,
+  category      text,
+  qty           numeric default 0,
+  unit          text,
+  weekly_target numeric default 0,
+  notes         text,
+  created_at    timestamptz default now()
 );
 
--- Schedules Table
-CREATE TABLE schedules (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  staff_id UUID REFERENCES staff(id),
-  date DATE NOT NULL,
-  shift_code TEXT, -- EM, EMS, M, A, AS
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── People & auth ────────────────────────────────────────────────────────────
+
+create table if not exists staff (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  position    text,
+  created_at  timestamptz default now()
 );
 
--- Orders Table
-CREATE TABLE orders (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  customer_id UUID REFERENCES customers(id),
-  order_date DATE DEFAULT CURRENT_DATE,
-  status TEXT DEFAULT 'Draft', -- Draft, Siap Kirim/Ambil, Selesai
-  total_revenue NUMERIC DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- Login accounts mapped to a role (admin/staff). See auth_and_rls migration.
+create table if not exists profiles (
+  id          uuid primary key references auth.users(id) on delete cascade,
+  username    text unique,
+  full_name   text,
+  role        text not null default 'staff' check (role in ('admin','staff')),
+  staff_id    uuid references staff(id) on delete set null,
+  created_at  timestamptz default now()
 );
 
--- Order Items
-CREATE TABLE order_items (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
-  product_id UUID REFERENCES products(id),
-  qty INTEGER NOT NULL
+-- Staff work shifts (the active one; "schedules" below is legacy/unused).
+create table if not exists staff_shifts (
+  id          uuid primary key default gen_random_uuid(),
+  staff_id    uuid references staff(id) on delete cascade,
+  shift_date  date not null,
+  shift_type  text,
+  created_at  timestamptz default now()
 );
 
--- Production Tasks (Jobdesk Harian)
-CREATE TABLE tasks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  date DATE DEFAULT CURRENT_DATE,
-  product_id UUID REFERENCES products(id),
-  staff_id UUID REFERENCES staff(id),
-  batch_qty NUMERIC DEFAULT 0,
-  expected_qty INTEGER,
-  actual_qty INTEGER,
-  notes TEXT,
-  status TEXT DEFAULT 'Pending', -- Pending, Completed
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+create table if not exists schedules (  -- legacy, superseded by staff_shifts
+  id          uuid primary key default gen_random_uuid(),
+  staff_id    uuid references staff(id),
+  date        date,
+  shift_code  text,
+  created_at  timestamptz default now()
 );
 
--- Checklists Definitions
-CREATE TABLE checklist_templates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  task_name TEXT NOT NULL,
-  category TEXT, -- Pastry, General, Kitchen
-  is_mandatory_photo BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── Distribution partners & sales ────────────────────────────────────────────
+
+-- Branch / Agent partners (Online individuals are recorded ad-hoc on the order).
+create table if not exists customers (
+  id            uuid primary key default gen_random_uuid(),
+  name          text not null,
+  type          text not null default 'branch' check (type in ('branch','agent')),
+  address       text,
+  phone         text,
+  total_orders  integer default 0,
+  total_revenue numeric default 0,
+  created_at    timestamptz default now()
 );
 
--- Daily Checklist History
-CREATE TABLE checklist_history (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  date DATE DEFAULT CURRENT_DATE,
-  staff_id UUID REFERENCES staff(id),
-  template_id UUID REFERENCES checklist_templates(id),
-  is_completed BOOLEAN DEFAULT FALSE,
-  photo_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+create table if not exists orders (
+  id             uuid primary key default gen_random_uuid(),
+  customer_id    uuid references customers(id),       -- null for online/eceran
+  customer_name  text,                                -- buyer name for online/eceran
+  channel        text,                                -- 'agent' | 'branch' | 'online' (price tier)
+  order_date     date default current_date,
+  status         text default 'Draft',                -- Draft | Siap Kirim | Siap Ambil | Selesai
+  total_revenue  numeric default 0,
+  created_at     timestamptz default now()
 );
 
--- Stock Check History (Raw Materials)
-CREATE TABLE stock_checks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  date DATE DEFAULT CURRENT_DATE,
-  staff_name TEXT, -- Added as per user request
-  material_id UUID REFERENCES materials(id),
-  actual_qty NUMERIC,
-  how_much_to_buy TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+create table if not exists order_items (
+  id          uuid primary key default gen_random_uuid(),
+  order_id    uuid references orders(id) on delete cascade,
+  product_id  uuid references products(id),
+  qty         integer not null default 0,
+  variant     text                                    -- optional isian (null = bebas)
 );
 
--- Production Estimate Master Data
-CREATE TABLE production_estimates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  product_id UUID REFERENCES products(id),
-  batch_name TEXT,
-  target_yield INTEGER,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- POS layout for the order screen (curated sellable products grouped into sections).
+create table if not exists pos_sections (
+  id          uuid primary key default gen_random_uuid(),
+  title       text not null,
+  sort_order  integer default 0,
+  created_at  timestamptz default now()
 );
 
--- Stock Change Logs
-CREATE TABLE stock_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  item_type TEXT, -- Product, Material
-  item_id UUID,
-  change_qty NUMERIC,
-  reason TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+create table if not exists pos_section_items (
+  id          uuid primary key default gen_random_uuid(),
+  section_id  uuid references pos_sections(id) on delete cascade,
+  product_id  uuid references products(id) on delete cascade,
+  sort_order  integer default 0,
+  created_at  timestamptz default now()
 );
 
--- Transactions Table (General Ledger / Buku Kas)
-CREATE TABLE transactions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  date DATE DEFAULT CURRENT_DATE,
-  type TEXT NOT NULL, -- 'IN' for Pemasukan, 'OUT' for Pengeluaran
-  category TEXT NOT NULL,
-  amount NUMERIC NOT NULL DEFAULT 0,
-  description TEXT,
-  payment_method TEXT,
-  receipt_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ── Production ───────────────────────────────────────────────────────────────
+
+-- Daily jobdesk tasks. Stock is added on completion via submit_task_result()
+-- (skips Hot Kitchen & Fresh products).
+create table if not exists tasks (
+  id            uuid primary key default gen_random_uuid(),
+  date          date default current_date,
+  product_id    uuid references products(id),
+  staff_id      uuid references staff(id),            -- primary assignee; multi-staff encoded in notes
+  batch_qty     text,                                 -- adonan count (text)
+  expected_qty  integer,
+  actual_qty    integer,
+  job_type      text default 'Pastry',                -- 'Pastry' | 'HotKitchen'
+  status        text default 'Pending',               -- Pending | Completed
+  notes         text,
+  completed_at  timestamptz,
+  created_at    timestamptz default now()
 );
+
+create table if not exists production_estimates (
+  id            uuid primary key default gen_random_uuid(),
+  product_id    uuid references products(id),
+  batch_name    text,
+  target_yield  integer,
+  created_at    timestamptz default now()
+);
+
+create table if not exists stock_logs (
+  id          uuid primary key default gen_random_uuid(),
+  item_type   text,                                   -- 'Product' | 'Material'
+  item_id     uuid,
+  change_qty  numeric,
+  reason      text,
+  created_at  timestamptz default now()
+);
+
+-- ── Daily ops: checklists & stock checks ─────────────────────────────────────
+
+create table if not exists checklist_templates (
+  id                  uuid primary key default gen_random_uuid(),
+  task_name           text not null,
+  category            text,                            -- Pastry | General | Kitchen
+  is_mandatory_photo  boolean default false,
+  created_at          timestamptz default now()
+);
+
+create table if not exists checklist_history (
+  id            uuid primary key default gen_random_uuid(),
+  date          date default current_date,
+  staff_id      uuid references staff(id),             -- legacy; new records use staff_name
+  staff_name    text,                                  -- who did it (from logged-in account)
+  template_id   uuid references checklist_templates(id),
+  is_completed  boolean default false,
+  photo_url     text,
+  created_at    timestamptz default now()
+);
+
+create table if not exists stock_checks (
+  id               uuid primary key default gen_random_uuid(),
+  date             date default current_date,
+  staff_name       text,                               -- who checked (from logged-in account)
+  material_id      uuid references materials(id),
+  actual_qty       numeric,
+  how_much_to_buy  text,
+  created_at       timestamptz default now()
+);
+
+-- ── Finance ──────────────────────────────────────────────────────────────────
+
+create table if not exists transactions (  -- Buku Kas (general ledger)
+  id              uuid primary key default gen_random_uuid(),
+  date            date default current_date,
+  type            text not null,                       -- 'IN' (pemasukan) | 'OUT' (pengeluaran)
+  category        text not null,
+  amount          numeric not null default 0,
+  description     text,
+  payment_method  text,
+  receipt_url     text,
+  created_at      timestamptz default now()
+);
+
+-- =============================================================================
+-- After creating tables, apply migrations in supabase/migrations/ for:
+--   • RLS + policies (admin = all; staff = read /staff data; transactions admin-only)
+--   • functions: user_role(), submit_task_result()
+--   • performance indexes
+-- =============================================================================

@@ -15,8 +15,6 @@ export default function StaffChecklistPage() {
   const { username } = useAuth();
   const [view, setView] = useState<'areas' | 'tasks'>('areas');
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
-  const [staffList, setStaffList] = useState<any[]>([]);
-  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   
   const [templates, setTemplates] = useState<any[]>([]);
   const [completedAreas, setCompletedAreas] = useState<string[]>([]); // Areas already submitted today
@@ -32,14 +30,11 @@ export default function StaffChecklistPage() {
       setLoading(true);
       const today = getLocalDate();
       
-      const [staffRes, historyRes] = await Promise.all([
-        supabase.from('staff').select('*').order('name'),
+      const [historyRes] = await Promise.all([
         supabase.from('checklist_history')
           .select('template_id, checklist_templates(category)')
           .eq('date', today)
       ]);
-
-      if (staffRes.data) setStaffList(staffRes.data);
       
       // Determine which categories are already present in DB for today
       if (historyRes.data) {
@@ -52,8 +47,6 @@ export default function StaffChecklistPage() {
         setCompletedAreas(Array.from(categories));
       }
 
-      const savedStaffId = localStorage.getItem('raden_staff_id');
-      if (savedStaffId) setSelectedStaffId(savedStaffId);
       
       setLoading(false);
     }

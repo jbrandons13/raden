@@ -14,10 +14,8 @@ export default function StaffStockCheckPage() {
   const [searchTerm, setSearchTerm] = useState('');
   
   const [formData, setFormData] = useState<any>({
-    staffId: '',
     items: {}
   });
-  const [staffList, setStaffList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -25,17 +23,12 @@ export default function StaffStockCheckPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [matRes, catRes, staffRes] = await Promise.all([
+        const [matRes, catRes] = await Promise.all([
           supabase.from('materials').select('*').order('name'),
-          supabase.from('material_categories').select('*').order('name'),
-          supabase.from('staff').select('*').order('name')
+          supabase.from('material_categories').select('*').order('name')
         ]);
         if (matRes.data) setMaterials(matRes.data);
         if (catRes.data) setCategories(catRes.data);
-        if (staffRes.data) setStaffList(staffRes.data);
-
-        const savedStaffId = localStorage.getItem('raden_staff_id');
-        if (savedStaffId) setFormData((prev: any) => ({ ...prev, staffId: savedStaffId }));
       } catch (e) {
         console.error(e);
       } finally {

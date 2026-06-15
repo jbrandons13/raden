@@ -11,6 +11,9 @@ import { TransactionRow, TransactionCard } from './_components/TransactionItem';
 export default function FinancePage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [visibleLimit, setVisibleLimit] = useState(50);
+  const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState({ income: 0, expense: 0, balance: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'IN' | 'OUT'>('ALL');
   
@@ -35,20 +38,25 @@ export default function FinancePage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .order('date', { ascending: false })
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      if (data) setTransactions(data);
+      // List is paginated; totals come from a light aggregate over ALL rows so they stay correct.
+      const [listRes, statsRes] = await Promise.all([
+        supabase.from('transactions').select('*').order('date', { ascending: false }).order('created_at', { ascending: false }).limit(visibleLimit),
+        supabase.from('transactions').select('type, amount', { count: 'exact' })
+      ]);
+      if (listRes.error) throw listRes.error;
+      if (listRes.data) setTransactions(listRes.data);
+      if (statsRes.data) {
+        const income = statsRes.data.filter((t: any) => t.type === 'IN').reduce((a: number, t: any) => a + Number(t.amount), 0);
+        const expense = statsRes.data.filter((t: any) => t.type === 'OUT').reduce((a: number, t: any) => a + Number(t.amount), 0);
+        setStats({ income, expense, balance: income - expense });
+      }
+      setTotalCount(statsRes.count || 0);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [visibleLimit]);
 
   useEffect(() => {
     fetchData();
@@ -67,15 +75,6 @@ export default function FinancePage() {
     });
   }, [transactions, searchTerm, filterType]);
 
-  const stats = useMemo(() => {
-    const income = transactions.filter(t => t.type === 'IN').reduce((acc, t) => acc + Number(t.amount), 0);
-    const expense = transactions.filter(t => t.type === 'OUT').reduce((acc, t) => acc + Number(t.amount), 0);
-    return {
-      income,
-      expense,
-      balance: income - expense
-    };
-  }, [transactions]);
 
   const handleSaveTransaction = async () => {
     if (newTransaction.amount <= 0) return alert("Nominal harus lebih dari 0!");
@@ -273,6 +272,14 @@ export default function FinancePage() {
               <TrendingUp size={32} />
             </div>
             <p className="italic text-gray-300 font-bold uppercase tracking-widest text-[10px]">Data tidak ditemukan</p>
+          </div>
+        )}
+
+        {transactions.length < totalCount && (
+          <div className="p-4 border-t border-gray-50 text-center">
+            <button onClick={() => setVisibleLimit(v => v + 50)} className="px-6 py-3 bg-gray-50 text-raden-green rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors">
+              Muat lebih banyak ({transactions.length} / {totalCount})
+            </button>
           </div>
         )}
       </div>
