@@ -219,7 +219,7 @@ export default function CalendarSchedulePage() {
       batch_qty: p.batches.toString(),
       job_type: 'Pastry',
       expected_qty: Math.floor(p.batches * p.yield_per_batch),
-      notes: 'Auto-recommended',
+      notes: 'Dari pengingat',
       assigned_staff: [],
       isNew: true,
       status: 'Pending'
@@ -239,7 +239,7 @@ export default function CalendarSchedulePage() {
         batch_qty: r.batches.toString(),
         job_type: 'Pastry',
         expected_qty: Math.floor(r.batches * r.yield_per_batch),
-        notes: 'Auto-recommended (Bulk)',
+        notes: 'Dari pengingat',
         assigned_staff: [],
         isNew: true,
         status: 'Pending'
@@ -254,8 +254,8 @@ export default function CalendarSchedulePage() {
     <div className="space-y-6 relative pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Jobdesk Calendar</h1>
-          <p className="text-gray-400 text-xs sm:text-sm font-medium">Assign daily production target to staff.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Jadwal Harian</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Atur tugas produksi harian untuk staff.</p>
         </div>
         <div className="bg-white px-4 sm:px-6 py-3 rounded-2xl sm:rounded-full flex items-center justify-between sm:justify-start gap-4 shadow-sm border border-gray-100 w-full sm:w-auto">
           <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="text-gray-400 hover:text-raden-green p-1"><ChevronLeft size={20}/></button>
@@ -313,7 +313,7 @@ export default function CalendarSchedulePage() {
                  <div>
                     <h3 className="text-xl sm:text-2xl font-black text-raden-green tracking-tight flex items-center gap-2 sm:gap-3">
                        <CalendarIcon size={20} className="text-raden-gold sm:w-6 sm:h-6" />
-                       <span className="truncate">Jobdesk Assignment</span>
+                       <span className="truncate">Atur Tugas Harian</span>
                     </h3>
                     <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
                        {new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}
@@ -340,7 +340,7 @@ export default function CalendarSchedulePage() {
                                 <Users size={20} />
                              </div>
                              <div className="text-left">
-                                <h4 className="text-[11px] font-black text-raden-green uppercase tracking-[0.2em]">Rekomendasi Produksi Hari Ini</h4>
+                                <h4 className="text-[11px] font-black text-raden-green uppercase tracking-[0.2em]">Pengingat Produksi Hari Ini</h4>
                                 <p className="text-[10px] font-bold text-gray-500">{needCount} Produk perlu dibuat, <span className="text-red-500">{criticalCount} Stok kritis</span></p>
                              </div>
                           </div>
@@ -368,7 +368,7 @@ export default function CalendarSchedulePage() {
                             >
                               <div className="p-6">
                                 <div className="flex justify-between items-center mb-4">
-                                   <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest italic">*Berdasarkan target mingguan & stok saat ini</p>
+                                   <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest italic">*Pengingat berdasarkan stok sekarang — sesuaikan dgn pola produksimu</p>
                                    <button 
                                      onClick={addAllNecessaryRecs}
                                      className="px-4 py-2 bg-raden-green text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-md hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
@@ -390,7 +390,10 @@ export default function CalendarSchedulePage() {
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
-                                      {recs.map(r => {
+                                      {recs.filter(r => r.status !== 'Hijau').length === 0 && (
+                                        <tr><td colSpan={6} className="py-8 text-center text-gray-300 font-bold italic text-xs">Stok aman 👍 — nggak ada yang perlu diproduksi hari ini.</td></tr>
+                                      )}
+                                      {recs.filter(r => r.status !== 'Hijau').map(r => {
                                         const isAlreadyAdded = modalTasks.some(mt => mt.product_id === r.id);
                                         const statusColor = r.status === 'Merah' ? 'bg-red-500' : r.status === 'Kuning' ? 'bg-amber-400' : 'bg-green-500';
                                         
@@ -479,7 +482,7 @@ export default function CalendarSchedulePage() {
                                      </div>
                                    ) : (
                                      <div className="flex items-center justify-center bg-gray-100/50 rounded-2xl border border-dashed">
-                                        <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Hot Kitchen: No Qty</span>
+                                        <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Hot Kitchen: tanpa jumlah</span>
                                      </div>
                                    )}
                                 </div>
@@ -563,10 +566,10 @@ export default function CalendarSchedulePage() {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <button onClick={() => handleAddTask('Pastry')} className="py-4 bg-raden-gold/10 text-raden-gold border border-raden-gold/30 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-raden-gold hover:text-white transition-all flex justify-center items-center gap-2 shadow-sm">
-                    <Plus size={16} /> Tambah Pastry Job
+                    <Plus size={16} /> Tambah Tugas Pastry
                   </button>
                   <button onClick={() => handleAddTask('HotKitchen')} className="py-4 bg-raden-green/10 text-raden-green border border-raden-green/30 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-raden-green hover:text-white transition-all flex justify-center items-center gap-2 shadow-sm">
-                    <Plus size={16} /> Tambah Kitchen Job
+                    <Plus size={16} /> Tambah Tugas Hot Kitchen
                   </button>
                 </div>
               </div>
