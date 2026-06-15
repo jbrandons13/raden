@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Save, Users, Calendar as CalendarIcon, X, Loader2, User as UserIcon, Check, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Save, Users, Calendar as CalendarIcon, X, Loader2, User as UserIcon, Check, ChevronLeft, ChevronRight, ChevronDown, Briefcase } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 // Multi-Staff Serialization Helper
@@ -14,6 +14,7 @@ export default function CalendarSchedulePage() {
   const [products, setProducts] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -33,17 +34,19 @@ export default function CalendarSchedulePage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [prodRes, stfRes, tskRes, shfRes] = await Promise.all([
+      const [prodRes, stfRes, tskRes, shfRes, tplRes] = await Promise.all([
         supabase.from('products').select('*').order('name'),
         supabase.from('staff').select('*').order('name'),
         supabase.from('tasks').select('*'),
-        supabase.from('staff_shifts').select('*')
+        supabase.from('staff_shifts').select('*'),
+        supabase.from('jobdesk_templates').select('*')  // safe if table not yet created (error stays in .error)
       ]);
 
       if (prodRes.data) setProducts(prodRes.data);
       if (stfRes.data) setStaff(stfRes.data);
       if (tskRes.data) setTasks(tskRes.data);
       if (shfRes.data) setShifts(shfRes.data);
+      if (tplRes.data) setTemplates(tplRes.data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -250,6 +253,32 @@ export default function CalendarSchedulePage() {
     }
   };
 
+  const applyTemplate = () => {
+    const dow = selectedDate ? new Date(selectedDate).getDay() : -1;
+    const items = templates.filter(t => t.day_of_week === dow);
+    if (items.length === 0) return;
+    const existingIds = new Set(modalTasks.map(t => t.product_id));
+    const newTasks = items
+      .filter(t => t.product_id && !existingIds.has(t.product_id))
+      .map(t => {
+        const p = products.find(prod => prod.id === t.product_id);
+        const batches = t.batch_qty || 0;
+        return {
+          id: 'tpl-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+          date: selectedDate,
+          product_id: t.product_id,
+          batch_qty: t.batch_qty != null ? String(t.batch_qty) : '',
+          job_type: t.job_type || 'Pastry',
+          expected_qty: p ? Math.floor(batches * (p.yield_per_batch || 0)) : 0,
+          notes: 'Dari template',
+          assigned_staff: [],
+          isNew: true,
+          status: 'Pending',
+        };
+      });
+    if (newTasks.length > 0) setModalTasks([...modalTasks, ...newTasks]);
+  };
+
   return (
     <div className="space-y-6 relative pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -433,6 +462,12 @@ export default function CalendarSchedulePage() {
                    )
                 })()}
               </div>
+
+              {selectedDate && templates.filter(t => t.day_of_week === new Date(selectedDate).getDay()).length > 0 && (
+                <button onClick={applyTemplate} className="mb-6 shrink-0 w-full flex items-center justify-center gap-2 bg-raden-green/5 text-raden-green border border-raden-green/30 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-raden-green hover:text-white transition-all active:scale-[0.99]">
+                  <Briefcase size={16} /> Pakai Template {['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date(selectedDate).getDay()]}
+                </button>
+              )}
 
               <div className="space-y-6 flex-1">
                 {modalTasks.length === 0 ? (

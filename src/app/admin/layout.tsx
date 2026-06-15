@@ -60,6 +60,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       title: 'Operasional',
       items: [
         { name: 'Jadwal Harian', href: '/admin/schedules/daily', icon: Calendar },
+        { name: 'Template Jobdesk', href: '/admin/jobdesk-templates', icon: Briefcase },
         { name: 'Staff & Shift', href: '/admin/staff', icon: Users },
         { name: 'Akun Staff', href: '/admin/staff-accounts', icon: KeyRound },
         { name: 'Checklist', href: '/admin/checklist', icon: CheckSquare },
