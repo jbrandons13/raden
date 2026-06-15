@@ -39,35 +39,39 @@
 
 ## 📸 Interface Preview
 
-> Screenshots live in `public/screenshots/`. Replace the PNGs (same filenames) to refresh.
+> Generated from the live app with `npm run screenshots` (see `scripts/screenshots.mjs`). Files live in `public/screenshots/`.
 
 ### 🔑 Login
-Per-user access (username + PIN) for Admin and Staff.
-![Login](./public/screenshots/landing.png)
+Per-user access — username + PIN, no role picker.
+![Login](./public/screenshots/login.png)
 
-### 📊 Admin Dashboard
-Active orders and production needs at a glance.
+### 👔 Administrator
+
+**Dashboard** — active orders and what needs producing today (no revenue noise).
 ![Admin Dashboard](./public/screenshots/admin-dashboard.png)
 
-### 🍞 Products & Stock
-Per-channel pricing, Distok/Fresh, and variants.
-![Products Page](./public/screenshots/products.png)
+**Products & Stock** — per-channel pricing (retail / agent / branch), Distok vs Fresh, and optional fillings.
+![Products](./public/screenshots/products.png)
 
-### 📅 Production Calendar
-Daily jobdesk assignment with restock recommendations.
-![Calendar Page](./public/screenshots/calendar.png)
+**Orders** — channel-aware pricing for branches, agents, and walk-ins.
+![Orders](./public/screenshots/orders.png)
 
-### 👨‍🍳 Kitchen Operations
-Simple task reporting for the production team.
-![Staff Interface](./public/screenshots/staff-interface.png)
+**Branch & Agent** — the distribution partner network.
+![Branch & Agent](./public/screenshots/branch-agent.png)
 
-### 🗓️ Staff & Shift Management
-30-day shift matrix and daily staffing.
-![Staff Shifts](./public/screenshots/staff-shifts.png)
+**Buku Kas** — income/expense ledger with running balance.
+![Buku Kas](./public/screenshots/expenses.png)
 
-### 🗒️ Daily Jobdesk
-Visual task assignment per production goal.
-![Daily Schedule](./public/screenshots/daily-schedule.png)
+**Staff & Shift** — 30-day shift matrix.
+![Staff & Shift](./public/screenshots/staff-shifts.png)
+
+### 👨‍🍳 Staff (mobile)
+
+**Distribution Recap** — per-store delivery manifest by date.
+![Distribution Recap](./public/screenshots/distribution.png)
+
+**Material Stock Check** — daily raw-material count, auto-attributed to the logged-in account.
+![Stock Check](./public/screenshots/stock-check.png)
 
 ---
 
