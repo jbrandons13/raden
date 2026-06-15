@@ -45,7 +45,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     {
       title: 'Produksi',
       items: [
-        { name: 'Produk & Stok', href: '/admin/products', icon: Package },
+        { name: 'Produk', href: '/admin/products', icon: Package },
         { name: 'Hot Kitchen', href: '/admin/hot-kitchen', icon: Flame },
         { name: 'Bahan Baku', href: '/admin/materials', icon: ClipboardCheck },
       ]

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Edit3, Save, Plus } from 'lucide-react';
+import { X, Trash2, Edit3, Save, ShoppingCart, Check } from 'lucide-react';
 import { Material, MaterialCategory } from '@/types/raden';
 
 interface MaterialModalsProps {
@@ -60,38 +60,111 @@ export default function MaterialModals(props: MaterialModalsProps) {
 
   return (
     <AnimatePresence>
-      {/* Stock History Modal */}
+      {/* Stock Check Results — pick a date */}
       {showHistoryModal && (
         <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowHistoryModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-4xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
-             <div className="flex justify-between items-center mb-6"><div><h2 className="text-xl sm:text-2xl font-black text-raden-green uppercase tracking-tighter">Stock Log</h2></div><button onClick={() => setShowHistoryModal(false)} className="p-2 text-gray-400"><X /></button></div>
-             <div className="overflow-y-auto pr-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-               {Object.keys(groupedChecks).map(date => (
-                 <button key={date} onClick={() => setSelectedHistory({ date, items: groupedChecks[date] })} className="text-left bg-gray-50 hover:bg-raden-gold/5 p-5 rounded-[2rem] border transition-all flex justify-between items-center">
-                   <div><p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Date</p><p className="text-sm font-bold text-raden-green">{new Date(date).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}</p></div>
-                   <Plus size={16} className="text-raden-gold opacity-50" />
-                 </button>
-               ))}
-             </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* History Detail Modal */}
-      {selectedHistory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedHistory(null)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] p-6 sm:p-10 w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center mb-8 border-b pb-6"><div><h3 className="text-xl font-black text-raden-green tracking-tight">Log Detail</h3><p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{selectedHistory.date}</p></div><button onClick={() => setSelectedHistory(null)} className="p-2 bg-gray-50 rounded-full text-gray-400"><X size={20} /></button></div>
-            <div className="overflow-y-auto space-y-4">
-              {selectedHistory.items.map((item: any) => (
-                <div key={item.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-100"><p className="font-bold text-raden-green text-sm mb-2">{item.materials?.name}</p><div className="flex justify-between text-xs mt-2 border-t pt-2"><span className="font-bold text-gray-500">Sisa: {item.actual_qty} {item.materials?.unit}</span></div></div>
-              ))}
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-raden-green uppercase tracking-tighter">Hasil Cek Stok</h2>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Laporan dari staff — pilih tanggal buat lihat daftar belanjanya.</p>
+              </div>
+              <button onClick={() => setShowHistoryModal(false)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full"><X /></button>
+            </div>
+            <div className="overflow-y-auto pr-2 mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {Object.keys(groupedChecks).length === 0 && (
+                <p className="col-span-full py-16 text-center italic text-gray-300 font-bold uppercase tracking-widest text-[10px]">Belum ada laporan cek stok dari staff.</p>
+              )}
+              {Object.keys(groupedChecks).map(date => {
+                const items = groupedChecks[date] || [];
+                const buyCount = items.filter((it: any) => (it.how_much_to_buy || '').trim() !== '').length;
+                const who = Array.from(new Set(items.map((it: any) => it.staff_name).filter(Boolean))).join(', ');
+                return (
+                  <button key={date} onClick={() => setSelectedHistory({ date, items })} className="text-left bg-gray-50 hover:bg-raden-gold/5 p-5 rounded-[2rem] border border-gray-100 transition-all">
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Tanggal</p>
+                    <p className="text-sm font-black text-raden-green">{new Date(date).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}</p>
+                    <p className="text-[10px] font-bold text-gray-400 mt-0.5 truncate">{who || 'Staff'}</p>
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      {buyCount > 0 ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-raden-gold/15 text-raden-green font-black text-[10px] uppercase tracking-widest"><ShoppingCart size={12} /> {buyCount} perlu dibeli</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-50 text-green-600 font-black text-[10px] uppercase tracking-widest"><Check size={12} /> Stok aman</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </motion.div>
         </div>
       )}
+
+      {/* Stock Check Detail — shopping list */}
+      {selectedHistory && (() => {
+        const items = (selectedHistory.items || []) as any[];
+        const buy = items.filter((it) => (it.how_much_to_buy || '').trim() !== '');
+        const ok = items.filter((it) => (it.how_much_to_buy || '').trim() === '');
+        const who = Array.from(new Set(items.map((it) => it.staff_name).filter(Boolean))).join(', ');
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedHistory(null)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] p-6 sm:p-10 w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col">
+              <div className="flex justify-between items-start mb-6 border-b pb-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-raden-green tracking-tight uppercase">Hasil Cek Stok</h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">
+                    {new Date(selectedHistory.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })} · Oleh {who || 'Staff'}
+                  </p>
+                </div>
+                <button onClick={() => setSelectedHistory(null)} className="p-2 bg-gray-50 rounded-full text-gray-400 shrink-0"><X size={20} /></button>
+              </div>
+
+              <div className="overflow-y-auto space-y-6 pr-1">
+                <div>
+                  <h4 className="flex items-center gap-2 text-[11px] font-black text-raden-green uppercase tracking-widest mb-3">
+                    <ShoppingCart size={14} className="text-raden-gold" /> Perlu Dibeli ({buy.length})
+                  </h4>
+                  {buy.length === 0 ? (
+                    <div className="bg-green-50 border border-green-100 text-green-600 rounded-2xl p-4 text-xs font-bold flex items-center gap-2">
+                      <Check size={16} /> Semua stok aman — nggak ada yang perlu dibeli.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {buy.map((it) => (
+                        <div key={it.id} className="flex items-center justify-between gap-3 p-4 bg-raden-gold/10 border border-raden-gold/20 rounded-2xl">
+                          <div className="min-w-0">
+                            <p className="font-black text-raden-green text-sm truncate">{it.materials?.name}</p>
+                            <p className="text-[10px] font-bold text-gray-400">Sisa {it.actual_qty} {it.materials?.unit}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Beli</p>
+                            <p className="font-black text-raden-green text-sm">{it.how_much_to_buy}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {ok.length > 0 && (
+                  <div>
+                    <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Stok Aman ({ok.length})</h4>
+                    <div className="space-y-1.5">
+                      {ok.map((it) => (
+                        <div key={it.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl text-xs">
+                          <span className="font-bold text-gray-600 truncate">{it.materials?.name}</span>
+                          <span className="font-bold text-gray-400 shrink-0">{it.actual_qty} {it.materials?.unit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        );
+      })()}
 
       {/* Add Material Modal */}
       {showAddModal && (
