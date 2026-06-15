@@ -33,7 +33,7 @@ const SHOTS = [
   { file: 'orders', path: '/admin/orders' },
   { file: 'branch-agent', path: '/admin/customers' },
   { file: 'expenses', path: '/admin/expenses' },
-  { file: 'staff-shifts', path: '/admin/schedules' },
+  { file: 'staff-shifts', path: '/admin/staff' },
   { file: 'staff-jobdesk', path: '/staff' },
   { file: 'distribution', path: '/staff/orders' },
   { file: 'stock-check', path: '/staff/stock' },

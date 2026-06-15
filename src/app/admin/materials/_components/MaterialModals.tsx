@@ -62,7 +62,7 @@ export default function MaterialModals(props: MaterialModalsProps) {
     <AnimatePresence>
       {/* Stock Check Results — pick a date */}
       {showHistoryModal && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+        <div key="mat-history" className="fixed inset-0 z-40 flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowHistoryModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-4xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
             <div className="flex justify-between items-start mb-2">
@@ -107,7 +107,7 @@ export default function MaterialModals(props: MaterialModalsProps) {
         const ok = items.filter((it) => (it.how_much_to_buy || '').trim() === '');
         const who = Array.from(new Set(items.map((it) => it.staff_name).filter(Boolean))).join(', ');
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div key="mat-detail" className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedHistory(null)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] p-6 sm:p-10 w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col">
               <div className="flex justify-between items-start mb-6 border-b pb-6">
@@ -168,7 +168,7 @@ export default function MaterialModals(props: MaterialModalsProps) {
 
       {/* Add Material Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div key="mat-add" className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-6 sm:mb-8"><h2 className="text-xl sm:text-2xl font-black text-raden-green tracking-tighter uppercase">Tambah Bahan</h2><button onClick={() => setShowAddModal(false)} className="text-gray-400"><X size={24}/></button></div>
@@ -187,7 +187,7 @@ export default function MaterialModals(props: MaterialModalsProps) {
 
       {/* Edit Material Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div key="mat-edit" className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowEditModal(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-6 sm:mb-8"><h2 className="text-xl sm:text-2xl font-black text-raden-green tracking-tighter uppercase">Update</h2><button onClick={() => setShowEditModal(false)} className="text-gray-400"><X size={24}/></button></div>
@@ -205,7 +205,7 @@ export default function MaterialModals(props: MaterialModalsProps) {
 
       {/* Delete Material Confirmation */}
       {itemToDelete && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div key="mat-delete" className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setItemToDelete(null)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl text-center">
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={32} /></div>
@@ -218,7 +218,7 @@ export default function MaterialModals(props: MaterialModalsProps) {
 
       {/* Category Manager Modal */}
       {showCategoryManager && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div key="mat-category" className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCategoryManager(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh]">
             <div className="flex justify-between items-center mb-8 border-b pb-6"><div><h2 className="text-xl font-black text-raden-green uppercase tracking-tighter">Kelola Kategori</h2><p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bahan Baku</p></div><button onClick={() => { setShowCategoryManager(false); setNewCategoryName(''); }} className="p-2 hover:bg-gray-100 rounded-full text-gray-400"><X /></button></div>
