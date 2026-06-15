@@ -139,3 +139,16 @@ CREATE TABLE stock_logs (
   reason TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Transactions Table (General Ledger / Buku Kas)
+CREATE TABLE transactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  date DATE DEFAULT CURRENT_DATE,
+  type TEXT NOT NULL, -- 'IN' for Pemasukan, 'OUT' for Pengeluaran
+  category TEXT NOT NULL,
+  amount NUMERIC NOT NULL DEFAULT 0,
+  description TEXT,
+  payment_method TEXT,
+  receipt_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);

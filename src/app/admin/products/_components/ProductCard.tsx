@@ -83,7 +83,7 @@ const ProductCard = React.memo(({
           {!isSorting ? (
             <div className="flex flex-col gap-1 mt-1.5 overflow-hidden">
                <div className="flex items-center gap-3">
-                 <p className="font-black text-raden-gold text-[11px] whitespace-nowrap">NTD {p.price?.toLocaleString()}</p>
+                 <p className="font-black text-raden-gold text-[11px] whitespace-nowrap">NT$ {p.price?.toLocaleString('zh-TW')}</p>
                  <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest whitespace-nowrap ${p.current_stock < 10 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>
                    <Package size={10} /> {p.current_stock} {p.unit}
                  </div>

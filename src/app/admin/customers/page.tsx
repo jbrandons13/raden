@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Search, Printer, ShoppingBag, DollarSign, ArrowUpRight, Loader2 } from 'lucide-react';
+import { Users, Search, Printer, ShoppingBag, DollarSign, ArrowUpRight, Loader2, Trash2, X, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function CustomersPage() {
@@ -10,6 +10,8 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState({ total: 0, orders: 0, avgRevenue: 0 });
+  const [customerToDelete, setCustomerToDelete] = useState<{id: string, name: string} | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchCustomers = async () => {
     try {
@@ -26,6 +28,30 @@ export default function CustomersPage() {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return;
+    
+    try {
+      setIsDeleting(true);
+      const { error } = await supabase.from('customers').delete().eq('id', customerToDelete.id);
+      
+      if (error) {
+        if (error.code === '23503') {
+          alert("Gagal menghapus: Pelanggan ini memiliki riwayat pesanan. Hapus pesanan terkait terlebih dahulu.");
+        } else {
+          throw error;
+        }
+      } else {
+        await fetchCustomers();
+        setCustomerToDelete(null);
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -78,7 +104,22 @@ export default function CustomersPage() {
           <motion.div key={cust.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} className="group bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 hover:border-raden-gold/50 hover:shadow-2xl transition-all cursor-pointer">
             <div className="flex justify-between items-start mb-6">
               <div className="w-14 h-14 rounded-2xl bg-raden-green text-raden-gold flex items-center justify-center font-black text-2xl group-hover:scale-110 transition-transform">{cust.name.charAt(0)}</div>
-              <div className="text-right flex flex-col items-end"><span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Established</span><p className="text-xs font-black text-raden-green">{new Date(cust.created_at).getFullYear()}</p></div>
+              <div className="flex flex-col items-end gap-2">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCustomerToDelete({ id: cust.id, name: cust.name });
+                  }}
+                  className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                  title="Hapus Pelanggan"
+                >
+                  <Trash2 size={18} />
+                </button>
+                <div className="text-right flex flex-col items-end">
+                  <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Established</span>
+                  <p className="text-xs font-black text-raden-green">{new Date(cust.created_at).getFullYear()}</p>
+                </div>
+              </div>
             </div>
             <h3 className="text-xl font-black text-raden-green mb-4 group-hover:text-raden-gold transition-colors">{cust.name}</h3>
             <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-50">
@@ -88,6 +129,45 @@ export default function CustomersPage() {
           </motion.div>
         ))}
       </div>
+
+      <AnimatePresence>
+        {customerToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-raden-green/60 backdrop-blur-md"
+              onClick={() => setCustomerToDelete(null)}
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="relative bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl text-center"
+            >
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-black text-raden-green mb-2 uppercase tracking-tight">Hapus Pelanggan?</h3>
+              <p className="text-gray-500 text-sm mb-8">
+                Kamu akan menghapus <span className="font-bold text-raden-green">"{customerToDelete.name}"</span>. Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setCustomerToDelete(null)}
+                  className="flex-1 py-4 bg-gray-100 text-gray-400 font-bold rounded-2xl hover:bg-gray-200 transition-colors"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleDeleteCustomer}
+                  disabled={isDeleting}
+                  className="flex-1 py-4 bg-red-500 text-white font-black uppercase rounded-2xl shadow-lg shadow-red-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? <Loader2 className="animate-spin" size={18} /> : 'Hapus'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

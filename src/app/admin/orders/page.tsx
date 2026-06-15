@@ -312,7 +312,7 @@ export default function OrdersPage() {
                     <p className="font-bold text-raden-green text-base mt-1">{order.customers?.name}</p>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <p className="font-black text-raden-green text-sm">NTD {order.total_revenue?.toLocaleString()}</p>
+                    <p className="font-black text-raden-green text-sm">NT$ {order.total_revenue?.toLocaleString('zh-TW')}</p>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2 items-center">
@@ -354,7 +354,7 @@ export default function OrdersPage() {
               <div className="flex items-center justify-between gap-4">
                 <div className="flex flex-col">
                   <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Total Tagihan</p>
-                  <p className="font-black text-raden-gold text-base">NTD {order.total_revenue?.toLocaleString()}</p>
+                  <p className="font-black text-raden-gold text-base">NT$ {order.total_revenue?.toLocaleString('zh-TW')}</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   {/* Direct Mobile Actions */}
@@ -544,7 +544,7 @@ export default function OrdersPage() {
               <div className="mt-4 shrink-0 pt-4 border-t flex flex-row items-center justify-between gap-4">
                 <div>
                   <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Total Estimasi</p>
-                  <p className="text-2xl font-black text-raden-gold tracking-tighter leading-none">NTD {calculateTotal().toLocaleString()}</p>
+                  <p className="text-2xl font-black text-raden-gold tracking-tighter leading-none">NT$ {calculateTotal().toLocaleString('zh-TW')}</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => { setShowAddModal(false); setIsEditing(false); setEditingOrderId(null); setNewOrder({customerId: '', date: new Date().toISOString().split('T')[0], items: {}}); setCustomerSearch(''); setIsAddingCustomer(false); }} className="px-6 py-3 bg-gray-100 text-gray-400 rounded-xl font-bold uppercase text-[9px]">Batal</button>
@@ -698,11 +698,11 @@ export default function OrdersPage() {
                     <div className="w-full max-w-[250px] space-y-1">
                       <div className="flex justify-between items-center text-gray-400 font-bold text-[9px] uppercase tracking-widest px-4 border-b pb-1">
                         <span>Subtotal</span>
-                        <span>NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
+                        <span>NT$ {selectedOrder?.total_revenue?.toLocaleString('zh-TW')}</span>
                       </div>
                       <div className="flex justify-between items-center bg-raden-green text-white p-5 rounded-xl shadow-lg">
                         <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Total</span>
-                        <span className="text-xl font-black tracking-tighter">NTD {selectedOrder?.total_revenue?.toLocaleString()}</span>
+                        <span className="text-xl font-black tracking-tighter">NT$ {selectedOrder?.total_revenue?.toLocaleString('zh-TW')}</span>
                       </div>
                     </div>
                   </div>

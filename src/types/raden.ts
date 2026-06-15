@@ -137,3 +137,15 @@ export interface PosSectionItem {
   sort_order: number;
   product?: Product;
 }
+
+export interface Transaction {
+  id: string;
+  date: string;
+  type: 'IN' | 'OUT';
+  category: string;
+  amount: number;
+  description: string;
+  payment_method: string;
+  receipt_url?: string;
+  created_at?: string;
+}

@@ -2,12 +2,14 @@
 
 import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Users, Package, ClipboardCheck, Calendar, LogOut, Loader2, CheckSquare, Menu, X, Flame, Activity } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Users, Package, ClipboardCheck, Calendar, LogOut, Loader2, CheckSquare, Menu, X, Flame, Activity, Receipt, Briefcase, TrendingUp, KeyRound } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, role, logout, isInitialLoading } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
@@ -26,16 +28,43 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const navItems = [
-    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-    { name: 'Pesanan', href: '/admin/orders', icon: ShoppingCart },
-    { name: 'Pelanggan', href: '/admin/customers', icon: Users },
-    { name: 'Produk dan Stok', href: '/admin/products', icon: Package },
-    { name: 'Hot Kitchen', href: '/admin/hot-kitchen', icon: Flame },
-    { name: 'Bahan Baku dan Stok', href: '/admin/materials', icon: ClipboardCheck },
-    { name: 'Jadwal Harian', href: '/admin/schedules/daily', icon: Calendar },
-    { name: 'Staff & Shift', href: '/admin/staff', icon: Users },
-    { name: 'Checklist Harian', href: '/admin/checklist', icon: CheckSquare },
+  const navSections = [
+    {
+      title: 'Utama',
+      items: [
+        { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+      ]
+    },
+    {
+      title: 'Penjualan',
+      items: [
+        { name: 'Pesanan', href: '/admin/orders', icon: ShoppingCart },
+        { name: 'Pelanggan', href: '/admin/customers', icon: Users },
+      ]
+    },
+    {
+      title: 'Produksi',
+      items: [
+        { name: 'Produk & Stok', href: '/admin/products', icon: Package },
+        { name: 'Hot Kitchen', href: '/admin/hot-kitchen', icon: Flame },
+        { name: 'Bahan Baku', href: '/admin/materials', icon: ClipboardCheck },
+      ]
+    },
+    {
+      title: 'Keuangan',
+      items: [
+        { name: 'Buku Kas', href: '/admin/expenses', icon: Receipt },
+      ]
+    },
+    {
+      title: 'Operasional',
+      items: [
+        { name: 'Jadwal Harian', href: '/admin/schedules/daily', icon: Calendar },
+        { name: 'Staff & Shift', href: '/admin/staff', icon: Users },
+        { name: 'Akun Staff', href: '/admin/staff-accounts', icon: KeyRound },
+        { name: 'Checklist', href: '/admin/checklist', icon: CheckSquare },
+      ]
+    }
   ];
 
   return (
@@ -49,17 +78,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
         
-        <nav className="p-4 space-y-1.5 h-[calc(100vh-80px)] overflow-y-auto">
-          {navItems.map((item) => (
-            <Link 
-              key={item.href} 
-              href={item.href}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-3 p-3.5 rounded-2xl hover:bg-white/10 active:bg-white/20 transition-all group"
-            >
-              <item.icon size={18} className="text-raden-gold group-hover:scale-110 transition-transform" />
-              <span className="font-black text-[11px] uppercase tracking-widest text-white/80 group-hover:text-white">{item.name}</span>
-            </Link>
+        <nav className="p-4 space-y-4 h-[calc(100vh-100px)] overflow-y-auto no-scrollbar">
+          {navSections.map((section) => (
+            <div key={section.title} className="space-y-1">
+              <p className="px-4 text-[8px] font-black uppercase tracking-[0.3em] text-raden-gold/30 mb-2">
+                {section.title}
+              </p>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link 
+                      key={item.href} 
+                      href={item.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 p-2.5 rounded-xl transition-all group ${
+                        isActive 
+                          ? 'bg-white/10 text-white shadow-sm ring-1 ring-white/10' 
+                          : 'text-white/60 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <div className={`p-1.5 rounded-lg transition-colors ${
+                        isActive ? 'bg-raden-gold text-raden-green shadow-md' : 'bg-white/5 text-raden-gold/60 group-hover:text-raden-gold'
+                      }`}>
+                        <item.icon size={14} />
+                      </div>
+                      <span className={`font-black text-[10px] uppercase tracking-widest ${
+                        isActive ? 'opacity-100' : 'opacity-80'
+                      }`}>{item.name}</span>
+                      {isActive && (
+                        <motion.div layoutId="activeNav" className="ml-auto w-1 h-3 bg-raden-gold rounded-full" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           ))}
           
           <div className="pt-4 mt-4 border-t border-white/10">

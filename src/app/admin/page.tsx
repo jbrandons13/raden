@@ -39,7 +39,7 @@ export default function AdminDashboard() {
         { name: 'Pesanan Hari Ini', value: orderRes.count?.toString() || '0', icon: ShoppingBag, color: 'bg-blue-100 text-blue-600' },
         { name: 'Produk Aktif', value: productRes.count?.toString() || '0', icon: Package, color: 'bg-green-100 text-green-600' },
         { name: 'Stok Menipis', value: lowStockRes.data?.length.toString() || '0', icon: AlertTriangle, color: 'bg-red-100 text-red-600' },
-        { name: 'Omzet Hari Ini', value: `NTD ${totalRevenue.toLocaleString()}`, icon: TrendingUp, color: 'bg-raden-gold/20 text-raden-green' },
+        { name: 'Omzet Hari Ini', value: `NT$ ${totalRevenue.toLocaleString('zh-TW')}`, icon: TrendingUp, color: 'bg-raden-gold/20 text-raden-green' },
       ]);
 
       if (activeOrdersRes.data) setActiveOrders(activeOrdersRes.data);
@@ -151,7 +151,7 @@ export default function AdminDashboard() {
                 <p className="font-black text-raden-green mb-1">{order.customers?.name}</p>
                 <div className="flex justify-between items-center">
                   <p className="text-[10px] font-bold text-gray-400">Total Transaksi</p>
-                  <p className="text-sm font-black text-raden-gold">NTD {order.total_revenue?.toLocaleString()}</p>
+                  <p className="text-sm font-black text-raden-gold">NT$ {order.total_revenue?.toLocaleString('zh-TW')}</p>
                 </div>
               </div>
             ))}

@@ -1,106 +1,149 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { usernameToEmail, type AppRole } from '@/lib/auth';
 
-type Role = 'admin' | 'staff' | null;
+type Role = AppRole | null;
+
+interface LoginResult {
+  ok: boolean;
+  error?: string;
+  role?: AppRole;
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
   role: Role;
-  login: (role: Role, pin: string) => boolean;
-  logout: () => void;
+  username: string | null;
+  login: (username: string, pin: string) => Promise<LoginResult>;
+  logout: () => Promise<void>;
   isInitialLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const FIXED_PIN = "1234";
+const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [role, setRole] = useState<Role>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
+  // Source of truth for role is the `profiles` table (same as RLS reads).
+  const fetchProfile = useCallback(async (uid: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role, username')
+      .eq('id', uid)
+      .single();
+    if (error || !data) return null;
+    return data as { role: AppRole; username: string | null };
+  }, []);
+
+  // Restore session on mount.
   useEffect(() => {
-    const authStatus = localStorage.getItem('raden_auth');
-    const savedRole = localStorage.getItem('raden_role') as Role;
-    
-    if (authStatus === 'true' && savedRole) {
-      setIsAuthenticated(true);
-      setRole(savedRole);
-    } else if (pathname !== '/login' && !pathname.startsWith('/_next')) {
-      router.push('/login');
-    }
-    setIsInitialLoading(false);
-  }, [router]); // Only run on mount or when router changes manually
+    let mounted = true;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id);
+        if (mounted && profile) {
+          setRole(profile.role);
+          setUsername(profile.username);
+          setIsAuthenticated(true);
+        } else if (mounted) {
+          // Valid session but no profile/role — don't trust it.
+          await supabase.auth.signOut();
+        }
+      }
+      if (mounted) setIsInitialLoading(false);
+    })();
 
-  const login = (selectedRole: Role, pin: string) => {
-    if (pin === FIXED_PIN) {
-      setIsAuthenticated(true);
-      setRole(selectedRole);
-      localStorage.setItem('raden_auth', 'true');
-      localStorage.setItem('raden_role', selectedRole || '');
-      
-      // Redirect based on role
-      if (selectedRole === 'admin') router.push('/admin');
-      else router.push('/staff');
-      
-      return true;
-    }
-    return false;
-  };
+    // Only handle sign-out here (sync-safe). Calling other supabase methods
+    // inside this callback can deadlock, so role fetching is done elsewhere.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        setIsAuthenticated(false);
+        setRole(null);
+        setUsername(null);
+      }
+    });
 
-  const logout = () => {
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [fetchProfile]);
+
+  // Route guard for UX (the real security boundary is RLS in the database).
+  useEffect(() => {
+    if (isInitialLoading) return;
+    if (!isAuthenticated && pathname !== '/login') {
+      router.replace('/login');
+    } else if (isAuthenticated && pathname === '/login') {
+      router.replace(role === 'admin' ? '/admin' : '/staff');
+    }
+  }, [isAuthenticated, role, isInitialLoading, pathname, router]);
+
+  const login = useCallback(async (uname: string, pin: string): Promise<LoginResult> => {
+    const email = usernameToEmail(uname);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pin });
+    if (error || !data.user) {
+      return { ok: false, error: 'Username atau PIN salah.' };
+    }
+    const profile = await fetchProfile(data.user.id);
+    if (!profile) {
+      await supabase.auth.signOut();
+      return { ok: false, error: 'Akun ini belum diberi peran. Hubungi admin.' };
+    }
+    setRole(profile.role);
+    setUsername(profile.username);
+    setIsAuthenticated(true);
+    localStorage.setItem('raden_last_activity', Date.now().toString());
+    router.replace(profile.role === 'admin' ? '/admin' : '/staff');
+    return { ok: true, role: profile.role };
+  }, [fetchProfile, router]);
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setIsAuthenticated(false);
     setRole(null);
-    localStorage.removeItem('raden_auth');
-    localStorage.removeItem('raden_role');
+    setUsername(null);
     localStorage.removeItem('raden_last_activity');
-    router.push('/login');
-  };
+    router.replace('/login');
+  }, [router]);
 
-  // --- Auto-Logout Logic (30 Minutes Inactivity) ---
+  // Auto-logout after 30 minutes of inactivity.
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 Minutes
-    
+    const updateActivity = () => localStorage.setItem('raden_last_activity', Date.now().toString());
     const checkInactivity = () => {
-      const lastActivity = localStorage.getItem('raden_last_activity');
-      if (lastActivity) {
-        const diff = Date.now() - parseInt(lastActivity);
-        if (diff > INACTIVITY_LIMIT) {
-          logout();
-          alert("Sesi Anda telah berakhir karena tidak ada aktivitas selama 30 menit.");
-        }
+      const last = localStorage.getItem('raden_last_activity');
+      if (last && Date.now() - parseInt(last) > INACTIVITY_LIMIT) {
+        logout();
+        alert('Sesi Anda berakhir karena tidak ada aktivitas selama 30 menit.');
       }
     };
 
-    const updateActivity = () => {
-      localStorage.setItem('raden_last_activity', Date.now().toString());
-    };
-
-    // Initial set
     updateActivity();
-
-    // Check every minute
     const interval = setInterval(checkInactivity, 60000);
-
-    // Event listeners to detect activity
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-    events.forEach(event => window.addEventListener(event, updateActivity));
+    events.forEach((e) => window.addEventListener(e, updateActivity));
 
     return () => {
       clearInterval(interval);
-      events.forEach(event => window.removeEventListener(event, updateActivity));
+      events.forEach((e) => window.removeEventListener(e, updateActivity));
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, logout]);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, role, login, logout, isInitialLoading }}>
+    <AuthContext.Provider value={{ isAuthenticated, role, username, login, logout, isInitialLoading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -74,35 +74,14 @@ export default function StaffJobdeskPage() {
     if (!isHK && !actualYield) return alert("Masukkan jumlah hasil!");
     const actual = isHK ? 0 : parseInt(actualYield);
 
-    // 1. Update Task Status
-    const { error: taskError } = await supabase.from('tasks')
-      .update({ status: 'Completed', actual_qty: actual }).eq('id', selectedTask.id);
+    // Mark task complete + add stock atomically on the server (closes the
+    // read-then-write race; runs under the staff user's session via RLS).
+    const { error } = await supabase.rpc('submit_task_result', {
+      p_task_id: selectedTask.id,
+      p_actual: actual,
+    });
 
-    if (taskError) return alert("Gagal update tugas: " + taskError.message);
-
-    if (isHK) {
-      // HK items don't track stock incremental logs in this specific way usually, 
-      // but we mark it as done.
-    } else {
-      const currentStock = selectedTask.products?.current_stock || 0;
-      const productId = selectedTask.product_id;
-      
-      if (productId) {
-        const { error: prodError } = await supabase.from('products')
-          .update({ current_stock: currentStock + actual }).eq('id', productId);
-
-        if (prodError) {
-          alert("Gagal update stok produk: " + prodError.message);
-        } else {
-          await supabase.from('stock_logs').insert({
-            item_type: 'Product',
-            item_id: productId,
-            change_qty: actual,
-            reason: `Production Task Completed: ${selectedTask.id}`
-          });
-        }
-      }
-    }
+    if (error) return alert("Gagal menyimpan hasil: " + error.message);
 
     setSelectedTask(null);
     setActualYield('');
