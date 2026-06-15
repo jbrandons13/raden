@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase';
 import AiImporterModal from './AiImporterModal';
 import StaffModals from './_components/StaffModals';
 import { Staff } from '@/types/raden';
+import ExportExcelButton from '@/components/ExportExcelButton';
+import { exportWorkbook } from '@/lib/exportExcel';
 
 // Explicit shift types requested
 const SHIFT_TYPES = ['', 'EM^', 'EM', 'EMS', 'M', 'MS', 'A', 'AS'];
@@ -145,6 +147,38 @@ export default function StaffManagementPage() {
     finally { setLoading(false); }
   };
 
+  const handleExportExcel = async () => {
+    if (staff.length === 0) { alert('Belum ada staff untuk diexport.'); return; }
+    const dateCols = dates.map((dt, i) => {
+      const d = new Date(dt);
+      return { header: `${d.getDate()}/${d.getMonth() + 1}`, key: `d_${i}`, width: 6 };
+    });
+    const columns = [
+      { header: 'Nama Staff', key: 'nama', width: 22 },
+      ...dateCols,
+      { header: 'Jml Shift', key: 'jml', width: 10 },
+    ];
+    const rows: Record<string, unknown>[] = staff.map((s) => {
+      const row: Record<string, unknown> = { nama: s.name };
+      let count = 0;
+      dates.forEach((dt, i) => {
+        const t = shifts[s.id]?.[dt] || '';
+        row[`d_${i}`] = t || null;
+        if (t) count++;
+      });
+      row.jml = count;
+      return row;
+    });
+    const totalRow: Record<string, unknown> = { nama: 'TOTAL STAFF' };
+    dates.forEach((dt, i) => {
+      totalRow[`d_${i}`] = staff.filter((s) => !!shifts[s.id]?.[dt]).length || null;
+    });
+    rows.push(totalRow);
+
+    const stamp = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-${String(baseDate.getDate()).padStart(2, '0')}`;
+    await exportWorkbook(`Raden_Shift_${stamp}`, [{ name: 'Jadwal Shift', columns, rows }]);
+  };
+
   return (
     <div className="space-y-6 relative pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -153,8 +187,13 @@ export default function StaffManagementPage() {
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Jadwal Shift & Pengaturan Tim.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <button 
-            onClick={saveShifts} 
+          <ExportExcelButton
+            onExport={handleExportExcel}
+            label="Export Excel"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50"
+          />
+          <button
+            onClick={saveShifts}
             disabled={isSaving || !hasChanges}
             className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-30 ${
               hasChanges ? 'bg-raden-green text-white shadow-raden-green/20' : 'bg-gray-100 text-gray-400 shadow-none'

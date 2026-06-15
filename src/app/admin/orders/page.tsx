@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, ClipboardList, Calendar, Users, ShoppingCart, Plus, Search, Edit3, Trash2, Printer, Check, X, Loader2, Receipt, ArrowRight, CheckCircle2, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import ExportExcelButton from '@/components/ExportExcelButton';
+import { exportWorkbook, CURRENCY_FMT, todayStamp } from '@/lib/exportExcel';
+import { fetchAllRows } from '@/lib/fetchAll';
 
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
@@ -310,6 +313,105 @@ export default function OrdersPage() {
 
   const filteredOrders = orders.filter(o => activeTab === 'active' ? o.status !== 'Selesai' : o.status === 'Selesai');
 
+  const channelLabel = (ch: string | null | undefined) =>
+    ch === 'agent' ? 'Agen' : ch === 'branch' ? 'Branch' : 'Eceran';
+
+  const handleExportExcel = async () => {
+    const ords: any[] = await fetchAllRows<any>(
+      'orders',
+      '*, customers(name), order_items(*, products(name, price, price_agent, price_branch, sort_order))',
+      (q) => q.order('order_date', { ascending: false }).order('created_at', { ascending: false }),
+    );
+    if (ords.length === 0) { alert('Belum ada pesanan untuk diexport.'); return; }
+
+    const nameOf = (o: any) => o.customers?.name || o.customer_name || 'Tanpa Nama';
+
+    const ringkasan = ords.map((o) => ({
+      tanggal: o.order_date,
+      channel: channelLabel(o.channel),
+      pelanggan: nameOf(o),
+      status: o.status,
+      item: (o.order_items || []).reduce((s: number, it: any) => s + Number(it.qty || 0), 0),
+      total: Number(o.total_revenue || 0),
+    }));
+
+    const detail: any[] = [];
+    for (const o of ords) {
+      const items = [...(o.order_items || [])].sort((a: any, b: any) => (a.products?.sort_order || 0) - (b.products?.sort_order || 0));
+      for (const it of items) {
+        const harga = priceFor(it.products, o.channel);
+        const qty = Number(it.qty || 0);
+        detail.push({
+          tanggal: o.order_date,
+          pelanggan: nameOf(o),
+          channel: channelLabel(o.channel),
+          produk: it.products?.name || '-',
+          isian: it.variant || '',
+          qty,
+          harga,
+          subtotal: qty * harga,
+        });
+      }
+    }
+
+    const byCust = new Map<string, { total: number; count: number; channels: Set<string> }>();
+    for (const o of ords) {
+      const key = nameOf(o);
+      const cur = byCust.get(key) || { total: 0, count: 0, channels: new Set<string>() };
+      cur.total += Number(o.total_revenue || 0);
+      cur.count += 1;
+      cur.channels.add(channelLabel(o.channel));
+      byCust.set(key, cur);
+    }
+    const rekap = [...byCust.entries()]
+      .sort((a, b) => b[1].total - a[1].total)
+      .map(([pelanggan, v]) => ({
+        pelanggan,
+        channel: v.channels.size === 1 ? [...v.channels][0] : 'Campur',
+        pesanan: v.count,
+        total: v.total,
+      }));
+
+    await exportWorkbook(`Raden_Pesanan_${todayStamp()}`, [
+      {
+        name: 'Ringkasan',
+        columns: [
+          { header: 'Tanggal', key: 'tanggal', width: 14 },
+          { header: 'Channel', key: 'channel', width: 12 },
+          { header: 'Pelanggan', key: 'pelanggan', width: 26 },
+          { header: 'Status', key: 'status', width: 14 },
+          { header: 'Jml Item', key: 'item', width: 10 },
+          { header: 'Total', key: 'total', width: 16, numFmt: CURRENCY_FMT },
+        ],
+        rows: ringkasan,
+      },
+      {
+        name: 'Detail Item',
+        columns: [
+          { header: 'Tanggal', key: 'tanggal', width: 14 },
+          { header: 'Pelanggan', key: 'pelanggan', width: 24 },
+          { header: 'Channel', key: 'channel', width: 12 },
+          { header: 'Produk', key: 'produk', width: 28 },
+          { header: 'Isian', key: 'isian', width: 18 },
+          { header: 'Qty', key: 'qty', width: 8 },
+          { header: 'Harga', key: 'harga', width: 14, numFmt: CURRENCY_FMT },
+          { header: 'Subtotal', key: 'subtotal', width: 16, numFmt: CURRENCY_FMT },
+        ],
+        rows: detail,
+      },
+      {
+        name: 'Rekap per Pelanggan',
+        columns: [
+          { header: 'Pelanggan', key: 'pelanggan', width: 28 },
+          { header: 'Channel', key: 'channel', width: 12 },
+          { header: 'Jml Pesanan', key: 'pesanan', width: 12 },
+          { header: 'Total', key: 'total', width: 16, numFmt: CURRENCY_FMT },
+        ],
+        rows: rekap,
+      },
+    ]);
+  };
+
   return (
     <div className="relative min-h-screen">
       <div className="space-y-6 print:hidden">
@@ -318,9 +420,16 @@ export default function OrdersPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase sm:normal-case">Pesanan</h1>
           <p className="text-gray-500 text-xs sm:text-sm font-medium">Navigasi instan manajemen distribusi.</p>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-5 py-3.5 sm:py-3 rounded-2xl font-black shadow-lg active:scale-95 transition-all text-[11px] sm:text-xs uppercase tracking-widest">
-          <Plus size={18} /> Tambah Pesanan
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <ExportExcelButton
+            onExport={handleExportExcel}
+            label="Export Excel"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-raden-green/20 text-raden-green px-5 py-3.5 sm:py-3 rounded-2xl font-black shadow-sm active:scale-95 transition-all text-[11px] sm:text-xs uppercase tracking-widest disabled:opacity-50"
+          />
+          <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-5 py-3.5 sm:py-3 rounded-2xl font-black shadow-lg active:scale-95 transition-all text-[11px] sm:text-xs uppercase tracking-widest">
+            <Plus size={18} /> Tambah Pesanan
+          </button>
+        </div>
       </div>
 
       <div className="flex bg-white p-1 rounded-2xl border border-gray-100 shadow-sm w-fit">

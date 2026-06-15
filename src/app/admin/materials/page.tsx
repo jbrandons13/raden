@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase';
 import { MaterialRow, MaterialCard } from './_components/MaterialItem';
 import MaterialModals from './_components/MaterialModals';
 import { Material, MaterialCategory } from '@/types/raden';
+import ExportExcelButton from '@/components/ExportExcelButton';
+import { exportWorkbook, todayStamp } from '@/lib/exportExcel';
 
 export default function MaterialsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -143,6 +145,37 @@ export default function MaterialsPage() {
     setItemToDelete({ id, name });
   }, []);
 
+  const handleExportExcel = async () => {
+    if (filteredMaterials.length === 0) { alert('Tidak ada bahan untuk diexport.'); return; }
+    const rows = filteredMaterials.map((m) => {
+      const qty = Number(m.qty || 0);
+      const target = Number(m.weekly_target || 0);
+      const beli = Math.max(0, target - qty);
+      return {
+        nama: m.name,
+        kategori: m.category || '',
+        stok: qty,
+        satuan: m.unit || '',
+        target,
+        beli: beli || null,
+        catatan: m.notes || '',
+      };
+    });
+    await exportWorkbook(`Raden_BahanBaku_${todayStamp()}`, [{
+      name: 'Bahan Baku',
+      columns: [
+        { header: 'Nama', key: 'nama', width: 28 },
+        { header: 'Kategori', key: 'kategori', width: 16 },
+        { header: 'Stok', key: 'stok', width: 10 },
+        { header: 'Satuan', key: 'satuan', width: 10 },
+        { header: 'Target/Minggu', key: 'target', width: 14 },
+        { header: 'Perlu Beli', key: 'beli', width: 12 },
+        { header: 'Catatan', key: 'catatan', width: 30 },
+      ],
+      rows,
+    }]);
+  };
+
   return (
     <div className="space-y-6 relative pb-12">
       {/* Header Section */}
@@ -152,6 +185,11 @@ export default function MaterialsPage() {
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Manajemen Stok & Ketersediaan.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <ExportExcelButton
+            onExport={handleExportExcel}
+            label="Export Excel"
+            className="flex-1 sm:flex-none h-14 sm:h-auto flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50"
+          />
           <button onClick={() => setShowCategoryManager(true)} className="flex-1 sm:flex-none h-14 sm:h-auto flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">
             <Tag size={18} /> Kategori
           </button>

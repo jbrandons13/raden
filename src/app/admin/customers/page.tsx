@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, Store, Search, Plus, Edit3, Trash2, Loader2, X, Phone, MapPin, AlertCircle, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Customer, CustomerType } from '@/types/raden';
+import ExportExcelButton from '@/components/ExportExcelButton';
+import { exportWorkbook, todayStamp } from '@/lib/exportExcel';
 
 type FilterType = 'all' | CustomerType;
 type FormState = { id?: string; name: string; type: CustomerType; phone: string; address: string };
@@ -113,6 +115,26 @@ export default function BranchAgentPage() {
     }
   };
 
+  const handleExportExcel = async () => {
+    if (filtered.length === 0) { alert('Tidak ada data untuk diexport.'); return; }
+    const rows = filtered.map((c) => ({
+      nama: c.name,
+      tipe: getType(c) === 'agent' ? 'Agen' : 'Branch',
+      telp: c.phone || '',
+      alamat: c.address || '',
+    }));
+    await exportWorkbook(`Raden_BranchAgen_${todayStamp()}`, [{
+      name: 'Branch & Agen',
+      columns: [
+        { header: 'Nama', key: 'nama', width: 28 },
+        { header: 'Tipe', key: 'tipe', width: 10 },
+        { header: 'No. Telepon', key: 'telp', width: 18 },
+        { header: 'Alamat', key: 'alamat', width: 40 },
+      ],
+      rows,
+    }]);
+  };
+
   return (
     <div className="space-y-6 relative pb-12">
       {/* Header */}
@@ -121,12 +143,19 @@ export default function BranchAgentPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase">Branch & Agen</h1>
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Kelola data cabang & agen distribusi.</p>
         </div>
-        <button
-          onClick={openAdd}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-8 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all"
-        >
-          <Plus size={18} /> Tambah
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <ExportExcelButton
+            onExport={handleExportExcel}
+            label="Export Excel"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-raden-green/20 text-raden-green px-6 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-sm active:scale-95 transition-all disabled:opacity-50"
+          />
+          <button
+            onClick={openAdd}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-8 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+          >
+            <Plus size={18} /> Tambah
+          </button>
+        </div>
       </div>
 
       {/* Filter + Search */}

@@ -7,6 +7,9 @@ import { supabase } from '@/lib/supabase';
 import { Transaction } from '@/types/raden';
 import TransactionModals from './_components/TransactionModals';
 import { TransactionRow, TransactionCard } from './_components/TransactionItem';
+import ExportExcelButton from '@/components/ExportExcelButton';
+import { exportWorkbook, CURRENCY_FMT, todayStamp } from '@/lib/exportExcel';
+import { fetchAllRows } from '@/lib/fetchAll';
 
 export default function FinancePage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -133,6 +136,63 @@ export default function FinancePage() {
     }
   };
 
+  const handleExportExcel = useCallback(async () => {
+    const rows = await fetchAllRows<Transaction>('transactions', '*', (q) => {
+      const ordered = q.order('date', { ascending: false }).order('created_at', { ascending: false });
+      return filterType === 'ALL' ? ordered : ordered.eq('type', filterType);
+    });
+    const term = searchTerm.trim().toLowerCase();
+    const data = term
+      ? rows.filter((t) => (t.description?.toLowerCase().includes(term) ?? false) || t.category.toLowerCase().includes(term))
+      : rows;
+
+    if (data.length === 0) { alert('Tidak ada transaksi untuk diexport.'); return; }
+
+    const income = data.filter((t) => t.type === 'IN').reduce((a, t) => a + Number(t.amount), 0);
+    const expense = data.filter((t) => t.type === 'OUT').reduce((a, t) => a + Number(t.amount), 0);
+    const filterLabel = filterType === 'ALL' ? 'Semua' : filterType === 'IN' ? 'Masuk' : 'Keluar';
+
+    await exportWorkbook(`Raden_BukuKas_${todayStamp()}`, [
+      {
+        name: 'Ringkasan',
+        columns: [
+          { header: 'Ringkasan', key: 'k', width: 28 },
+          { header: 'Nilai', key: 'v', width: 20, numFmt: CURRENCY_FMT },
+        ],
+        rows: [
+          { k: 'Total Pemasukan', v: income },
+          { k: 'Total Pengeluaran', v: expense },
+          { k: 'Saldo', v: income - expense },
+          { k: '' },
+          { k: `Jumlah transaksi: ${data.length}` },
+          { k: `Filter: ${filterLabel}${term ? ` · cari "${searchTerm.trim()}"` : ''}` },
+          { k: `Dibuat: ${new Date().toLocaleString('id-ID')}` },
+        ],
+      },
+      {
+        name: 'Transaksi',
+        columns: [
+          { header: 'Tanggal', key: 'tanggal', width: 14 },
+          { header: 'Tipe', key: 'tipe', width: 10 },
+          { header: 'Kategori', key: 'kategori', width: 18 },
+          { header: 'Keterangan', key: 'keterangan', width: 38 },
+          { header: 'Metode', key: 'metode', width: 14 },
+          { header: 'Pemasukan (+)', key: 'masuk', width: 16, numFmt: CURRENCY_FMT },
+          { header: 'Pengeluaran (-)', key: 'keluar', width: 16, numFmt: CURRENCY_FMT },
+        ],
+        rows: data.map((t) => ({
+          tanggal: t.date,
+          tipe: t.type === 'IN' ? 'Masuk' : 'Keluar',
+          kategori: t.category,
+          keterangan: t.description ?? '',
+          metode: t.payment_method ?? '',
+          masuk: t.type === 'IN' ? Number(t.amount) : null,
+          keluar: t.type === 'OUT' ? Number(t.amount) : null,
+        })),
+      },
+    ]);
+  }, [filterType, searchTerm]);
+
   return (
     <div className="space-y-6 relative pb-12">
       {/* Header Section */}
@@ -141,12 +201,19 @@ export default function FinancePage() {
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase">Buku Kas Utama</h1>
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Rekapitulasi keuangan masuk dan keluar.</p>
         </div>
-        <button 
-          onClick={() => setShowAddModal(true)} 
-          className="w-full sm:w-auto h-14 sm:h-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-8 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all"
-        >
-          <Plus size={18} /> Transaksi Baru
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <ExportExcelButton
+            onExport={handleExportExcel}
+            label="Export Excel"
+            className="w-full sm:w-auto h-14 sm:h-auto flex items-center justify-center gap-2 bg-white border border-raden-green/20 text-raden-green px-6 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-sm active:scale-95 transition-all disabled:opacity-50"
+          />
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="w-full sm:w-auto h-14 sm:h-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-8 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+          >
+            <Plus size={18} /> Transaksi Baru
+          </button>
+        </div>
       </div>
 
       {/* Summary Stats */}

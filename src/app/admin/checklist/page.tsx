@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, CheckSquare, Camera, Loader2, X, Clock, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import ExportExcelButton from '@/components/ExportExcelButton';
+import { exportWorkbook, todayStamp } from '@/lib/exportExcel';
+import { fetchAllRows } from '@/lib/fetchAll';
 
 export default function AdminChecklistPage() {
   const [activeTab, setActiveTab] = useState<'templates' | 'history'>('templates');
@@ -113,6 +116,33 @@ export default function AdminChecklistPage() {
       }
     } catch (e: any) { alert(e.message); }
     finally { setLoading(false); }
+  };
+
+  const handleExportExcel = async () => {
+    const rows = await fetchAllRows<any>(
+      'checklist_history',
+      'date, staff_name, is_completed, staff(name), checklist_templates(category, task_name)',
+      (q) => q.order('date', { ascending: false }),
+    );
+    if (rows.length === 0) { alert('Belum ada riwayat checklist untuk diexport.'); return; }
+    const data = rows.map((r) => ({
+      tanggal: r.date,
+      area: r.checklist_templates?.category || 'General',
+      tugas: r.checklist_templates?.task_name || '-',
+      oleh: r.staff?.name || r.staff_name || 'Staff',
+      selesai: r.is_completed ? 'Ya' : 'Tidak',
+    }));
+    await exportWorkbook(`Raden_Checklist_${todayStamp()}`, [{
+      name: 'Riwayat Checklist',
+      columns: [
+        { header: 'Tanggal', key: 'tanggal', width: 14 },
+        { header: 'Area', key: 'area', width: 14 },
+        { header: 'Tugas', key: 'tugas', width: 36 },
+        { header: 'Oleh', key: 'oleh', width: 20 },
+        { header: 'Selesai', key: 'selesai', width: 10 },
+      ],
+      rows: data,
+    }]);
   };
 
   return (
@@ -237,6 +267,11 @@ export default function AdminChecklistPage() {
                   <h3 className="font-black text-raden-green text-xs uppercase tracking-widest leading-none">Activity Log</h3>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Showing 15 most recent entries (7-day retention).</p>
                </div>
+               <ExportExcelButton
+                 onExport={handleExportExcel}
+                 label="Export Excel"
+                 className="ml-auto flex items-center gap-2 bg-white border border-raden-green/20 text-raden-green px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm active:scale-95 transition-all disabled:opacity-50"
+               />
             </div>
 
             <div className="bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-sm divide-y divide-gray-50">

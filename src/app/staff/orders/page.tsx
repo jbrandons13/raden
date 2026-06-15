@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar as CalendarIcon, Printer, Store, Package, X, ChevronRight, Loader2, Search, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import ExportExcelButton from '@/components/ExportExcelButton';
+import { exportWorkbook } from '@/lib/exportExcel';
 
 export default function StaffOrdersPage() {
   const [selectedDate, setSelectedDate] = useState<any>(null);
@@ -126,6 +128,73 @@ export default function StaffOrdersPage() {
   }, [selectedDate]);
 
   const filteredStores = pivotData.stores.filter(s => s.toLowerCase().includes(storeSearch.toLowerCase()));
+
+  // Ordered manifest rows mirroring the on-screen table (section grouping + "Lainnya").
+  const buildManifestRows = (): { bagian: string; rowKey: string; name: string }[] => {
+    const result: { bagian: string; rowKey: string; name: string }[] = [];
+    const sectionsToRender = selectedSectionFilter === 'all'
+      ? sections
+      : selectedSectionFilter === 'others' ? []
+      : sections.filter((sec: any) => sec.id === selectedSectionFilter?.id);
+
+    sectionsToRender.forEach((sec: any) => {
+      const secItems = (sec.items || []).filter((item: any) => pivotData.products.some(p => p.pid === item.product_id));
+      secItems.forEach((item: any) => {
+        pivotData.products.filter(p => p.pid === item.product_id).forEach(r => {
+          result.push({ bagian: sec.title, rowKey: r.id, name: r.name });
+        });
+      });
+    });
+
+    if (selectedSectionFilter === 'all' || selectedSectionFilter === 'others') {
+      const assigned = new Set();
+      sections.forEach((s: any) => (s.items || []).forEach((i: any) => assigned.add(i.product_id)));
+      pivotData.products.filter(p => !assigned.has(p.pid)).forEach(p => {
+        result.push({ bagian: 'Lainnya', rowKey: p.id, name: p.name });
+      });
+    }
+    return result;
+  };
+
+  const handleExportExcel = async () => {
+    if (!selectedDate) return;
+    const ordered = buildManifestRows();
+    const stores = filteredStores;
+    if (ordered.length === 0 || stores.length === 0) { alert('Tidak ada data manifest untuk diexport.'); return; }
+
+    const storeCols = stores.map((s, i) => ({ header: s, key: `store_${i}`, width: 11 }));
+    const columns = [
+      { header: 'Bagian', key: 'bagian', width: 18 },
+      { header: 'Produk', key: 'produk', width: 30 },
+      ...storeCols,
+      { header: 'Total', key: 'total', width: 10 },
+    ];
+
+    const rows = ordered.map((r) => {
+      const row: Record<string, unknown> = { bagian: r.bagian, produk: r.name };
+      let total = 0;
+      stores.forEach((s, i) => {
+        const qty = pivotData.grid[r.rowKey]?.[s] || 0;
+        row[`store_${i}`] = qty || null;
+        total += qty;
+      });
+      row.total = total;
+      return row;
+    });
+
+    const totalRow: Record<string, unknown> = { bagian: '', produk: 'TOTAL' };
+    let grand = 0;
+    stores.forEach((s, i) => {
+      const colTotal = ordered.reduce((acc, r) => acc + (pivotData.grid[r.rowKey]?.[s] || 0), 0);
+      totalRow[`store_${i}`] = colTotal || null;
+      grand += colTotal;
+    });
+    totalRow.total = grand;
+    rows.push(totalRow);
+
+    const sheetName = `Manifest ${selectedDate.label || ''}`.trim();
+    await exportWorkbook(`Raden_Manifest_${selectedDate.date}`, [{ name: sheetName, columns, rows }]);
+  };
 
   function renderPivotTable(isForPrint: boolean) {
     return (
@@ -346,6 +415,13 @@ export default function StaffOrdersPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                     <input type="text" placeholder="Cari toko..." value={storeSearch} onChange={e => setStoreSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold outline-none" />
                   </div>
+                  {viewMode === 'table' && (
+                    <ExportExcelButton
+                      onExport={handleExportExcel}
+                      label="Excel"
+                      className="flex items-center gap-2 px-3 py-2.5 bg-white border border-raden-green/20 text-raden-green rounded-xl text-[11px] font-black uppercase tracking-widest shadow-sm hover:bg-raden-green/5 transition-all disabled:opacity-50"
+                    />
+                  )}
                   {viewMode === 'table' && (
                     <button onClick={() => window.print()} className="p-3 bg-raden-green text-white rounded-xl shadow-lg hover:bg-raden-green/90 transition-all"><Printer size={18}/></button>
                   )}

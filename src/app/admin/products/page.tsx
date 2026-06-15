@@ -8,6 +8,9 @@ import ProductCard from './_components/ProductCard';
 import ProductModals from './_components/ProductModals';
 import OrderLayoutManager from './_components/OrderLayoutManager';
 import { Product, ProductCategory, ProductionTask } from '@/types/raden';
+import ExportExcelButton from '@/components/ExportExcelButton';
+import { exportWorkbook, CURRENCY_FMT, todayStamp } from '@/lib/exportExcel';
+import { fetchAllRows } from '@/lib/fetchAll';
 
 export default function ProductsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -194,6 +197,66 @@ export default function ProductsPage() {
     setItemToDelete({ id, name });
   }, []);
 
+  const handleExportExcel = async () => {
+    if (activeTab === 'history') {
+      const tasks = await fetchAllRows<any>(
+        'tasks',
+        '*, products(name, is_hot_kitchen), staff(name)',
+        (q) => q.eq('status', 'Completed').order('date', { ascending: false }).order('created_at', { ascending: false }),
+      );
+      const rows = tasks
+        .filter((t) => !t.products?.is_hot_kitchen)
+        .map((t) => ({
+          tanggal: t.date,
+          produk: t.products?.name || '-',
+          staff: t.staff?.name || 'Tugas Mandiri',
+          hasil: Number(t.actual_qty ?? 0),
+          target: Number(t.expected_qty ?? 0),
+        }));
+      if (rows.length === 0) { alert('Belum ada riwayat produksi untuk diexport.'); return; }
+      await exportWorkbook(`Raden_RiwayatProduksi_${todayStamp()}`, [{
+        name: 'Riwayat Produksi',
+        columns: [
+          { header: 'Tanggal', key: 'tanggal', width: 14 },
+          { header: 'Produk', key: 'produk', width: 30 },
+          { header: 'Staff', key: 'staff', width: 20 },
+          { header: 'Hasil Riil', key: 'hasil', width: 12 },
+          { header: 'Target', key: 'target', width: 12 },
+        ],
+        rows,
+      }]);
+      return;
+    }
+
+    if (filteredProducts.length === 0) { alert('Tidak ada produk untuk diexport.'); return; }
+    const rows = filteredProducts.map((p) => ({
+      nama: p.name,
+      kategori: p.category || '',
+      tipe: p.tracks_stock === false ? 'Fresh' : 'Distok',
+      satuan: p.unit || '',
+      eceran: Number(p.price || 0),
+      agen: Number(p.price_agent || 0),
+      branch: Number(p.price_branch || 0),
+      stok: p.tracks_stock === false ? null : Number(p.current_stock || 0),
+      target: p.tracks_stock === false ? null : Number(p.weekly_target || 0),
+    }));
+    await exportWorkbook(`Raden_Produk_${todayStamp()}`, [{
+      name: 'Produk & Stok',
+      columns: [
+        { header: 'Nama', key: 'nama', width: 30 },
+        { header: 'Kategori', key: 'kategori', width: 18 },
+        { header: 'Tipe', key: 'tipe', width: 10 },
+        { header: 'Satuan', key: 'satuan', width: 10 },
+        { header: 'Harga Eceran', key: 'eceran', width: 14, numFmt: CURRENCY_FMT },
+        { header: 'Harga Agen', key: 'agen', width: 14, numFmt: CURRENCY_FMT },
+        { header: 'Harga Branch', key: 'branch', width: 14, numFmt: CURRENCY_FMT },
+        { header: 'Stok', key: 'stok', width: 10 },
+        { header: 'Target/Minggu', key: 'target', width: 14 },
+      ],
+      rows,
+    }]);
+  };
+
   return (
     <div className="space-y-6 relative pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -202,6 +265,11 @@ export default function ProductsPage() {
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Pusat Inventaris & Harga.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <ExportExcelButton
+            onExport={handleExportExcel}
+            label="Export Excel"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50"
+          />
           <button onClick={() => setShowCategoryManager(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">
             <Tag size={18} /> Kategori
           </button>
