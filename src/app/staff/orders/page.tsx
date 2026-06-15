@@ -11,7 +11,7 @@ export default function StaffOrdersPage() {
   const [loading, setLoading] = useState(true);
   
   // Pivot Table States
-  const [pivotData, setPivotData] = useState<{ products: {id: string, name: string}[], stores: string[], grid: Record<string, Record<string, number>> }>({ products: [], stores: [], grid: {} });
+  const [pivotData, setPivotData] = useState<{ products: {id: string, name: string, pid: string}[], stores: string[], grid: Record<string, Record<string, number>> }>({ products: [], stores: [], grid: {} });
   const [sections, setSections] = useState<any[]>([]);
   const [storeSearch, setStoreSearch] = useState('');
   const [viewMode, setViewMode] = useState<'selection' | 'table'>('selection');
@@ -64,7 +64,7 @@ export default function StaffOrdersPage() {
     try {
       // 1. Fetch Orders, Items, and Sections (Layout)
       const [ordsRes, sectionsRes] = await Promise.all([
-        supabase.from('orders').select('id, customers(name)').eq('order_date', date),
+        supabase.from('orders').select('id, customer_name, customers(name)').eq('order_date', date),
         supabase.from('pos_sections').select('*, items:pos_section_items(*)').order('sort_order')
       ]);
 
@@ -75,25 +75,33 @@ export default function StaffOrdersPage() {
       const { data: items } = await supabase.from('order_items').select('*, products(name)').in('order_id', orderIds);
 
       if (items) {
-        const productMap: Record<string, {id: string, name: string}> = {};
+        const rowMap: Record<string, {id: string, name: string, pid: string}> = {};
         const storeSet = new Set<string>();
         const grid: Record<string, Record<string, number>> = {};
 
-        items.forEach(item => {
+        // Which products have at least one specified isian today? (for smart labels)
+        const hasVariant: Record<string, boolean> = {};
+        items.forEach((item: any) => { if (item.variant) hasVariant[item.product_id] = true; });
+
+        items.forEach((item: any) => {
           const pId = item.product_id;
           const pName = item.products?.name || 'Unknown';
           const order = ords.find(o => o.id === item.order_id);
-          const sName = (Array.isArray(order?.customers) ? order.customers[0]?.name : (order?.customers as any)?.name) || 'Unknown';
+          const sName = (Array.isArray(order?.customers) ? order.customers[0]?.name : (order?.customers as any)?.name) || (order as any)?.customer_name || 'Unknown';
 
-          productMap[pId] = { id: pId, name: pName };
+          const variant = item.variant || null;
+          const rowKey = pId + (variant ? '::' + variant : '');
+          const label = variant ? `${pName} — ${variant}` : (hasVariant[pId] ? `${pName} (bebas)` : pName);
+
+          rowMap[rowKey] = { id: rowKey, name: label, pid: pId };
           storeSet.add(sName);
 
-          if (!grid[pId]) grid[pId] = {};
-          grid[pId][sName] = (grid[pId][sName] || 0) + item.qty;
+          if (!grid[rowKey]) grid[rowKey] = {};
+          grid[rowKey][sName] = (grid[rowKey][sName] || 0) + item.qty;
         });
 
         setPivotData({
-          products: Object.values(productMap),
+          products: Object.values(rowMap),
           stores: Array.from(storeSet).sort(),
           grid
         });
@@ -152,7 +160,7 @@ export default function StaffOrdersPage() {
               : (selectedSectionFilter === 'others' ? [] : sections.filter(sec => sec.id === selectedSectionFilter?.id));
 
             sectionsToRender.forEach(sec => {
-              const secItems = (sec.items || []).filter((item: any) => pivotData.grid[item.product_id]);
+              const secItems = (sec.items || []).filter((item: any) => pivotData.products.some(p => p.pid === item.product_id));
               if (secItems.length === 0) return;
 
               // Section Header Row
@@ -165,11 +173,11 @@ export default function StaffOrdersPage() {
               );
 
               secItems.forEach((item: any) => {
-                const pId = item.product_id;
-                const pName = pivotData.products.find(p => p.id === pId)?.name || 'Unknown';
-                assignedProductIds.add(pId);
-                rows.push(renderProductRow(pId, pName, globalRowIndex % 2 === 0, isForPrint));
-                globalRowIndex++;
+                assignedProductIds.add(item.product_id);
+                pivotData.products.filter(p => p.pid === item.product_id).forEach(r => {
+                  rows.push(renderProductRow(r.id, r.name, globalRowIndex % 2 === 0, isForPrint));
+                  globalRowIndex++;
+                });
               });
             });
 
@@ -179,7 +187,7 @@ export default function StaffOrdersPage() {
               const allAssignedIds = new Set();
               sections.forEach(s => (s.items || []).forEach((i: any) => allAssignedIds.add(i.product_id)));
               
-              const otherProducts = pivotData.products.filter(p => !allAssignedIds.has(p.id));
+              const otherProducts = pivotData.products.filter(p => !allAssignedIds.has(p.pid));
               
               if (otherProducts.length > 0) {
                 // If in 'all' mode, show the header. If in 'others' mode, header is optional but good for context.
@@ -209,8 +217,8 @@ export default function StaffOrdersPage() {
               const relevantProducts = selectedSectionFilter === 'all' 
                 ? pivotData.products 
                 : (selectedSectionFilter === 'others' 
-                    ? pivotData.products.filter(p => !sections.some(sec => (sec.items || []).some((i: any) => i.product_id === p.id)))
-                    : pivotData.products.filter(p => (selectedSectionFilter?.items || []).some((i: any) => i.product_id === p.id))
+                    ? pivotData.products.filter(p => !sections.some(sec => (sec.items || []).some((i: any) => i.product_id === p.pid)))
+                    : pivotData.products.filter(p => (selectedSectionFilter?.items || []).some((i: any) => i.product_id === p.pid))
                   );
 
               relevantProducts.forEach(p => totalStore += (pivotData.grid[p.id]?.[s] || 0));
@@ -226,8 +234,8 @@ export default function StaffOrdersPage() {
                 const relevantProducts = selectedSectionFilter === 'all' 
                   ? pivotData.products 
                   : (selectedSectionFilter === 'others' 
-                      ? pivotData.products.filter(p => !sections.some(sec => (sec.items || []).some((i: any) => i.product_id === p.id)))
-                      : pivotData.products.filter(p => (selectedSectionFilter?.items || []).some((i: any) => i.product_id === p.id))
+                      ? pivotData.products.filter(p => !sections.some(sec => (sec.items || []).some((i: any) => i.product_id === p.pid)))
+                      : pivotData.products.filter(p => (selectedSectionFilter?.items || []).some((i: any) => i.product_id === p.pid))
                     );
                 return relevantProducts.reduce((acc, p) => acc + pivotData.stores.reduce((acc2, s) => acc2 + (pivotData.grid[p.id]?.[s] || 0), 0), 0);
               })()}
@@ -387,7 +395,7 @@ export default function StaffOrdersPage() {
                       ))}
 
                       {/* Others Option (if applicable) */}
-                      {pivotData.products.some(p => !sections.some(sec => (sec.items || []).some((i: any) => i.product_id === p.id))) && (
+                      {pivotData.products.some(p => !sections.some(sec => (sec.items || []).some((i: any) => i.product_id === p.pid))) && (
                         <motion.button
                           whileHover={{ scale: 1.02, y: -4 }}
                           whileTap={{ scale: 0.98 }}

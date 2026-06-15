@@ -25,7 +25,7 @@ export default function StaffJobdeskPage() {
       const dateRange = [formatDate(today), formatDate(tomorrow)];
       
       const [taskRes, staffRes] = await Promise.all([
-        supabase.from('tasks').select('*, products(name, current_stock, is_hot_kitchen)').in('date', dateRange).order('date', { ascending: true }).order('created_at', { ascending: false }),
+        supabase.from('tasks').select('*, products(name, current_stock, is_hot_kitchen, tracks_stock)').in('date', dateRange).order('date', { ascending: true }).order('created_at', { ascending: false }),
         supabase.from('staff').select('id, name')
       ]);
       
@@ -69,10 +69,10 @@ export default function StaffJobdeskPage() {
 
   const submitActual = async () => {
     if (!selectedTask) return;
-    const isHK = selectedTask.products?.is_hot_kitchen;
+    const noYield = selectedTask.products?.is_hot_kitchen || selectedTask.products?.tracks_stock === false;
     
-    if (!isHK && !actualYield) return alert("Masukkan jumlah hasil!");
-    const actual = isHK ? 0 : parseInt(actualYield);
+    if (!noYield && !actualYield) return alert("Masukkan jumlah hasil!");
+    const actual = noYield ? 0 : parseInt(actualYield);
 
     // Mark task complete + add stock atomically on the server (closes the
     // read-then-write race; runs under the staff user's session via RLS).
@@ -237,19 +237,19 @@ export default function StaffJobdeskPage() {
                 </div>
               </div>
               <div className="space-y-6">
-                {!selectedTask.products?.is_hot_kitchen ? (
+                {!(selectedTask.products?.is_hot_kitchen || selectedTask.products?.tracks_stock === false) ? (
                   <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block text-center text-raden-gold">Hasil Aktual Dibuat</label>
                     <input type="number" autoFocus placeholder="0" value={actualYield} onChange={e => setActualYield(e.target.value)} className="w-full p-6 text-center text-4xl font-black bg-raden-gold/10 text-raden-gold rounded-3xl outline-none focus:ring-4 focus:ring-raden-gold/30 transition-all border-none" />
                   </div>
                 ) : (
                   <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100 text-center">
-                    <p className="text-orange-600 font-black text-sm uppercase tracking-tight mb-1">Dapur Hot Kitchen</p>
-                    <p className="text-xs text-orange-400 font-bold">Tekan tombol di bawah untuk konfirmasi penyelesaian item ini.</p>
+                    <p className="text-orange-600 font-black text-sm uppercase tracking-tight mb-1">{selectedTask.products?.is_hot_kitchen ? 'Dapur Hot Kitchen' : 'Produk Fresh'}</p>
+                    <p className="text-xs text-orange-400 font-bold">Tekan tombol di bawah untuk konfirmasi item ini sudah selesai dibuat.</p>
                   </div>
                 )}
                 <button onClick={submitActual} className="w-full py-5 bg-raden-gold text-white rounded-2xl font-black uppercase tracking-widest shadow-xl flex justify-center gap-2">
-                  <CheckCircle2 size={18} /> {selectedTask.products?.is_hot_kitchen ? 'Tuntaskan Sekarang' : 'Selesaikan Tugas'}
+                  <CheckCircle2 size={18} /> {(selectedTask.products?.is_hot_kitchen || selectedTask.products?.tracks_stock === false) ? 'Tuntaskan Sekarang' : 'Selesaikan Tugas'}
                 </button>
               </div>
             </motion.div>

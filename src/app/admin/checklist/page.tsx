@@ -32,7 +32,7 @@ export default function AdminChecklistPage() {
       const [tplRes, histRes, recapRes] = await Promise.all([
         supabase.from('checklist_templates').select('*').order('category'),
         supabase.from('checklist_history').select('*', { count: 'exact', head: true }).eq('date', todayString),
-        supabase.from('checklist_history').select('date, staff_id, staff(name), checklist_templates(category)').order('date', { ascending: false })
+        supabase.from('checklist_history').select('date, staff_id, staff_name, staff(name), checklist_templates(category)').order('date', { ascending: false })
       ]);
 
       if (tplRes.data) setTemplates(tplRes.data);
@@ -45,13 +45,14 @@ export default function AdminChecklistPage() {
       const seenKeys = new Set();
       recapRes.data?.forEach((r: any) => {
         const cat = r.checklist_templates?.category || 'General';
-        const key = `${r.date}|${r.staff_id}|${cat}`;
+        const who = r.staff?.name || r.staff_name || 'Staff';
+        const key = `${r.date}|${who}|${cat}`;
         if (!seenKeys.has(key)) {
           seenKeys.add(key);
-          recaps.push({ 
-            date: r.date, 
-            staffId: r.staff_id, 
-            staffName: r.staff?.name,
+          recaps.push({
+            date: r.date,
+            staffId: r.staff_id,
+            staffName: who,
             category: cat
           });
         }

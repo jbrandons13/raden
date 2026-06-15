@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, Circle, Camera, Loader2, ChevronLeft, MapPin, User, Check, Send, AlertCircle, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 
 const AREAS = ['Kitchen', 'Pastry', 'General'];
 
@@ -11,6 +12,7 @@ const getLocalDate = () => {
 };
 
 export default function StaffChecklistPage() {
+  const { username } = useAuth();
   const [view, setView] = useState<'areas' | 'tasks'>('areas');
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
@@ -87,7 +89,7 @@ export default function StaffChecklistPage() {
   };
 
   const handleFinalSubmit = async () => {
-    if (!selectedStaffId) { alert("Pilih nama Anda dulu!"); return; }
+    // Nama pengecek otomatis dari akun yang login.
     
     setIsSubmitting(true);
     const today = getLocalDate();
@@ -97,7 +99,7 @@ export default function StaffChecklistPage() {
       .filter(([_, isChecked]) => isChecked)
       .map(([templateId]) => ({
         template_id: templateId,
-        staff_id: selectedStaffId,
+        staff_name: username,
         date: today,
         is_completed: true
       }));
@@ -206,20 +208,9 @@ export default function StaffChecklistPage() {
           <div className="w-8" />
        </div>
 
-       <div className="p-4 bg-gray-50 border-b border-gray-100">
-          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            {staffList.map(s => (
-              <button 
-                key={s.id} 
-                onClick={() => { setSelectedStaffId(s.id); localStorage.setItem('raden_staff_id', s.id); }} 
-                className={`shrink-0 px-4 py-2 rounded-xl border-2 font-black text-[10px] uppercase tracking-widest transition-all ${
-                  selectedStaffId === s.id ? 'bg-raden-green border-raden-green text-white shadow-md' : 'bg-white text-gray-400 border-gray-100'
-                }`}
-              >
-                {s.name}
-              </button>
-            ))}
-          </div>
+       <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+          <span className="text-[10px] font-black text-raden-gold uppercase tracking-widest">Dicek oleh:</span>
+          <span className="text-xs font-black text-raden-green">{username || '—'}</span>
        </div>
 
        <div className="p-4 space-y-2 mb-32">

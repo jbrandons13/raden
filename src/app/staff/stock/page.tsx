@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Package, Search, CheckCircle2, ShoppingCart, User as UserIcon, Send, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 
 export default function StaffStockCheckPage() {
+  const { username } = useAuth();
   const [materials, setMaterials] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -60,7 +62,7 @@ export default function StaffStockCheckPage() {
     e.preventDefault();
     setSubmitting(true);
 
-    const staffName = staffList.find(s => s.id === formData.staffId)?.name || 'Unknown';
+    const staffName = username || 'Staff';
 
     const checkEntries = Object.entries(formData.items)
       .filter(([_, values]: [any, any]) => values.qty || values.buy)
@@ -77,11 +79,7 @@ export default function StaffStockCheckPage() {
       return;
     }
     
-    if (!formData.staffId) {
-      alert("Silakan pilih nama Anda dulu.");
-      setSubmitting(false);
-      return;
-    }
+    // Nama pengecek otomatis dari akun yang login.
 
     const { error } = await supabase.from('stock_checks').insert(checkEntries);
 
@@ -177,25 +175,9 @@ export default function StaffStockCheckPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-raden-gold/5 p-5 rounded-[2rem] border border-raden-gold/20">
-          <label className="text-[10px] font-black text-raden-gold uppercase tracking-[0.2em] mb-4 block">Pilih Nama Anda</label>
-          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            {staffList.map(s => (
-              <button 
-                key={s.id} 
-                type="button"
-                onClick={() => { 
-                  setFormData({...formData, staffId: s.id});
-                  localStorage.setItem('raden_staff_id', s.id);
-                }} 
-                className={`shrink-0 px-5 py-3 rounded-2xl border-2 font-black text-[10px] uppercase tracking-widest transition-all ${
-                  formData.staffId === s.id ? 'bg-raden-green border-raden-green text-white shadow-md' : 'bg-white text-gray-400 border-gray-100'
-                }`}
-              >
-                {s.name}
-              </button>
-            ))}
-          </div>
+        <div className="bg-raden-gold/5 p-4 rounded-2xl border border-raden-gold/20 flex items-center gap-2">
+          <span className="text-[10px] font-black text-raden-gold uppercase tracking-widest">Dicek oleh:</span>
+          <span className="text-xs font-black text-raden-green">{username || '—'}</span>
         </div>
 
         <div className="space-y-4">
