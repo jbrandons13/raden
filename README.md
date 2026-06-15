@@ -1,135 +1,142 @@
 # 🥯 RADEN ERP — Integrated Bakehouse Management System
 
-[![Next.js](https://img.shields.io/badge/Next.js-15+-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Auth_+_RLS-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Framer Motion](https://img.shields.io/badge/Framer_Motion-Visuals-BB4B96?style=for-the-badge&logo=framer&logoColor=white)](https://www.framer.com/motion/)
 
-**RADEN ERP** is a professional, high-performance Enterprise Resource Planning system specifically tailored for bakehouses and food production businesses. It bridges the gap between administrative oversight and kitchen operations, ensuring seamless inventory tracking, production scheduling, and financial reporting.
+**RADEN ERP** is a professional management system for a bakehouse that **produces in-house and distributes through multiple channels** (Agents, Branches, Online, plus its own counter). It connects the whole flow — production → distribution → multi-channel sales — into one secure, mobile-friendly app, replacing scattered spreadsheets.
+
+---
+
+## 🔐 Security & Access (database-level)
+
+*   **Per-user login** via Supabase Auth (username + PIN). Two roles: **Admin** and **Staff**.
+*   **Row Level Security on every table** — data is locked at the database, not just the UI. Logged-out requests see nothing; staff are limited to their own area; the cash book is admin-only.
+*   **Admin-managed staff accounts** — create, remove, and reset staff PINs from the admin panel (via a secure server route holding the service key).
 
 ---
 
 ## 🌟 Key Features
 
 ### 👔 Administrator Suite
-*   **Inventory Control**: Real-time tracking of finished products and raw materials with automated stock alerts.
-*   **Production Planning**: Weekly and daily production target setting with yield estimation.
-*   **Staff Scheduling**: Comprehensive shift management and staff attendance tracking.
-*   **Customer & Sales Insights**: centralized database for customer orders, revenue tracking, and order history.
-*   **Invoice Generation**: Professional PDF invoice generation for wholesale and retail customers.
+*   **Products & Stock**: per-channel pricing (**Eceran / Agen / Branch**), **Distok vs Fresh** (made-to-order) product types, optional **variants/isian** (e.g. martabak fillings), weekly targets that drive production recommendations.
+*   **Branch & Agent** distribution network — manage partners with type, contact, and address.
+*   **Orders (Pesanan)**: price is chosen **automatically by channel** (agent / branch / online-eceran); optional per-line filling; walk-in/online buyers by name; reserved-stock awareness; printable PDF invoices.
+*   **Buku Kas** (cash ledger): income/expense with running balance and pagination.
+*   **Production Calendar (Jobdesk)**: daily assignment with **smart restock recommendations** (🔴🟡🟢) based on weekly target vs current stock.
+*   **Staff & Shift scheduling** with optional **AI parsing** of natural-language availability templates (Groq / Llama 3.3).
+*   **Dashboard**: today's orders, active orders, and an accurate "needs production" panel (stocked products only).
 
 ### 👨‍🍳 Staff Operational Hub
-*   **Daily Jobdesks**: Personalized task lists for kitchen staff, showing exact production targets and batch requirements.
-*   **Real-time Stock Reporting**: Simple interface for staff to report actual production yields and material usage.
-*   **Operational Checklists**: Integrated checklists (Pastry, Kitchen, General) to maintain high-quality standards and hygiene.
-*   **Mobile-Optimized**: Designed to be used on tablets and smartphones directly in the kitchen environment.
+*   **Daily Jobdesks**: stocked products report actual yield; fresh/made-to-order items simply confirm "done".
+*   **Distribution Recap**: a per-store manifest with **filling breakdown** when specified.
+*   **Material Stock Checks** & **Operational Checklists** (Pastry/Kitchen/General) — automatically attributed to the logged-in account.
+*   **Mobile-Optimized** — designed for tablets/phones in the kitchen; installable to the home screen.
 
 ---
 
 ## 📸 Interface Preview
 
-### 🖥️ Main Portal
-Access control for both Administrative and Production teams.
-![Landing Page](./public/screenshots/landing.png)
+> Screenshots live in `public/screenshots/`. Replace the PNGs (same filenames) to refresh.
+
+### 🔑 Login
+Per-user access (username + PIN) for Admin and Staff.
+![Login](./public/screenshots/landing.png)
 
 ### 📊 Admin Dashboard
-Comprehensive overview of the business operations.
+Active orders and production needs at a glance.
 ![Admin Dashboard](./public/screenshots/admin-dashboard.png)
 
-### 🍞 Inventory & Products
-Visual stock management with real-time status indicators.
+### 🍞 Products & Stock
+Per-channel pricing, Distok/Fresh, and variants.
 ![Products Page](./public/screenshots/products.png)
 
 ### 📅 Production Calendar
-Efficient scheduling for daily bakehouse targets.
+Daily jobdesk assignment with restock recommendations.
 ![Calendar Page](./public/screenshots/calendar.png)
 
 ### 👨‍🍳 Kitchen Operations
-Simplified task management for the production team.
+Simple task reporting for the production team.
 ![Staff Interface](./public/screenshots/staff-interface.png)
 
 ### 🗓️ Staff & Shift Management
-Comprehensive 30-day shift matrix and daily staff scheduling.
+30-day shift matrix and daily staffing.
 ![Staff Shifts](./public/screenshots/staff-shifts.png)
 
-### 📅 Daily Jobdesk Calendar
-Visual task assignment for specific production goals.
+### 🗒️ Daily Jobdesk
+Visual task assignment per production goal.
 ![Daily Schedule](./public/screenshots/daily-schedule.png)
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [Next.js 15+](https://nextjs.org/) (App Router, Turbopack)
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Turbopack)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Database & Auth**: [Supabase](https://supabase.com/) (PostgreSQL)
+- **Database & Auth**: [Supabase](https://supabase.com/) — PostgreSQL, Auth, **Row Level Security**
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
 - **Animations**: [Framer Motion](https://www.framer.com/motion/)
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **PDF Engine**: [@react-pdf/renderer](https://react-pdf.org/)
-- **AI Integration**: [Groq API](https://groq.com/) (Llama 3.3) — Powers automated staff schedule parsing from natural language templates.
+- **AI**: [Groq API](https://groq.com/) (Llama 3.3) — automated staff-schedule parsing
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18.x or later
+- Node.js 20.x or later
 - A Supabase project
-- Groq API Key
+- (Optional) Groq API key for the AI schedule parser
 
 ### Installation
 
-1. **Clone the repository**
+1. **Clone & install**
    ```bash
    git clone https://github.com/jbrandons13/raden.git
    cd raden
-   ```
-
-2. **Install dependencies**
-   ```bash
    npm install
    ```
 
-3. **Environment Configuration**
-   Create a `.env.local` file in the root directory and add your credentials:
+2. **Environment** — create `.env.local`:
    ```env
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-   FIXED_PIN=1234
    GROQ_API_KEY=your_groq_key
    ```
+   > Never commit `.env.local`. The `SUPABASE_SERVICE_ROLE_KEY` is server-only.
 
-4. **Database Setup**
-   Run the provided `schema.sql` in your Supabase SQL Editor to initialize the tables and relationships.
+3. **Database**
+   - Run `schema.sql` in the Supabase SQL Editor (creates all tables).
+   - Then run every file in `supabase/migrations/` **in order** (adds RLS policies, the `user_role()` & `submit_task_result()` functions, and performance indexes).
+   - Seed admin accounts: `node scripts/seed-admins.mjs` (prints usernames + PINs to `admin-credentials.txt`).
 
-5. **Run the development server**
+4. **Run**
    ```bash
-   npm run dev
-   ```
-
-6. **Build for production**
-   ```bash
-   npm run build
-   npm start
+   npm run dev        # development
+   npm run build && npm start   # production
    ```
 
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ Architecture
 
-The project follows a modular structure within the Next.js `app` directory:
-- `/admin`: Management dashboard and master data control.
-- `/staff`: Operational tools and reporting interfaces.
-- `/api`: Serverless functions for complex backend logic.
-- `/components`: Reusable UI components powered by Tailwind and Framer Motion.
+Next.js App Router under `src/app`:
+- `/admin` — management dashboard & master data (products, branch/agent, orders, buku kas, jobdesk, staff, checklist, staff accounts).
+- `/staff` — operational tools (jobdesk, distribution recap, stock check, checklist).
+- `/api/admin/staff-accounts` — secure server route for staff-account management (service-key, admin-gated).
+- `supabase/migrations/` — ordered SQL (RLS, functions, columns, indexes); `schema.sql` is the consolidated table reference.
+- `scripts/` — ops utilities (seed admins, schema/RLS audits).
+
+See **`PROGRESS.md`** for the full feature & migration checklist.
 
 ---
 
 ## 📄 License
-This project is private and intended for internal use. All rights reserved.
+Private — internal use. All rights reserved.
 
 ---
 
