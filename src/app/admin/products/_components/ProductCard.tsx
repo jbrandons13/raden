@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Package, Trash2, Edit3, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Package, Trash2, Edit3, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 
 interface ProductCardProps {
   p: any;
@@ -84,10 +84,24 @@ const ProductCard = React.memo(({
             <div className="flex flex-col gap-1 mt-1.5 overflow-hidden">
                <div className="flex items-center gap-3">
                  <p className="font-black text-raden-gold text-[11px] whitespace-nowrap">NT$ {p.price?.toLocaleString('zh-TW')}</p>
-                 <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest whitespace-nowrap ${p.current_stock < 10 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>
-                   <Package size={10} /> {p.current_stock} {p.unit}
-                 </div>
+                 {p.tracks_stock === false ? (
+                   <div className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest whitespace-nowrap bg-orange-50 text-orange-500">
+                     <Flame size={10} /> Fresh
+                   </div>
+                 ) : (
+                   <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest whitespace-nowrap ${p.current_stock < 10 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>
+                     <Package size={10} /> {p.current_stock} {p.unit}
+                   </div>
+                 )}
                </div>
+               {(p.price_agent > 0 || p.price_branch > 0) && (
+                 <p className="text-[8px] font-bold text-gray-400 tracking-tight truncate">
+                   Agen <span className="text-raden-green">NT$ {(p.price_agent || 0).toLocaleString('zh-TW')}</span> · Branch <span className="text-raden-green">NT$ {(p.price_branch || 0).toLocaleString('zh-TW')}</span>
+                 </p>
+               )}
+               {Array.isArray(p.options) && p.options.length > 0 && (
+                 <p className="text-[8px] font-bold text-raden-gold tracking-tight truncate">{p.options.length} pilihan isian</p>
+               )}
                {(p.yield_per_batch > 0 || p.weekly_target > 0) && (
                  <p className="text-[7.5px] font-bold text-gray-400 uppercase tracking-tighter flex items-center gap-1 italic">
                    {p.yield_per_batch > 0 && <span>{p.yield_per_batch} Pcs/batch</span>}

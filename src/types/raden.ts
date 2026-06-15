@@ -9,12 +9,16 @@ export interface Product {
   category: string;
   initial_stock: number;
   current_stock: number;
-  price: number;
+  price: number;          // Retail / eceran price (Online & own-store)
+  price_agent: number;    // Wholesale price for Agents
+  price_branch: number;   // Price for Branches
   unit: string;
   sort_order: number;
   yield_per_batch: number;
   weekly_target: number;
   is_hot_kitchen: boolean;
+  tracks_stock: boolean;  // false = fresh / made-to-order (no stock, no target/yield)
+  options?: string[];     // optional price-neutral choices, e.g. martabak fillings
   notes?: string;
   image_url?: string;
   created_at?: string;
@@ -58,9 +62,12 @@ export interface StaffShift {
   created_at?: string;
 }
 
+export type CustomerType = 'branch' | 'agent';
+
 export interface Customer {
   id: string;
   name: string;
+  type: CustomerType;     // Distribution partner type
   address?: string;
   phone?: string;
   total_orders: number;
@@ -70,7 +77,9 @@ export interface Customer {
 
 export interface Order {
   id: string;
-  customer_id: string;
+  customer_id: string | null;
+  customer_name?: string | null;          // for online orders (no saved customer)
+  channel?: 'agent' | 'branch' | 'online' | 'eceran' | null;
   order_date: string;
   status: 'Draft' | 'Siap Kirim' | 'Siap Ambil' | 'Selesai';
   total_revenue: number;
@@ -84,6 +93,7 @@ export interface OrderItem {
   order_id: string;
   product_id: string;
   qty: number;
+  variant?: string | null;   // optional isian/filling for this line (NULL = bebas)
   // Joined data
   products?: Product;
 }

@@ -23,17 +23,15 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [itemToDelete, setItemToDelete] = useState<{id: string, name: string} | null>(null);
 
-  const [newProduct, setNewProduct] = useState({ 
-    name: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0, 
-    yield_per_batch: 0, weekly_target: 0
+  const [newProduct, setNewProduct] = useState({
+    name: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0,
+    price_agent: 0, price_branch: 0, yield_per_batch: 0, weekly_target: 0, tracks_stock: true, options: [] as string[]
   });
-  const [newProdCalc, setNewProdCalc] = useState({ batches: 1, total_pcs: 0 });
 
-  const [editForm, setEditForm] = useState({ 
-    id: '', name: '', category: '', price: 0, unit: 'Pcs', current_stock: 0,
-    yield_per_batch: 0, weekly_target: 0
+  const [editForm, setEditForm] = useState({
+    id: '', name: '', category: '', price: 0, price_agent: 0, price_branch: 0, unit: 'Pcs', current_stock: 0,
+    yield_per_batch: 0, weekly_target: 0, tracks_stock: true, options: [] as string[]
   });
-  const [editProdCalc, setEditProdCalc] = useState({ batches: 1, total_pcs: 0 });
   const [newCategoryName, setNewCategoryName] = useState('');
   const [categoryToEdit, setCategoryToEdit] = useState<{id: string, name: string} | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<{id: string, name: string} | null>(null);
@@ -43,7 +41,7 @@ export default function ProductsPage() {
   const fetchData = useCallback(async () => {
     try {
       const [prodsRes, catsRes, historyRes] = await Promise.all([
-        supabase.from('products').select('*').order('sort_order', { ascending: true }),
+        supabase.from('products').select('*').eq('is_hot_kitchen', false).order('sort_order', { ascending: true }),
         supabase.from('product_categories').select('*').order('name'),
         supabase.from('tasks').select('*, products(name), staff(name)').eq('status', 'Completed').order('created_at', { ascending: false }).limit(50),
       ]);
@@ -109,15 +107,17 @@ export default function ProductsPage() {
     const maxSortOrder = products.length > 0 ? Math.max(...products.map(p => p.sort_order || 0)) : 0;
     const { error } = await supabase.from('products').insert([{ 
       ...newProduct, 
-      current_stock: newProduct.initial_stock,
+      initial_stock: (newProduct.tracks_stock === false) ? 0 : newProduct.initial_stock,
+      current_stock: (newProduct.tracks_stock === false) ? 0 : newProduct.initial_stock,
+      weekly_target: (newProduct.tracks_stock === false) ? 0 : newProduct.weekly_target,
+      yield_per_batch: (newProduct.tracks_stock === false) ? 0 : newProduct.yield_per_batch,
       sort_order: maxSortOrder + 1,
       is_hot_kitchen: false
     }]);
     if (error) alert(error.message);
     else { 
       setShowAddModal(false); 
-      setNewProduct({ name: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0, yield_per_batch: 0, weekly_target: 0 }); 
-      setNewProdCalc({ batches: 1, total_pcs: 0 });
+      setNewProduct({ name: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0, price_agent: 0, price_branch: 0, yield_per_batch: 0, weekly_target: 0, tracks_stock: true, options: [] });
       fetchData(); 
     }
   };
@@ -160,10 +160,15 @@ export default function ProductsPage() {
   };
 
   const handleUpdateProduct = async () => {
-    const { error } = await supabase.from('products').update({ 
-      name: editForm.name, category: editForm.category, price: editForm.price, 
-      unit: editForm.unit, current_stock: editForm.current_stock,
-      yield_per_batch: editForm.yield_per_batch, weekly_target: editForm.weekly_target
+    const freshU = editForm.tracks_stock === false;
+    const { error } = await supabase.from('products').update({
+      name: editForm.name, category: editForm.category,
+      price: editForm.price, price_agent: editForm.price_agent, price_branch: editForm.price_branch,
+      unit: editForm.unit, tracks_stock: editForm.tracks_stock,
+      options: editForm.options || [],
+      current_stock: freshU ? 0 : editForm.current_stock,
+      yield_per_batch: freshU ? 0 : editForm.yield_per_batch,
+      weekly_target: freshU ? 0 : editForm.weekly_target
     }).eq('id', editForm.id);
     if (error) alert(error.message);
     else { setShowEditModal(false); fetchData(); }
@@ -181,9 +186,8 @@ export default function ProductsPage() {
   };
 
   const onEditRequest = useCallback((p: Product) => {
-    setEditProdCalc({ batches: 1, total_pcs: p.yield_per_batch || 0 });
-    setEditForm({ ...p } as any); 
-    setShowEditModal(true); 
+    setEditForm({ ...p } as any);
+    setShowEditModal(true);
   }, []);
 
   const onDeleteRequest = useCallback((id: string, name: string) => {
@@ -323,11 +327,9 @@ export default function ProductsPage() {
       <ProductModals 
         showAddModal={showAddModal} setShowAddModal={setShowAddModal}
         newProduct={newProduct} setNewProduct={setNewProduct}
-        newProdCalc={newProdCalc} setNewProdCalc={setNewProdCalc}
         handleSaveProduct={handleSaveProduct}
         showEditModal={showEditModal} setShowEditModal={setShowEditModal}
         editForm={editForm} setEditForm={setEditForm}
-        editProdCalc={editProdCalc} setEditProdCalc={setEditProdCalc}
         handleUpdateProduct={handleUpdateProduct}
         showCategoryManager={showCategoryManager} setShowCategoryManager={setShowCategoryManager}
         categories={categories} newCategoryName={newCategoryName} setNewCategoryName={setNewCategoryName}

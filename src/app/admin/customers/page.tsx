@@ -1,167 +1,341 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Search, Printer, ShoppingBag, DollarSign, ArrowUpRight, Loader2, Trash2, X, AlertCircle } from 'lucide-react';
+import { Building2, Store, Search, Plus, Edit3, Trash2, Loader2, X, Phone, MapPin, AlertCircle, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { Customer, CustomerType } from '@/types/raden';
 
-export default function CustomersPage() {
-  const [customers, setCustomers] = useState<any[]>([]);
+type FilterType = 'all' | CustomerType;
+type FormState = { id?: string; name: string; type: CustomerType; phone: string; address: string };
+const EMPTY_FORM: FormState = { name: '', type: 'branch', phone: '', address: '' };
+
+const TYPE_META: Record<CustomerType, { label: string; icon: typeof Building2; cls: string }> = {
+  branch: { label: 'Branch', icon: Building2, cls: 'bg-raden-green/10 text-raden-green' },
+  agent: { label: 'Agen', icon: Store, cls: 'bg-raden-gold/10 text-raden-gold' },
+};
+
+export default function BranchAgentPage() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [stats, setStats] = useState({ total: 0, orders: 0, avgRevenue: 0 });
-  const [customerToDelete, setCustomerToDelete] = useState<{id: string, name: string} | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<FilterType>('all');
 
-  const fetchCustomers = async () => {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [toDelete, setToDelete] = useState<Customer | null>(null);
+
+  const fetchData = useCallback(async () => {
     try {
       const { data } = await supabase.from('customers').select('*').order('name', { ascending: true });
-      if (data) {
-        setCustomers(data);
-        const total = data.length;
-        const totalOrders = data.reduce((acc, curr) => acc + (curr.total_orders || 0), 0);
-        const totalRev = data.reduce((acc, curr) => acc + (Number(curr.total_revenue) || 0), 0);
-        const avg = total > 0 ? totalRev / total : 0;
-        setStats({ total, orders: totalOrders, avgRevenue: avg });
-      }
+      if (data) setCustomers(data as Customer[]);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const ch = supabase
+      .channel('branch-agent-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => fetchData())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [fetchData]);
+
+  const getType = (c: Customer): CustomerType => (c.type === 'agent' ? 'agent' : 'branch');
+
+  const filtered = useMemo(
+    () => customers.filter((c) =>
+      (filter === 'all' || getType(c) === filter) &&
+      c.name.toLowerCase().includes(search.toLowerCase())
+    ),
+    [customers, filter, search]
+  );
+
+  const counts = useMemo(() => ({
+    all: customers.length,
+    branch: customers.filter((c) => getType(c) === 'branch').length,
+    agent: customers.filter((c) => getType(c) === 'agent').length,
+  }), [customers]);
+
+  const openAdd = () => { setForm(EMPTY_FORM); setError(''); setShowForm(true); };
+  const openEdit = (c: Customer) => {
+    setForm({ id: c.id, name: c.name, type: getType(c), phone: c.phone || '', address: c.address || '' });
+    setError('');
+    setShowForm(true);
   };
 
-  const handleDeleteCustomer = async () => {
-    if (!customerToDelete) return;
-    
+  const handleSave = async () => {
+    setError('');
+    if (!form.name.trim()) return setError('Nama wajib diisi.');
+    setSaving(true);
     try {
-      setIsDeleting(true);
-      const { error } = await supabase.from('customers').delete().eq('id', customerToDelete.id);
-      
-      if (error) {
-        if (error.code === '23503') {
-          alert("Gagal menghapus: Pelanggan ini memiliki riwayat pesanan. Hapus pesanan terkait terlebih dahulu.");
-        } else {
-          throw error;
-        }
-      } else {
-        await fetchCustomers();
-        setCustomerToDelete(null);
-      }
+      const payload = {
+        name: form.name.trim(),
+        type: form.type,
+        phone: form.phone.trim() || null,
+        address: form.address.trim() || null,
+      };
+      const { error: e } = form.id
+        ? await supabase.from('customers').update(payload).eq('id', form.id)
+        : await supabase.from('customers').insert([payload]);
+      if (e) throw e;
+      setShowForm(false);
+      setForm(EMPTY_FORM);
+      fetchData();
     } catch (e: any) {
-      alert("Error: " + e.message);
+      setError(e.message);
     } finally {
-      setIsDeleting(false);
+      setSaving(false);
     }
   };
 
-  useEffect(() => {
-    fetchCustomers();
-    const ch = supabase.channel('customers-sync-v6').on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => fetchCustomers()).subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, []);
-
-  const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const handleDelete = async () => {
+    if (!toDelete) return;
+    setSaving(true);
+    try {
+      const { error: e } = await supabase.from('customers').delete().eq('id', toDelete.id);
+      if (e) {
+        if (e.code === '23503') throw new Error('Tidak bisa dihapus: masih punya riwayat pesanan.');
+        throw e;
+      }
+      setToDelete(null);
+      fetchData();
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className="space-y-8 relative pb-12">
+    <div className="space-y-6 relative pb-12">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tighter uppercase sm:normal-case">Client Database</h1>
-          <p className="text-gray-400 text-xs sm:text-sm font-medium">Monitoring loyalitas pelanggan RADEN.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase">Branch & Agen</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Kelola data cabang & agen distribusi.</p>
         </div>
-        <button onClick={() => window.print()} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-gray-100 px-6 py-4 sm:py-3 rounded-2xl text-xs font-black uppercase tracking-widest text-raden-green shadow-xl active:scale-95 transition-all">
-          <Printer size={18} /> Print Catalog
+        <button
+          onClick={openAdd}
+          className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-8 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+        >
+          <Plus size={18} /> Tambah
         </button>
       </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] sm:rounded-[3rem] shadow-sm border border-gray-100 flex items-center gap-4 sm:gap-6 group hover:shadow-xl transition-all">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-[1.5rem] bg-blue-100 text-blue-600 flex items-center justify-center transition-transform group-hover:scale-110"><Users size={24} /></div>
-          <div><p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5 sm:mb-1">Total Network</p><h3 className="text-2xl sm:text-3xl font-black text-raden-green">{stats.total}</h3></div>
-        </div>
-        <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] sm:rounded-[3rem] shadow-sm border border-gray-100 flex items-center gap-4 sm:gap-6 group hover:shadow-xl transition-all">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-[1.5rem] bg-green-100 text-green-600 flex items-center justify-center transition-transform group-hover:scale-110"><ShoppingBag size={24} /></div>
-          <div><p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5 sm:mb-1">Total Orders</p><h3 className="text-2xl sm:text-3xl font-black text-raden-green">{stats.orders}</h3></div>
-        </div>
-        <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] sm:rounded-[3rem] shadow-sm border border-gray-100 flex items-center gap-4 sm:gap-6 group hover:shadow-xl transition-all sm:col-span-2 lg:col-span-1">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-[1.5rem] bg-raden-gold/20 text-raden-green flex items-center justify-center transition-transform group-hover:scale-110"><DollarSign size={24} /></div>
-          <div><p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5 sm:mb-1">Avg Value</p><h3 className="text-xl sm:text-2xl font-black text-raden-green">NTD {stats.avgRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</h3></div>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input type="text" placeholder="Search by name or brand..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-14 sm:pl-16 pr-8 py-4 sm:py-5 bg-white border border-gray-100 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm focus:ring-4 focus:ring-raden-gold/20 outline-none transition-all font-bold text-sm sm:text-base text-raden-green" />
-        {loading && <div className="absolute right-6 top-1/2 -translate-y-1/2"><Loader2 className="animate-spin text-raden-gold" size={18} /></div>}
-      </div>
-
-      {/* Customers List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredCustomers.map((cust, i) => (
-          <motion.div key={cust.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} className="group bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 hover:border-raden-gold/50 hover:shadow-2xl transition-all cursor-pointer">
-            <div className="flex justify-between items-start mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-raden-green text-raden-gold flex items-center justify-center font-black text-2xl group-hover:scale-110 transition-transform">{cust.name.charAt(0)}</div>
-              <div className="flex flex-col items-end gap-2">
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCustomerToDelete({ id: cust.id, name: cust.name });
-                  }}
-                  className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                  title="Hapus Pelanggan"
-                >
-                  <Trash2 size={18} />
-                </button>
-                <div className="text-right flex flex-col items-end">
-                  <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Established</span>
-                  <p className="text-xs font-black text-raden-green">{new Date(cust.created_at).getFullYear()}</p>
-                </div>
-              </div>
-            </div>
-            <h3 className="text-xl font-black text-raden-green mb-4 group-hover:text-raden-gold transition-colors">{cust.name}</h3>
-            <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-50">
-              <div><p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Trans.</p><p className="font-black text-raden-green">{cust.total_orders || 0}</p></div>
-              <div><p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Value</p><p className="font-black text-raden-gold text-xs">NTD {(cust.total_revenue || 0).toLocaleString()}</p></div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      <AnimatePresence>
-        {customerToDelete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-raden-green/60 backdrop-blur-md"
-              onClick={() => setCustomerToDelete(null)}
-            />
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="relative bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl text-center"
+      {/* Filter + Search */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+        <div className="flex gap-1.5 p-1.5 bg-gray-100 rounded-2xl w-fit">
+          {([
+            { id: 'all', label: 'Semua' },
+            { id: 'branch', label: 'Branch' },
+            { id: 'agent', label: 'Agen' },
+          ] as const).map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setFilter(t.id)}
+              className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                filter === t.id ? 'bg-white text-raden-green shadow-sm' : 'text-gray-400'
+              }`}
             >
-              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Trash2 size={32} />
+              {t.label}
+              <span className="ml-2 px-1.5 py-0.5 rounded-md text-[8px] bg-gray-200/70 text-gray-500">{counts[t.id]}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="relative w-full lg:w-72 group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-raden-green transition-colors" size={18} />
+          <input
+            type="text"
+            placeholder="Cari nama..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-raden-green/5 focus:border-raden-green/20 shadow-sm transition-all"
+          />
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="relative min-h-[300px]">
+        {loading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-raden-gold" />
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((c) => {
+            const meta = TYPE_META[getType(c)];
+            const Icon = meta.icon;
+            return (
+              <motion.div
+                key={c.id}
+                layout
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 hover:shadow-lg transition-all"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${meta.cls}`}>
+                    <Icon size={22} />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${meta.cls}`}>{meta.label}</span>
+                  </div>
+                </div>
+
+                <h3 className="text-lg font-black text-raden-green mb-3 truncate">{c.name}</h3>
+
+                <div className="space-y-1.5 mb-4 min-h-[40px]">
+                  {c.phone ? (
+                    <p className="flex items-center gap-2 text-xs font-bold text-gray-500"><Phone size={13} className="text-gray-300 shrink-0" /> {c.phone}</p>
+                  ) : null}
+                  {c.address ? (
+                    <p className="flex items-start gap-2 text-xs font-medium text-gray-400"><MapPin size={13} className="text-gray-300 shrink-0 mt-0.5" /> <span className="line-clamp-2">{c.address}</span></p>
+                  ) : null}
+                  {!c.phone && !c.address && <p className="text-[11px] italic text-gray-300">Belum ada kontak</p>}
+                </div>
+
+                <div className="flex gap-2 pt-3 border-t border-gray-50">
+                  <button
+                    onClick={() => openEdit(c)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gray-50 text-raden-green hover:bg-gray-100 transition-colors font-black text-[10px] uppercase tracking-widest"
+                  >
+                    <Edit3 size={14} /> Edit
+                  </button>
+                  <button
+                    onClick={() => setToDelete(c)}
+                    className="p-2.5 rounded-xl text-red-400 hover:bg-red-50 transition-colors"
+                    title="Hapus"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {!loading && filtered.length === 0 && (
+          <div className="py-20 text-center flex flex-col items-center">
+            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-200">
+              <Building2 size={32} />
+            </div>
+            <p className="italic text-gray-300 font-bold uppercase tracking-widest text-[10px]">
+              {search ? 'Tidak ditemukan' : 'Belum ada data'}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Add / Edit modal */}
+      <AnimatePresence>
+        {showForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowForm(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-black text-raden-green tracking-tight">{form.id ? 'Edit Data' : 'Tambah Branch / Agen'}</h3>
+                <button onClick={() => setShowForm(false)} className="p-2 bg-gray-50 rounded-full text-gray-400"><X size={20} /></button>
               </div>
-              <h3 className="text-xl font-black text-raden-green mb-2 uppercase tracking-tight">Hapus Pelanggan?</h3>
-              <p className="text-gray-500 text-sm mb-8">
-                Kamu akan menghapus <span className="font-bold text-raden-green">"{customerToDelete.name}"</span>. Tindakan ini tidak dapat dibatalkan.
+
+              <div className="space-y-4">
+                {/* Type toggle */}
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Tipe</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['branch', 'agent'] as CustomerType[]).map((t) => {
+                      const meta = TYPE_META[t];
+                      const Icon = meta.icon;
+                      const active = form.type === t;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setForm({ ...form, type: t })}
+                          className={`flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 font-black text-xs uppercase tracking-widest transition-all ${
+                            active ? 'border-raden-gold bg-raden-gold/10 text-raden-gold' : 'border-gray-100 bg-gray-50 text-gray-400'
+                          }`}
+                        >
+                          <Icon size={16} /> {meta.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama</label>
+                  <input
+                    type="text" value={form.name} autoFocus
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="cth. Toko Maju Jaya"
+                    className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">No. Telepon</label>
+                  <input
+                    type="text" value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder="cth. 0912 345 678"
+                    className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Alamat</label>
+                  <textarea
+                    value={form.address} rows={2}
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                    placeholder="Alamat pengiriman..."
+                    className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-medium text-sm text-raden-green outline-none focus:ring-2 focus:ring-raden-gold resize-none"
+                  />
+                </div>
+
+                {error && (
+                  <div className="flex items-center gap-2 text-red-500 font-bold text-xs bg-red-50 py-3 px-4 rounded-2xl border border-red-100">
+                    <AlertCircle size={16} className="shrink-0" /> {error}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleSave} disabled={saving}
+                  className="w-full py-4 bg-raden-green text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} Simpan
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete confirm */}
+      <AnimatePresence>
+        {toDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setToDelete(null)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl text-center">
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={28} />
+              </div>
+              <h3 className="text-lg font-black text-raden-green mb-1">Hapus data ini?</h3>
+              <p className="text-sm text-gray-400 font-medium mb-6">
+                <span className="font-bold text-raden-green">{toDelete.name}</span> akan dihapus permanen.
               </p>
               <div className="flex gap-3">
-                <button 
-                  onClick={() => setCustomerToDelete(null)}
-                  className="flex-1 py-4 bg-gray-100 text-gray-400 font-bold rounded-2xl hover:bg-gray-200 transition-colors"
-                >
-                  Batal
-                </button>
-                <button 
-                  onClick={handleDeleteCustomer}
-                  disabled={isDeleting}
-                  className="flex-1 py-4 bg-red-500 text-white font-black uppercase rounded-2xl shadow-lg shadow-red-200 active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                  {isDeleting ? <Loader2 className="animate-spin" size={18} /> : 'Hapus'}
+                <button onClick={() => setToDelete(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest text-[10px]">Batal</button>
+                <button onClick={handleDelete} disabled={saving} className="flex-1 py-3.5 bg-red-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 disabled:opacity-50">
+                  {saving ? <Loader2 className="animate-spin" size={16} /> : 'Hapus'}
                 </button>
               </div>
             </motion.div>
