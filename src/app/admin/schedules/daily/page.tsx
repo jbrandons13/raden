@@ -16,10 +16,12 @@ export default function CalendarSchedulePage() {
   const [products, setProducts] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
+  const [days, setDays] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [modalTasks, setModalTasks] = useState<any[]>([]);
+  const [dayHeader, setDayHeader] = useState({ shift_leader: '', target_time: '', notes: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [isRecPanelOpen, setIsRecPanelOpen] = useState(false);
 
@@ -30,16 +32,18 @@ export default function CalendarSchedulePage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [prodRes, stfRes, tskRes, tplRes] = await Promise.all([
+      const [prodRes, stfRes, tskRes, tplRes, dayRes] = await Promise.all([
         supabase.from('products').select('*').order('name'),
         supabase.from('staff').select('*').order('name'),
         supabase.from('tasks').select('*'),
         supabase.from('jobdesk_templates').select('*'),
+        supabase.from('jobdesk_days').select('*'),
       ]);
       if (prodRes.data) setProducts(prodRes.data);
       if (stfRes.data) setStaff(stfRes.data);
       if (tskRes.data) setTasks(tskRes.data);
       if (tplRes.data) setTemplates(tplRes.data);
+      if (dayRes.data) setDays(dayRes.data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -53,6 +57,8 @@ export default function CalendarSchedulePage() {
     const fullDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     setSelectedDate(fullDate);
     setIsRecPanelOpen(false);
+    const dh = days.find((d) => d.date === fullDate);
+    setDayHeader({ shift_leader: dh?.shift_leader || '', target_time: dh?.target_time || '', notes: dh?.notes || '' });
 
     const dayTasks = tasks.filter((t) => t.date === fullDate).map((t) => {
       let assignee_ids: string[] = Array.isArray(t.assignee_ids) ? t.assignee_ids : [];
@@ -158,6 +164,14 @@ export default function CalendarSchedulePage() {
       if (payload.length > 0) {
         const { error } = await supabase.from('tasks').upsert(payload);
         if (error) throw error;
+      }
+
+      const h = dayHeader;
+      if (h.shift_leader.trim() || h.target_time.trim() || h.notes.trim()) {
+        await supabase.from('jobdesk_days').upsert({
+          date: selectedDate, shift_leader: h.shift_leader.trim() || null, target_time: h.target_time.trim() || null,
+          notes: h.notes.trim() || null, updated_at: new Date().toISOString(),
+        }, { onConflict: 'date' });
       }
       setSelectedDate(null);
       await fetchData();
@@ -282,6 +296,22 @@ export default function CalendarSchedulePage() {
                   <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                 </div>
                 <button onClick={() => setSelectedDate(null)} className="p-2 sm:p-3 bg-gray-50 rounded-full text-gray-400 hover:bg-gray-100 hover:text-red-500 transition-colors"><X size={20} /></button>
+              </div>
+
+              {/* Day header: shift leader / target / notes */}
+              <div className="mb-4 shrink-0 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Shift Leader</label>
+                  <input value={dayHeader.shift_leader} onChange={(e) => setDayHeader({ ...dayHeader, shift_leader: e.target.value })} placeholder="cth. Brandon, Mareno" className="w-full px-3 py-2 bg-gray-50 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Target Selesai</label>
+                  <input value={dayHeader.target_time} onChange={(e) => setDayHeader({ ...dayHeader, target_time: e.target.value })} placeholder="cth. 16:00" className="w-full px-3 py-2 bg-gray-50 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Catatan</label>
+                  <input value={dayHeader.notes} onChange={(e) => setDayHeader({ ...dayHeader, notes: e.target.value })} placeholder="cth. KETAN JGN LUPA" className="w-full px-3 py-2 bg-gray-50 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
+                </div>
               </div>
 
               {/* Reminder (collapsible, stock-based) */}
