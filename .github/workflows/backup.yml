@@ -4,16 +4,18 @@
 # pelanggan, dll) jadi 1 file .sql.gz, disimpan sebagai GitHub "Artifact"
 # (retensi 90 hari, bisa di-download dari tab Actions).
 #
+# pg_dump dijalankan lewat container postgres:17 (andal, nggak perlu install).
+#
 # Butuh 1 secret: SUPABASE_DB_URL = connection string "Session pooler" Supabase
-#   (Project Settings → Database → Connection string → mode Session).
+#   (Project Settings → Database → Connection string → mode Session,
+#    host-nya ...pooler.supabase.com, port 5432).
 #
 # RESTORE (kalau suatu saat perlu):
 #   1) Download artifact .sql.gz dari run yang dipilih → gunzip
 #   2) psql "<connection string>" -f raden-backup-XXXX.sql
 #
-# Catatan: akun login (schema auth) TIDAK ikut di-backup di sini — itu dikelola
-# Supabase & gampang di-seed ulang (admin1–5 + akun staff). Yang penting =
-# data bisnis di schema public, dan itu ke-backup penuh.
+# Catatan: akun login (schema auth) TIDAK ikut — itu dikelola Supabase & gampang
+# di-seed ulang. Yang penting = data bisnis di schema public, dan itu penuh.
 # =============================================================================
 name: DB Backup (daily)
 
@@ -26,22 +28,20 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - name: Install pg_dump 17
-        run: |
-          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client-17
-
       - name: Dump database (schema public)
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          if [ -z "$DB_URL" ]; then echo "::error::Secret SUPABASE_DB_URL belum di-set."; exit 1; fi
+          if [ -z "$DB_URL" ]; then
+            echo "::error::Secret SUPABASE_DB_URL belum di-set (repo → Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
           STAMP=$(date -u +%Y-%m-%d_%H%M)
-          pg_dump "$DB_URL" --schema=public --no-owner --no-privileges -f "raden-backup-$STAMP.sql"
+          docker run --rm postgres:17 \
+            pg_dump "$DB_URL" --schema=public --no-owner --no-privileges \
+            > "raden-backup-$STAMP.sql"
           gzip "raden-backup-$STAMP.sql"
-          ls -la raden-backup-*.sql.gz
+          echo "Backup size:"; ls -lh raden-backup-*.sql.gz
 
       - name: Upload backup artifact
         uses: actions/upload-artifact@v4
