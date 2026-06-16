@@ -53,7 +53,13 @@ export default function CalendarSchedulePage() {
     }
   };
 
-  useEffect(() => { fetchData(); }, [currentDate]);
+  useEffect(() => {
+    fetchData();
+    const ch = supabase.channel('admin-jadwal-tasks-v1')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => fetchData())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [currentDate]);
 
   const openDateModal = (day: number) => {
     const fullDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -82,6 +88,7 @@ export default function CalendarSchedulePage() {
         assignee_ids,
         job_type: t.job_type || 'Pastry',
         status: t.status || 'Pending',
+        actual_qty: t.actual_qty ?? null,
         isNew: false,
       };
     });
@@ -266,13 +273,14 @@ export default function CalendarSchedulePage() {
               if (day === null) return <div key={i} className="aspect-square bg-transparent" />;
               const fullDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
               const dayTasksCount = tasks.filter((t) => t.date === fullDate).length;
+              const dayDone = tasks.filter((t) => t.date === fullDate && t.status === 'Completed').length;
               const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
               const isToday = fullDate === todayStr;
               return (
                 <button key={i} onClick={() => openDateModal(day)} className={`aspect-square rounded-xl sm:rounded-2xl p-1.5 sm:p-3 flex flex-col justify-between items-start transition-all active:scale-95 border ${isToday ? 'border-raden-gold bg-raden-gold/5 shadow-md' : 'border-gray-100 bg-gray-50/50 hover:border-raden-green/30 hover:shadow-lg'}`}>
                   <span className={`text-sm sm:text-lg font-black ${isToday ? 'text-raden-gold' : 'text-raden-green'}`}>{day}</span>
                   {dayTasksCount > 0 ? (
-                    <span className="w-full text-center bg-raden-green text-white text-[7px] sm:text-[9px] font-black uppercase tracking-tighter sm:tracking-widest py-0.5 sm:py-1 rounded sm:rounded-lg shadow-sm">{dayTasksCount} <span className="hidden sm:inline">Tugas</span></span>
+                    <span className={`w-full text-center text-white text-[7px] sm:text-[9px] font-black uppercase tracking-tighter sm:tracking-widest py-0.5 sm:py-1 rounded sm:rounded-lg shadow-sm ${dayDone === dayTasksCount ? 'bg-green-600' : 'bg-raden-green'}`}>{dayDone}/{dayTasksCount}<span className="hidden sm:inline"> Selesai</span></span>
                   ) : (
                     <span className="w-full text-center text-gray-300 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest py-1">-</span>
                   )}
@@ -410,11 +418,17 @@ export default function CalendarSchedulePage() {
                         {slotTasks.map((t) => {
                           const p = products.find((pr) => pr.id === t.product_id);
                           return (
-                            <div key={t.id} className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm space-y-2">
+                            <div key={t.id} className={`rounded-2xl border p-3 shadow-sm space-y-2 ${t.status === 'Completed' ? 'bg-green-50/40 border-green-200' : 'bg-white border-gray-100'}`}>
                               <div className="flex items-start gap-1.5">
                                 <input value={t.title} onChange={(e) => updateModalTask(t.id, 'title', e.target.value)} placeholder="Nama tugas…" className="flex-1 min-w-0 px-2.5 py-2 bg-gray-50 rounded-lg text-sm font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
                                 <button onClick={() => handleDeleteTask(t.id, t.isNew)} className="p-2 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0 transition-colors"><Trash2 size={14} /></button>
                               </div>
+
+                              {t.status === 'Completed' && (
+                                <div className="flex items-center gap-1 w-fit text-green-600 bg-green-50 border border-green-100 rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest">
+                                  <Check size={12} /> Selesai{t.product_id && t.actual_qty != null ? ` · ${t.actual_qty} ${p?.unit || 'pcs'} dibuat` : ''}
+                                </div>
+                              )}
 
                               <select value={t.product_id} onChange={(e) => setTaskProduct(t.id, e.target.value)} className="w-full px-2 py-1.5 bg-gray-50 rounded-lg text-[11px] font-bold text-gray-600 outline-none appearance-none" title="Hubungkan ke produk (opsional, buat stok)">
                                 <option value="">🔗 produk (opsional)…</option>
