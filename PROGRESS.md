@@ -21,8 +21,9 @@ _Update terakhir: 2026-06-16_
 - [x] Admin kelola **akun staff** (buat / hapus / ubah PIN) lewat endpoint server aman.
 - [x] Setor hasil produksi atomik (`submit_task_result`) — nutup race-condition stok.
 
-### 🌐 Deploy
+### 🌐 Deploy & backup
 - [x] Online di **Render** (auto-deploy dari GitHub). Bisa di-"install" di HP (PWA-style).
+- [x] **Backup DB harian otomatis** (gratis) — GitHub Action `pg_dump` schema `public` tiap dini hari → artifact `.sql.gz` (retensi 90 hari; restore pakai `psql`).
 
 ### 🧩 Model bisnis & fitur inti
 - [x] **Branch & Agen**: add/edit/delete, tipe Branch/Agen, tanpa angka income.
@@ -53,13 +54,14 @@ _Update terakhir: 2026-06-16_
 - [x] Rename **"Produk & Stok" → "Produk"**.
 - [x] Bahan Baku: hasil cek stok staff jadi **daftar belanja jelas** (dulu jumlah-beli nggak ditampilin).
 - [x] Multi-staff pindah dari hack `||STAFF_IDS:` di notes → kolom **`assignee_ids`**.
+- [x] Halaman root `/` (portal "pilih Admin/Staff" lama, sisa pra-auth) → **pengalih otomatis** sesuai login: belum login→`/login`, admin→`/admin`, staff→`/staff`.
 
 ---
 
 ## 🔮 Ide ke depan (opsional)
+- [ ] **Integrasi POS kasir** (eceran) yang masih di spreadsheet — 🎯 **ini target berikutnya** (yang belum dikerjain).
 - [ ] **Filter "Tugasku" per orang** di HP staff (sekarang papan bersama) — perlu link akun login staff ↔ data staff.
-- [ ] **Backup DB rutin** + **error monitoring** (biar tau kalau ada error di HP staff).
-- [ ] **Integrasi POS kasir** (eceran) yang masih di spreadsheet.
+- [ ] **Error monitoring** (mis. Sentry) — biar tau kalau ada error di HP staff.
 - [ ] Halaman `/admin/hot-kitchen` dirapikan/dihapus (mungkin redundan setelah papan jobdesk).
 - [ ] Re-capture screenshot README halaman jobdesk; kurangi tipe `any`.
 
