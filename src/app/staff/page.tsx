@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Clock, X, Loader2, Users, Crown, Flag, StickyNote } from 'lucide-react';
+import { CheckCircle2, Clock, X, Loader2, Users, Crown, Flag, StickyNote, Flame } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 const STAFF_DELIMITER = '||STAFF_IDS:';
@@ -108,50 +108,64 @@ export default function StaffJobdeskPage() {
 
       {loading && tasks.length === 0 && <div className="h-40 flex items-center justify-center"><Loader2 className="animate-spin text-raden-gold" /></div>}
 
-      <motion.div key={activeTab} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="space-y-7">
-        {SLOTS.map((slot) => {
-          const slotTasks = sectionTasks.filter((t) => (t.time_slot || 'Pagi') === slot);
-          if (slotTasks.length === 0) return null;
+      <motion.div key={activeTab} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+        {([{ key: 'Pastry' }, { key: 'HotKitchen' }] as const).map((area) => {
+          const areaTasks = sectionTasks.filter((t) => (t.job_type || 'Pastry') === area.key);
+          if (areaTasks.length === 0) return null;
           return (
-            <div key={slot}>
-              <div className="flex items-center gap-3 mb-3 px-1">
-                <h3 className="text-xs font-black text-raden-green uppercase tracking-[0.25em]">{slot}</h3>
-                <div className="h-px bg-gray-100 flex-1" />
-                <span className="text-[10px] font-black text-gray-300">{slotTasks.length}</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {slotTasks.map((task) => {
-                  const isDone = task.status === 'Completed';
-                  const isLocked = activeTab === 'Besok';
-                  const p = task.products;
-                  const qtyLabel = task.product_id && (task.batch_qty != null) ? `${task.batch_qty} ${p?.batch_unit || 'adonan'}` : '';
-                  return (
-                    <motion.div
-                      key={task.id} layout
-                      onClick={() => !isDone && !isLocked && setSelectedTask(task)}
-                      className={`p-4 rounded-2xl border transition-all ${isDone ? 'bg-gray-50 border-gray-100 opacity-60' : isLocked ? 'bg-gray-50/50 border-gray-100 cursor-not-allowed' : 'bg-white border-gray-100 shadow-sm hover:border-raden-gold/40 cursor-pointer active:scale-[0.98]'}`}
-                    >
-                      <div className="flex justify-between items-start gap-2 mb-2">
-                        <h4 className={`text-sm font-black leading-tight ${isDone ? 'text-gray-400 line-through' : 'text-raden-green'}`}>{task.title || p?.name || 'Tugas'}</h4>
-                        {isDone ? (
-                          <span className="shrink-0 flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded-lg border border-green-100"><CheckCircle2 size={11} className="text-green-500" /><span className="text-[9px] font-black text-green-600 uppercase">Selesai</span></span>
-                        ) : isLocked ? (
-                          <span className="shrink-0 flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-lg"><Clock size={10} className="text-gray-400" /><span className="text-[8px] font-black text-gray-400 uppercase">Besok</span></span>
-                        ) : null}
-                      </div>
-                      {qtyLabel && (
-                        <div className="inline-block px-2 py-0.5 rounded-lg bg-raden-gold/10 text-raden-gold text-[10px] font-black mb-2">
-                          {qtyLabel}{task.expected_qty > 0 && <span className="opacity-60"> · ≈{task.expected_qty} {p?.unit || 'pcs'}</span>}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1.5 text-gray-400 border-t border-gray-50 pt-2">
-                        <Users size={11} className="shrink-0" />
-                        <p className="text-[10px] font-bold truncate">{getNames(task.assignee_ids)}</p>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
+            <div key={area.key} className="space-y-5">
+              {area.key === 'HotKitchen' && (
+                <div className="flex items-center gap-2 px-1">
+                  <span className="flex items-center gap-1.5 px-3 py-1 bg-orange-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest"><Flame size={12} /> Hot Kitchen</span>
+                  <div className="h-px bg-orange-100 flex-1" />
+                </div>
+              )}
+              {SLOTS.map((slot) => {
+                const slotTasks = areaTasks.filter((t) => (t.time_slot || 'Pagi') === slot);
+                if (slotTasks.length === 0) return null;
+                return (
+                  <div key={slot}>
+                    <div className="flex items-center gap-3 mb-3 px-1">
+                      <h3 className="text-xs font-black text-raden-green uppercase tracking-[0.25em]">{slot}</h3>
+                      <div className="h-px bg-gray-100 flex-1" />
+                      <span className="text-[10px] font-black text-gray-300">{slotTasks.length}</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {slotTasks.map((task) => {
+                        const isDone = task.status === 'Completed';
+                        const isLocked = activeTab === 'Besok';
+                        const p = task.products;
+                        const qtyLabel = task.product_id && (task.batch_qty != null) ? `${task.batch_qty} ${p?.batch_unit || 'adonan'}` : '';
+                        return (
+                          <motion.div
+                            key={task.id} layout
+                            onClick={() => !isDone && !isLocked && setSelectedTask(task)}
+                            className={`p-4 rounded-2xl border transition-all ${isDone ? 'bg-gray-50 border-gray-100 opacity-60' : isLocked ? 'bg-gray-50/50 border-gray-100 cursor-not-allowed' : 'bg-white border-gray-100 shadow-sm hover:border-raden-gold/40 cursor-pointer active:scale-[0.98]'}`}
+                          >
+                            <div className="flex justify-between items-start gap-2 mb-2">
+                              <h4 className={`text-sm font-black leading-tight ${isDone ? 'text-gray-400 line-through' : 'text-raden-green'}`}>{task.title || p?.name || 'Tugas'}</h4>
+                              {isDone ? (
+                                <span className="shrink-0 flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded-lg border border-green-100"><CheckCircle2 size={11} className="text-green-500" /><span className="text-[9px] font-black text-green-600 uppercase">Selesai</span></span>
+                              ) : isLocked ? (
+                                <span className="shrink-0 flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-lg"><Clock size={10} className="text-gray-400" /><span className="text-[8px] font-black text-gray-400 uppercase">Besok</span></span>
+                              ) : null}
+                            </div>
+                            {qtyLabel && (
+                              <div className="inline-block px-2 py-0.5 rounded-lg bg-raden-gold/10 text-raden-gold text-[10px] font-black mb-2">
+                                {qtyLabel}{task.expected_qty > 0 && <span className="opacity-60"> · ≈{task.expected_qty} {p?.unit || 'pcs'}</span>}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1.5 text-gray-400 border-t border-gray-50 pt-2">
+                              <Users size={11} className="shrink-0" />
+                              <p className="text-[10px] font-bold truncate">{getNames(task.assignee_ids)}</p>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           );
         })}

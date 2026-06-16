@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Save, Users, Calendar as CalendarIcon, X, Loader2, Check, ChevronLeft, ChevronRight, ChevronDown, Briefcase } from 'lucide-react';
+import { Plus, Trash2, Save, Users, Calendar as CalendarIcon, X, Loader2, Check, ChevronLeft, ChevronRight, ChevronDown, Briefcase, Flame } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 // Legacy: old tasks encoded multi-staff inside notes. Decoded on load for back-compat.
@@ -24,6 +24,7 @@ export default function CalendarSchedulePage() {
   const [dayHeader, setDayHeader] = useState({ shift_leader: '', target_time: '', notes: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [isRecPanelOpen, setIsRecPanelOpen] = useState(false);
+  const [activeArea, setActiveArea] = useState<'Pastry' | 'HotKitchen'>('Pastry');
 
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
@@ -57,6 +58,7 @@ export default function CalendarSchedulePage() {
     const fullDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     setSelectedDate(fullDate);
     setIsRecPanelOpen(false);
+    setActiveArea('Pastry');
     const dh = days.find((d) => d.date === fullDate);
     setDayHeader({ shift_leader: dh?.shift_leader || '', target_time: dh?.target_time || '', notes: dh?.notes || '' });
 
@@ -90,7 +92,7 @@ export default function CalendarSchedulePage() {
   const handleAddTask = (slot: string) => {
     setModalTasks((prev) => [...prev, {
       id: newId('new'), date: selectedDate, title: '', time_slot: slot,
-      product_id: '', batch_qty: '', batch_unit: '', assignee_ids: [], job_type: 'Pastry', status: 'Pending', isNew: true,
+      product_id: '', batch_qty: '', batch_unit: '', assignee_ids: [], job_type: activeArea, status: 'Pending', isNew: true,
     }]);
   };
 
@@ -105,7 +107,6 @@ export default function CalendarSchedulePage() {
       return {
         ...t,
         product_id: productId,
-        job_type: prod?.is_hot_kitchen ? 'HotKitchen' : 'Pastry',
         title: t.title?.trim() ? t.title : (prod?.name || ''),
       };
     }));
@@ -380,10 +381,24 @@ export default function CalendarSchedulePage() {
                 </button>
               )}
 
+              {/* Area tabs: Pastry / Hot Kitchen */}
+              <div className="flex gap-2 mb-3 shrink-0">
+                {(['Pastry', 'HotKitchen'] as const).map((area) => {
+                  const count = modalTasks.filter((t) => (t.job_type || 'Pastry') === area).length;
+                  const active = activeArea === area;
+                  return (
+                    <button key={area} onClick={() => setActiveArea(area)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${active ? (area === 'HotKitchen' ? 'bg-orange-500 text-white shadow' : 'bg-raden-green text-white shadow') : 'bg-gray-100 text-gray-400'}`}>
+                      {area === 'HotKitchen' ? <><Flame size={13} /> Hot Kitchen</> : 'Pastry'}
+                      {count > 0 && <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${active ? 'bg-white/20' : 'bg-gray-200 text-gray-500'}`}>{count}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Board: Pagi / Siang / Sore */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1">
                 {SLOTS.map((slot) => {
-                  const slotTasks = modalTasks.filter((t) => (t.time_slot || 'Pagi') === slot);
+                  const slotTasks = modalTasks.filter((t) => (t.time_slot || 'Pagi') === slot && (t.job_type || 'Pastry') === activeArea);
                   return (
                     <div key={slot} className="bg-gray-50/60 rounded-3xl p-3 sm:p-4 border border-gray-100 flex flex-col">
                       <div className="flex items-center justify-between mb-3 px-1">

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Loader2, Plus, Trash2, Save, X } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, X, Flame } from 'lucide-react';
 
 const DAYS = [
   { dow: 1, label: 'Senin' }, { dow: 2, label: 'Selasa' }, { dow: 3, label: 'Rabu' },
@@ -17,6 +17,7 @@ export default function JobdeskTemplatesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay());
+  const [activeArea, setActiveArea] = useState<'Pastry' | 'HotKitchen'>('Pastry');
 
   const toEditable = useCallback((row: any, prods: any[]) => ({
     id: row.id,
@@ -26,6 +27,7 @@ export default function JobdeskTemplatesPage() {
     batch_qty: row.batch_qty != null ? String(row.batch_qty) : '',
     batch_unit: row.batch_unit || '',
     assignee_ids: Array.isArray(row.assignee_ids) ? row.assignee_ids : [],
+    job_type: row.job_type || 'Pastry',
   }), []);
 
   const fetchData = useCallback(async () => {
@@ -53,7 +55,7 @@ export default function JobdeskTemplatesPage() {
   const newId = () => `t-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const setItems = (updater: (cur: any[]) => any[]) => setDrafts((prev) => ({ ...prev, [selectedDay]: updater(prev[selectedDay] || []) }));
 
-  const addTask = (slot: string) => setItems((cur) => [...cur, { localId: newId(), title: '', time_slot: slot, product_id: '', batch_qty: '', batch_unit: '', assignee_ids: [] }]);
+  const addTask = (slot: string) => setItems((cur) => [...cur, { localId: newId(), title: '', time_slot: slot, product_id: '', batch_qty: '', batch_unit: '', assignee_ids: [], job_type: activeArea }]);
   const updateItem = (key: string, field: string, value: any) => setItems((cur) => cur.map((it) => ((it.id || it.localId) === key ? { ...it, [field]: value } : it)));
   const deleteItem = (key: string) => setItems((cur) => cur.filter((it) => (it.id || it.localId) !== key));
   const setProduct = (key: string, productId: string) => setItems((cur) => cur.map((it) => {
@@ -79,7 +81,7 @@ export default function JobdeskTemplatesPage() {
         const rows = valid.map((it, idx) => ({
           day_of_week: selectedDay, time_slot: it.time_slot || 'Pagi', title: it.title?.trim() || null,
           product_id: it.product_id || null, batch_qty: it.batch_qty ? parseFloat(it.batch_qty) : null,
-          assignee_ids: it.assignee_ids || [], sort_order: idx,
+          assignee_ids: it.assignee_ids || [], job_type: it.job_type || 'Pastry', sort_order: idx,
         }));
         const { error } = await supabase.from('jobdesk_templates').insert(rows);
         if (error) throw error;
@@ -120,12 +122,26 @@ export default function JobdeskTemplatesPage() {
         })}
       </div>
 
+      {/* Area tabs: Pastry / Hot Kitchen */}
+      <div className="flex gap-2">
+        {(['Pastry', 'HotKitchen'] as const).map((area) => {
+          const count = items.filter((it) => (it.job_type || 'Pastry') === area).length;
+          const active = activeArea === area;
+          return (
+            <button key={area} onClick={() => setActiveArea(area)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${active ? (area === 'HotKitchen' ? 'bg-orange-500 text-white shadow' : 'bg-raden-green text-white shadow') : 'bg-gray-100 text-gray-400'}`}>
+              {area === 'HotKitchen' ? <><Flame size={13} /> Hot Kitchen</> : 'Pastry'}
+              {count > 0 && <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${active ? 'bg-white/20' : 'bg-gray-200 text-gray-500'}`}>{count}</span>}
+            </button>
+          );
+        })}
+      </div>
+
       {loading ? (
         <div className="h-[300px] flex items-center justify-center bg-white rounded-[3rem] border border-gray-100"><Loader2 className="animate-spin text-raden-gold" /></div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {SLOTS.map((slot) => {
-            const slotItems = items.filter((it) => (it.time_slot || 'Pagi') === slot);
+            const slotItems = items.filter((it) => (it.time_slot || 'Pagi') === slot && (it.job_type || 'Pastry') === activeArea);
             return (
               <div key={slot} className="bg-gray-50/60 rounded-3xl p-3 sm:p-4 border border-gray-100 flex flex-col min-h-[160px]">
                 <div className="flex items-center justify-between mb-3 px-1">
