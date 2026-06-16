@@ -9,7 +9,6 @@ const DAYS = [
   { dow: 4, label: 'Kamis' }, { dow: 5, label: 'Jumat' }, { dow: 6, label: 'Sabtu' }, { dow: 0, label: 'Minggu' },
 ];
 const SLOTS = ['Pagi', 'Siang', 'Sore'];
-const isAdonan = (u: string) => !u || String(u).trim().toLowerCase() === 'adonan';
 
 export default function JobdeskTemplatesPage() {
   const [drafts, setDrafts] = useState<Record<number, any[]>>({});
@@ -33,7 +32,7 @@ export default function JobdeskTemplatesPage() {
     setLoading(true);
     const [tplRes, prodRes, stfRes] = await Promise.all([
       supabase.from('jobdesk_templates').select('*').order('sort_order'),
-      supabase.from('products').select('id, name, is_hot_kitchen, yield_per_batch, unit, current_stock').order('name'),
+      supabase.from('products').select('id, name, is_hot_kitchen, yield_per_batch, unit, current_stock, batch_unit').order('name'),
       supabase.from('staff').select('id, name').order('name'),
     ]);
     if (tplRes.error) { console.error(tplRes.error); alert('Gagal memuat template. Sudah paste migrasi papan jobdesk ke Supabase?'); }
@@ -80,7 +79,7 @@ export default function JobdeskTemplatesPage() {
         const rows = valid.map((it, idx) => ({
           day_of_week: selectedDay, time_slot: it.time_slot || 'Pagi', title: it.title?.trim() || null,
           product_id: it.product_id || null, batch_qty: it.batch_qty ? parseFloat(it.batch_qty) : null,
-          batch_unit: it.batch_unit?.trim() || null, assignee_ids: it.assignee_ids || [], sort_order: idx,
+          assignee_ids: it.assignee_ids || [], sort_order: idx,
         }));
         const { error } = await supabase.from('jobdesk_templates').insert(rows);
         if (error) throw error;
@@ -152,8 +151,8 @@ export default function JobdeskTemplatesPage() {
                         {it.product_id && (
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <input value={it.batch_qty} onChange={(e) => updateItem(key, 'batch_qty', e.target.value)} onFocus={(e) => e.target.select()} placeholder="jml" className="w-14 px-2 py-1.5 bg-raden-gold/5 border border-raden-gold/20 rounded-lg text-[11px] font-bold text-center text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
-                            <input value={it.batch_unit} onChange={(e) => updateItem(key, 'batch_unit', e.target.value)} placeholder="adonan" className="w-24 px-2 py-1.5 bg-gray-50 rounded-lg text-[11px] font-bold text-center text-gray-600 outline-none focus:ring-2 focus:ring-raden-gold" />
-                            {isAdonan(it.batch_unit) && <span className="text-[10px] font-bold text-raden-gold">≈ {Math.floor((parseFloat(it.batch_qty) || 0) * (p?.yield_per_batch || 0))} {p?.unit || 'pcs'}</span>}
+                            <span className="text-[11px] font-bold text-gray-500">{p?.batch_unit || 'adonan'}</span>
+                            <span className="text-[10px] font-bold text-raden-gold">≈ {Math.floor((parseFloat(it.batch_qty) || 0) * (p?.yield_per_batch || 0))} {p?.unit || 'pcs'}</span>
                           </div>
                         )}
 

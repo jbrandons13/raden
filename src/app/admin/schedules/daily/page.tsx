@@ -9,7 +9,6 @@ import { supabase } from '@/lib/supabase';
 const STAFF_DELIMITER = '||STAFF_IDS:';
 const SLOTS = ['Pagi', 'Siang', 'Sore'];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-const isAdonan = (u: string) => !u || String(u).trim().toLowerCase() === 'adonan';
 
 export default function CalendarSchedulePage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -139,14 +138,13 @@ export default function CalendarSchedulePage() {
         .filter((t) => (t.title && t.title.trim()) || t.product_id)
         .map((t) => {
           const prod = products.find((p) => p.id === t.product_id);
-          const expected_qty = (t.product_id && isAdonan(t.batch_unit)) ? Math.floor((parseFloat(t.batch_qty) || 0) * (prod?.yield_per_batch || 0)) : 0;
+          const expected_qty = t.product_id ? Math.floor((parseFloat(t.batch_qty) || 0) * (prod?.yield_per_batch || 0)) : 0;
           const item: any = {
             date: t.date,
             title: t.title?.trim() || null,
             time_slot: t.time_slot || 'Pagi',
             product_id: t.product_id || null,
             batch_qty: t.batch_qty ? parseFloat(t.batch_qty) : null,
-            batch_unit: t.batch_unit?.trim() || null,
             expected_qty,
             assignee_ids: t.assignee_ids || [],
             staff_id: (t.assignee_ids && t.assignee_ids[0]) || null,
@@ -380,8 +378,8 @@ export default function CalendarSchedulePage() {
                               {t.product_id && (
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <input value={t.batch_qty} onChange={(e) => updateModalTask(t.id, 'batch_qty', e.target.value)} onFocus={(e) => e.target.select()} placeholder="jml" className="w-14 px-2 py-1.5 bg-raden-gold/5 border border-raden-gold/20 rounded-lg text-[11px] font-bold text-center text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
-                                  <input value={t.batch_unit} onChange={(e) => updateModalTask(t.id, 'batch_unit', e.target.value)} placeholder="adonan" className="w-24 px-2 py-1.5 bg-gray-50 rounded-lg text-[11px] font-bold text-center text-gray-600 outline-none focus:ring-2 focus:ring-raden-gold" />
-                                  {isAdonan(t.batch_unit) && <span className="text-[10px] font-bold text-raden-gold">≈ {Math.floor((parseFloat(t.batch_qty) || 0) * (p?.yield_per_batch || 0))} {p?.unit || 'pcs'} · stok {p?.current_stock || 0}</span>}
+                                  <span className="text-[11px] font-bold text-gray-500">{p?.batch_unit || 'adonan'}</span>
+                                  <span className="text-[10px] font-bold text-raden-gold">≈ {Math.floor((parseFloat(t.batch_qty) || 0) * (p?.yield_per_batch || 0))} {p?.unit || 'pcs'} · stok {p?.current_stock || 0}</span>
                                 </div>
                               )}
 

@@ -28,12 +28,12 @@ export default function ProductsPage() {
 
   const [newProduct, setNewProduct] = useState({
     name: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0,
-    price_agent: 0, price_branch: 0, yield_per_batch: 0, weekly_target: 0, tracks_stock: true, options: [] as string[]
+    price_agent: 0, price_branch: 0, yield_per_batch: 0, weekly_target: 0, tracks_stock: true, batch_unit: 'adonan', options: [] as string[]
   });
 
   const [editForm, setEditForm] = useState({
     id: '', name: '', category: '', price: 0, price_agent: 0, price_branch: 0, unit: 'Pcs', current_stock: 0,
-    yield_per_batch: 0, weekly_target: 0, tracks_stock: true, options: [] as string[]
+    yield_per_batch: 0, weekly_target: 0, tracks_stock: true, batch_unit: 'adonan', options: [] as string[]
   });
   const [newCategoryName, setNewCategoryName] = useState('');
   const [categoryToEdit, setCategoryToEdit] = useState<{id: string, name: string} | null>(null);
@@ -120,7 +120,7 @@ export default function ProductsPage() {
     if (error) alert(error.message);
     else { 
       setShowAddModal(false); 
-      setNewProduct({ name: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0, price_agent: 0, price_branch: 0, yield_per_batch: 0, weekly_target: 0, tracks_stock: true, options: [] });
+      setNewProduct({ name: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0, price_agent: 0, price_branch: 0, yield_per_batch: 0, weekly_target: 0, tracks_stock: true, batch_unit: 'adonan', options: [] });
       fetchData(); 
     }
   };
@@ -167,7 +167,7 @@ export default function ProductsPage() {
     const { error } = await supabase.from('products').update({
       name: editForm.name, category: editForm.category,
       price: editForm.price, price_agent: editForm.price_agent, price_branch: editForm.price_branch,
-      unit: editForm.unit, tracks_stock: editForm.tracks_stock,
+      unit: editForm.unit, batch_unit: editForm.batch_unit, tracks_stock: editForm.tracks_stock,
       options: editForm.options || [],
       current_stock: freshU ? 0 : editForm.current_stock,
       yield_per_batch: freshU ? 0 : editForm.yield_per_batch,

@@ -121,14 +121,14 @@ function ProductionInputs({ data, setData }: { data: any; setData: (d: any) => v
           <p className="text-[8px] text-gray-400 mt-1 text-center">pcs dibutuhkan / minggu</p>
         </div>
         <div>
-          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block text-center">Hasil / 1 Adonan</label>
+          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block text-center">Hasil / 1 {data.batch_unit || 'Adonan'}</label>
           <input type="number" inputMode="numeric" value={data.yield_per_batch ?? 0} onFocus={(e) => e.target.select()} onChange={(e) => setData({ ...data, yield_per_batch: Number(e.target.value) })} className={inputCls} />
           <p className="text-[8px] text-gray-400 mt-1 text-center">pcs per 1x bikin</p>
         </div>
       </div>
       {target > 0 && yld > 0 && (
         <div className="mt-3 px-4 py-2.5 bg-raden-gold/10 border border-raden-gold/20 rounded-xl text-center">
-          <span className="text-[11px] font-black text-raden-green">≈ {Math.ceil(target / yld)} adonan / minggu</span>
+          <span className="text-[11px] font-black text-raden-green">≈ {Math.ceil(target / yld)} {data.batch_unit || 'adonan'} / minggu</span>
           <span className="text-[9px] text-gray-400 ml-1">untuk penuhi target</span>
         </div>
       )}
@@ -202,14 +202,18 @@ export default function ProductModals(props: ProductModalsProps) {
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama Produk</label>
                   <input type="text" value={newProduct.name} autoFocus onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-raden-gold" />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kategori</label>
-                    <select value={newProduct.category} onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold appearance-none outline-none focus:ring-2 focus:ring-raden-gold"><option value="">Pilih...</option>{categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}</select>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kategori</label>
+                  <select value={newProduct.category} onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold appearance-none outline-none focus:ring-2 focus:ring-raden-gold"><option value="">Pilih...</option>{categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}</select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Satuan Jual</label>
+                    <input type="text" value={newProduct.unit} onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })} placeholder="Pcs" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-center outline-none focus:ring-2 focus:ring-raden-gold" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Unit</label>
-                    <input type="text" value={newProduct.unit} onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-center outline-none focus:ring-2 focus:ring-raden-gold" />
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Satuan Produksi</label>
+                    <input type="text" value={newProduct.batch_unit ?? 'adonan'} onChange={(e) => setNewProduct({ ...newProduct, batch_unit: e.target.value })} placeholder="adonan" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-center outline-none focus:ring-2 focus:ring-raden-gold" />
                   </div>
                 </div>
               </div>
@@ -268,14 +272,18 @@ export default function ProductModals(props: ProductModalsProps) {
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama Produk</label>
                   <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-raden-gold" />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kategori</label>
-                    <select value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold appearance-none outline-none focus:ring-2 focus:ring-raden-gold"><option value="">Tanpa Kategori</option>{categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}</select>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kategori</label>
+                  <select value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold appearance-none outline-none focus:ring-2 focus:ring-raden-gold"><option value="">Tanpa Kategori</option>{categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}</select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Satuan Jual</label>
+                    <input type="text" value={editForm.unit} onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })} placeholder="Pcs" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-center outline-none focus:ring-2 focus:ring-raden-gold" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Unit</label>
-                    <input type="text" value={editForm.unit} onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-center outline-none focus:ring-2 focus:ring-raden-gold" />
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Satuan Produksi</label>
+                    <input type="text" value={editForm.batch_unit ?? 'adonan'} onChange={(e) => setEditForm({ ...editForm, batch_unit: e.target.value })} placeholder="adonan" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-center outline-none focus:ring-2 focus:ring-raden-gold" />
                   </div>
                 </div>
               </div>
