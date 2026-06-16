@@ -1,5 +1,5 @@
 -- =============================================================================
--- RADEN ERP — Consolidated database schema (synced 2026-06-15)
+-- RADEN ERP — Consolidated database schema (synced 2026-06-16)
 -- Generated to match the LIVE Supabase DB (introspected via scripts/dump-schema.mjs).
 --
 -- This file documents the TABLE STRUCTURE. RLS policies, the `user_role()` &
@@ -20,7 +20,8 @@ create table if not exists products (
   price           numeric default 0,          -- retail / eceran (Online & own-store)
   price_agent     numeric default 0,          -- Agent channel price
   price_branch    numeric default 0,          -- Branch channel price
-  unit            text default 'Pcs',
+  unit            text default 'Pcs',          -- selling/output unit (Pcs/Box...)
+  batch_unit      text default 'adonan',       -- production batch unit (adonan/kg/L/set...) — label in Jadwal Harian
   sort_order      integer default 0,
   yield_per_batch integer default 0,          -- pcs per 1 adonan
   weekly_target   integer default 0,          -- pcs needed per week (drives jobdesk recs)
@@ -144,21 +145,54 @@ create table if not exists pos_section_items (
 
 -- ── Production ───────────────────────────────────────────────────────────────
 
--- Daily jobdesk tasks. Stock is added on completion via submit_task_result()
--- (skips Hot Kitchen & Fresh products).
+-- Daily jobdesk tasks. A task is free-text first (title); the product link is
+-- OPTIONAL (only product-linked tasks bump stock on completion via
+-- submit_task_result(), which skips Hot Kitchen & Fresh products). Grouped on
+-- the board by time_slot + job_type (Pastry vs Hot Kitchen area).
 create table if not exists tasks (
   id            uuid primary key default gen_random_uuid(),
   date          date default current_date,
-  product_id    uuid references products(id),
-  staff_id      uuid references staff(id),            -- primary assignee; multi-staff encoded in notes
-  batch_qty     text,                                 -- adonan count (text)
-  expected_qty  integer,
+  title         text,                                 -- free-text task name (e.g. "Beberes Kulkas")
+  time_slot     text,                                 -- 'Pagi' | 'Siang' | 'Sore'
+  job_type      text default 'Pastry',                -- board area: 'Pastry' | 'HotKitchen'
+  category      text,                                 -- legacy/optional tag (no longer shown in UI)
+  product_id    uuid references products(id),         -- optional link → stock + qty unit
+  batch_qty     text,                                 -- production qty (in the product's batch_unit)
+  expected_qty  integer,                              -- estimated pcs (batch_qty * yield_per_batch)
   actual_qty    integer,
-  job_type      text default 'Pastry',                -- 'Pastry' | 'HotKitchen'
+  batch_unit    text,                                 -- legacy/unused; unit now derives from product
+  assignee_ids  uuid[] default '{}',                  -- staff assigned (replaces old ||STAFF_IDS notes hack)
+  staff_id      uuid references staff(id),            -- legacy primary assignee (kept for back-compat)
   status        text default 'Pending',               -- Pending | Completed
   notes         text,
   completed_at  timestamptz,
   created_at    timestamptz default now()
+);
+
+-- Per-weekday jobdesk TEMPLATE (the recurring pattern). Applied to a day via
+-- "Pakai Template". Same shape as a task, keyed by day_of_week instead of date.
+create table if not exists jobdesk_templates (
+  id            uuid primary key default gen_random_uuid(),
+  day_of_week   smallint not null,                    -- JS getDay(): 0=Minggu .. 6=Sabtu
+  time_slot     text,
+  job_type      text default 'Pastry',
+  category      text,
+  title         text,
+  product_id    uuid references products(id) on delete cascade,
+  batch_qty     numeric,
+  batch_unit    text,                                 -- legacy/unused
+  assignee_ids  uuid[] default '{}',
+  sort_order    integer default 0,
+  created_at    timestamptz default now()
+);
+
+-- Per-day board header: shift leader / target finish time / notes.
+create table if not exists jobdesk_days (
+  date          date primary key,
+  shift_leader  text,
+  target_time   text,
+  notes         text,
+  updated_at    timestamptz default now()
 );
 
 create table if not exists production_estimates (
@@ -225,7 +259,8 @@ create table if not exists transactions (  -- Buku Kas (general ledger)
 
 -- =============================================================================
 -- After creating tables, apply migrations in supabase/migrations/ for:
---   • RLS + policies (admin = all; staff = read /staff data; transactions admin-only)
+--   • RLS + policies (admin = all; staff = read /staff data; transactions &
+--     jobdesk_templates admin-only; jobdesk_days also staff-readable)
 --   • functions: user_role(), submit_task_result()
 --   • performance indexes
 -- =============================================================================

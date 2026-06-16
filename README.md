@@ -25,12 +25,13 @@
 *   **Branch & Agent** distribution network — manage partners with type, contact, and address.
 *   **Orders (Pesanan)**: price is chosen **automatically by channel** (agent / branch / online-eceran); optional per-line filling; walk-in/online buyers by name; reserved-stock awareness; printable PDF invoices.
 *   **Buku Kas** (cash ledger): income/expense with running balance and pagination.
-*   **Production Calendar (Jobdesk)**: daily assignment with **smart restock recommendations** (🔴🟡🟢) based on weekly target vs current stock.
+*   **Jadwal Harian (Jobdesk board)**: a per-day board by **Pagi / Siang / Sore** with free-text tasks + multi-assignee, a day header (shift leader / target / notes), an optional product link (auto stock + qty in the product's own unit), a separate **Hot Kitchen** area, reusable **per-weekday templates** ("Pakai Template"), smart restock reminders (🔴🟡🟢), and **print** (Excel-like sheet).
+*   **Export to Excel** on every data page (Buku Kas, Pesanan, Rekap, Produk, Bahan Baku, Staff & Shift, Branch & Agen, Checklist) — real `.xlsx`, full data per active filter.
 *   **Staff & Shift scheduling** with optional **AI parsing** of natural-language availability templates (Groq / Llama 3.3).
 *   **Dashboard**: today's orders, active orders, and an accurate "needs production" panel (stocked products only).
 
 ### 👨‍🍳 Staff Operational Hub
-*   **Daily Jobdesks**: stocked products report actual yield; fresh/made-to-order items simply confirm "done".
+*   **Jobdesk-ku ("Papan Hari Ini")**: today's tasks on the phone, grouped by Pagi/Siang/Sore with a separate Hot Kitchen section — tap to mark done (stocked products bump stock; others just confirm).
 *   **Distribution Recap**: a per-store manifest with **filling breakdown** when specified.
 *   **Material Stock Checks** & **Operational Checklists** (Pastry/Kitchen/General) — automatically attributed to the logged-in account.
 *   **Mobile-Optimized** — designed for tablets/phones in the kitchen; installable to the home screen.
@@ -62,10 +63,16 @@ Per-user access — username + PIN, no role picker.
 **Buku Kas** — income/expense ledger with running balance.
 ![Buku Kas](./public/screenshots/expenses.png)
 
+**Jadwal Harian** — the Pagi/Siang/Sore jobdesk board: free-text tasks + people, Pastry / Hot Kitchen tabs, day header, templates, and a print button.
+![Jobdesk Board](./public/screenshots/jobdesk-board.png)
+
 **Staff & Shift** — 30-day shift matrix.
 ![Staff & Shift](./public/screenshots/staff-shifts.png)
 
 ### 👨‍🍳 Staff (mobile)
+
+**Jobdesk-ku** — today's board grouped by Pagi/Siang/Sore with a separate Hot Kitchen section; tap a task to mark it done.
+![Staff Jobdesk](./public/screenshots/jobdesk-staff.png)
 
 **Distribution Recap** — per-store delivery manifest by date.
 ![Distribution Recap](./public/screenshots/distribution.png)

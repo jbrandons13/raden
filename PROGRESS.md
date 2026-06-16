@@ -1,8 +1,8 @@
 # RADEN — Progress
 
-Sistem operasional toko (Next.js + Supabase) — produksi → distribusi → penjualan 3-channel. Online di Render, aman dengan login per-orang + RLS.
+Sistem operasional toko (Next.js 16 + Supabase) — produksi → distribusi → penjualan 3-channel. Online di Render, aman dengan login per-orang + RLS.
 
-_Update terakhir: 2026-06-15_
+_Update terakhir: 2026-06-16_
 
 ---
 
@@ -13,51 +13,59 @@ _Update terakhir: 2026-06-15_
 - [x] **RLS di semua tabel**: Admin = akses penuh; Staff = cuma data halaman staff; **Buku Kas admin-only**.
 - [x] Terverifikasi: orang tanpa login **nggak bisa baca apa-apa** (dicek via script).
 - [x] Tutup lubang `staff_shifts` yang sempat kelewat.
-- [x] Hapus `next-pwa` yang rentan (kerentanan 13 → 2; sisanya low-risk di dalam Next).
 - [x] `acc.txt` dihapus + di-gitignore. (Rotasi key: opsional, di-skip — nggak pernah bocor publik.)
 
 ### 👤 Auth & Akun
 - [x] Login username + PIN 6 digit (email sintetis di belakang layar).
-- [x] 5 akun admin (admin1–admin5) di-seed; PIN di `admin-credentials.txt` (gitignored).
+- [x] 5 akun admin (admin1–admin5) di-seed; PIN di `admin-credentials.txt` (gitignored). ⚠️ admin1 PIN udah diubah manual — file stale buat admin1.
 - [x] Admin kelola **akun staff** (buat / hapus / ubah PIN) lewat endpoint server aman.
 - [x] Setor hasil produksi atomik (`submit_task_result`) — nutup race-condition stok.
 
 ### 🌐 Deploy
 - [x] Online di **Render** (auto-deploy dari GitHub). Bisa di-"install" di HP (PWA-style).
 
-### 🧩 Model bisnis & fitur
-- [x] **Branch & Agen** (dulu "Pelanggan"): add/edit/delete, ada tipe Branch/Agen, tanpa angka income.
-- [x] **Produk**: 3 harga channel (Eceran/Agen/Branch) · toggle **Distok vs Fresh** · Target Mingguan · daftar **Isian** (varian).
-- [x] **Hot Kitchen** dipisah jelas = prep internal, **bukan barang jual**.
-- [x] **Dashboard** dirapikan: buang omzet, "Perlu Produksi" pintar (cuma produk distok, exclude Fresh/HK).
-- [x] **Pesanan**: harga **otomatis per channel** · rincian **isian** per baris · **Eceran** (ketik nama, harga eceran) · produk Fresh = "sesuai pesanan" (tanpa stok).
-- [x] **Rekap Distribusi (staff)**: pecah per isian (pintar) + nama pembeli eceran muncul.
-- [x] **Jobdesk (staff)**: produk Fresh cukup "Tuntaskan" (tanpa input jumlah) & nggak nambah stok.
-- [x] **Cek Stok & Checklist (staff)**: buang pilih-nama manual → otomatis dari akun login.
+### 🧩 Model bisnis & fitur inti
+- [x] **Branch & Agen**: add/edit/delete, tipe Branch/Agen, tanpa angka income.
+- [x] **Produk**: 3 harga channel (Eceran/Agen/Branch) · toggle **Distok vs Fresh** · Target Mingguan · **Isian** (varian) · **Satuan Jual** + **Satuan Produksi** per produk.
+- [x] **Dashboard**: buang omzet, "Perlu Produksi" pintar (cuma distok).
+- [x] **Pesanan**: harga **otomatis per channel** · rincian **isian** per baris · **Eceran** (ketik nama) · Fresh = tanpa stok.
+- [x] **Rekap Distribusi (staff)**: pivot per isian + nama pembeli eceran.
 
-### ⚡ Efisiensi & kebersihan
-- [x] **Index database** (migrasi) untuk kolom tanggal/relasi.
-- [x] **Pagination** (50 + "Muat lebih banyak") di Buku Kas & Pesanan; total Buku Kas tetap akurat.
-- [x] **`schema.sql` disinkronkan** 100% dengan DB asli (hasil introspeksi).
-- [x] Bersihin dead code (add-customer di Pesanan, `staffList` di halaman staff).
+### 📊 Export Excel (di semua halaman)
+- [x] Tombol **"Export Excel"** di: Buku Kas (ringkasan+transaksi) · Pesanan (3 sheet + **rekap per pelanggan** buat tagih) · Rekap Distribusi (pivot manifest) · Produk (katalog + Riwayat Produksi) · Bahan Baku (**daftar belanja**) · Staff & Shift (matriks) · Branch & Agen · Checklist.
+- [x] File **.xlsx beneran** (format NT$, header hijau, multi-sheet); **tarik SEMUA data** sesuai filter (bukan cuma 50 yang tampil); library `exceljs` di-load pas diklik aja.
+
+### 📋 Papan Jobdesk (Jadwal Harian dirombak total — mirip Excel, tapi pintar)
+- [x] Kalender tetap pintu masuk → klik tanggal → **papan Pagi/Siang/Sore**.
+- [x] Tugas **bebas** (Nasi, Beberes, Kiriman, dll — bukan cuma produk) · **orang** per tugas (chip) · link produk + jumlah **opsional**.
+- [x] **Header hari**: Shift Leader / Target Selesai / Catatan (tabel `jobdesk_days`).
+- [x] **Template per hari** (Sen–Min, slot + tugas + orang default) → tombol **"Pakai Template"** sekali klik isi papan.
+- [x] **Satuan Produksi per produk** (adonan/kg/L/set) → label tetap di papan & template.
+- [x] **Hot Kitchen area terpisah**: tab Pastry/🔥Hot Kitchen di papan & template; section khusus di HP staff.
+- [x] **Staff "Papan Hari Ini"** (HP): tugas per slot + header + nama · **ketuk → Tandai Selesai** (stok auto buat produk distok).
+- [x] **Cetak**: layout landscape ala sheet Excel (header + grid Pagi/Siang/Sore, Pastry & Hot Kitchen, qty·satuan + orang).
+
+### 🧹 Fixes & kebersihan
+- [x] **Index DB** + **pagination** (Buku Kas & Pesanan) — total tetap akurat.
+- [x] `schema.sql` 100% sinkron DB asli (introspeksi).
+- [x] Fix dup-key warning Bahan Baku (anak `AnimatePresence` tanpa key).
+- [x] Hapus halaman **mock** `/admin/schedules`; "Staff & Shift" = `/admin/staff` (real).
+- [x] Rename **"Produk & Stok" → "Produk"**.
+- [x] Bahan Baku: hasil cek stok staff jadi **daftar belanja jelas** (dulu jumlah-beli nggak ditampilin).
+- [x] Multi-staff pindah dari hack `||STAFF_IDS:` di notes → kolom **`assignee_ids`**.
 
 ---
 
-## ✅ Aksimu — beres semua
-- [x] Semua migrasi DB udah di-paste. **Nggak ada yang pending.** 🎉
+## 🔮 Ide ke depan (opsional)
+- [ ] **Filter "Tugasku" per orang** di HP staff (sekarang papan bersama) — perlu link akun login staff ↔ data staff.
+- [ ] **Backup DB rutin** + **error monitoring** (biar tau kalau ada error di HP staff).
+- [ ] **Integrasi POS kasir** (eceran) yang masih di spreadsheet.
+- [ ] Halaman `/admin/hot-kitchen` dirapikan/dihapus (mungkin redundan setelah papan jobdesk).
+- [ ] Re-capture screenshot README halaman jobdesk; kurangi tipe `any`.
 
 ---
 
-## 🔮 Ide ke depan (opsional, kapan-kapan)
-- [ ] Integrasi POS toko (kasir ecer) yang sekarang masih ke spreadsheet.
-- [ ] Halaman Hot Kitchen dirapikan (sekarang cukup jobdesk + riwayat).
-- [ ] Ganti hack `||STAFF_IDS:` di catatan tugas jadi tabel relasi sendiri.
-- [ ] Kurangi tipe `any`, tambah error-monitoring & backup rutin.
-- [ ] Rotasi key (kalau suatu saat curiga bocor).
-
----
-
-## 🗄️ Migrasi DB (urutan paste ke Supabase)
+## 🗄️ Migrasi DB (semua udah di-paste ke Supabase ✅)
 1. [x] `20260613000000_auth_and_rls.sql` — RLS, profiles, fungsi
 2. [x] `20260615000000_lock_staff_shifts.sql`
 3. [x] `20260615001000_channels_pricing.sql` — type, harga agen/branch
@@ -68,3 +76,7 @@ _Update terakhir: 2026-06-15_
 8. [x] `20260615006000_submit_task_result_fresh.sql` — Fresh nggak nambah stok
 9. [x] `20260615007000_checklist_staff_name.sql` — nama checklist
 10. [x] `20260615008000_performance_indexes.sql` — index performa
+11. [x] `20260615009000_jobdesk_templates.sql` — tabel template jobdesk
+12. [x] `20260616000000_jobdesk_board.sql` — kolom papan (title/slot/area/assignee) + `jobdesk_days`
+13. [x] `20260616010000_jobdesk_batch_unit.sql` — `batch_unit` di tasks/template (kini tak terpakai)
+14. [x] `20260616020000_product_batch_unit.sql` — `batch_unit` per produk (satuan produksi)
