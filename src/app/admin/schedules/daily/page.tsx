@@ -7,20 +7,9 @@ import { supabase } from '@/lib/supabase';
 
 // Legacy: old tasks encoded multi-staff inside notes. Decoded on load for back-compat.
 const STAFF_DELIMITER = '||STAFF_IDS:';
-
 const SLOTS = ['Pagi', 'Siang', 'Sore'];
-const CATEGORIES = ['Produksi', 'Prep', 'Packing', 'Beberes', 'Kiriman', 'Piket', 'Checklist', 'Lainnya'];
-const CAT_BORDER: Record<string, string> = {
-  Produksi: 'border-l-raden-gold',
-  Prep: 'border-l-amber-400',
-  Packing: 'border-l-blue-400',
-  Beberes: 'border-l-gray-400',
-  Kiriman: 'border-l-purple-400',
-  Piket: 'border-l-pink-400',
-  Checklist: 'border-l-green-500',
-  Lainnya: 'border-l-gray-300',
-};
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const isAdonan = (u: string) => !u || String(u).trim().toLowerCase() === 'adonan';
 
 export default function CalendarSchedulePage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -46,7 +35,7 @@ export default function CalendarSchedulePage() {
         supabase.from('products').select('*').order('name'),
         supabase.from('staff').select('*').order('name'),
         supabase.from('tasks').select('*'),
-        supabase.from('jobdesk_templates').select('*'), // safe if table missing (error stays in .error)
+        supabase.from('jobdesk_templates').select('*'),
       ]);
       if (prodRes.data) setProducts(prodRes.data);
       if (stfRes.data) setStaff(stfRes.data);
@@ -67,15 +56,11 @@ export default function CalendarSchedulePage() {
     setIsRecPanelOpen(false);
 
     const dayTasks = tasks.filter((t) => t.date === fullDate).map((t) => {
-      // Back-compat: derive assignees from new column, else decode the old notes hack / staff_id.
       let assignee_ids: string[] = Array.isArray(t.assignee_ids) ? t.assignee_ids : [];
       if (assignee_ids.length === 0) {
         const notes = t.notes || '';
-        if (notes.includes(STAFF_DELIMITER)) {
-          assignee_ids = (notes.split(STAFF_DELIMITER)[1] || '').split(',').filter(Boolean);
-        } else if (t.staff_id) {
-          assignee_ids = [t.staff_id];
-        }
+        if (notes.includes(STAFF_DELIMITER)) assignee_ids = (notes.split(STAFF_DELIMITER)[1] || '').split(',').filter(Boolean);
+        else if (t.staff_id) assignee_ids = [t.staff_id];
       }
       const prod = products.find((p) => p.id === t.product_id);
       return {
@@ -83,10 +68,9 @@ export default function CalendarSchedulePage() {
         date: t.date,
         title: t.title || prod?.name || '',
         time_slot: t.time_slot || 'Pagi',
-        category: t.category || (t.product_id ? 'Produksi' : ''),
         product_id: t.product_id || '',
         batch_qty: t.batch_qty != null ? String(t.batch_qty) : '',
-        expected_qty: t.expected_qty || 0,
+        batch_unit: t.batch_unit || '',
         assignee_ids,
         job_type: t.job_type || 'Pastry',
         status: t.status || 'Pending',
@@ -100,8 +84,8 @@ export default function CalendarSchedulePage() {
 
   const handleAddTask = (slot: string) => {
     setModalTasks((prev) => [...prev, {
-      id: newId('new'), date: selectedDate, title: '', time_slot: slot, category: '',
-      product_id: '', batch_qty: '', expected_qty: 0, assignee_ids: [], job_type: 'Pastry', status: 'Pending', isNew: true,
+      id: newId('new'), date: selectedDate, title: '', time_slot: slot,
+      product_id: '', batch_qty: '', batch_unit: '', assignee_ids: [], job_type: 'Pastry', status: 'Pending', isNew: true,
     }]);
   };
 
@@ -113,23 +97,12 @@ export default function CalendarSchedulePage() {
     setModalTasks((prev) => prev.map((t) => {
       if (t.id !== id) return t;
       const prod = products.find((p) => p.id === productId);
-      const batches = parseFloat(t.batch_qty) || 0;
       return {
         ...t,
         product_id: productId,
         job_type: prod?.is_hot_kitchen ? 'HotKitchen' : 'Pastry',
-        category: t.category || (productId ? 'Produksi' : ''),
         title: t.title?.trim() ? t.title : (prod?.name || ''),
-        expected_qty: prod ? Math.floor(batches * (prod.yield_per_batch || 0)) : t.expected_qty,
       };
-    }));
-  };
-
-  const handleBatchChange = (id: string, val: string) => {
-    setModalTasks((prev) => prev.map((t) => {
-      if (t.id !== id) return t;
-      const p = products.find((pr) => pr.id === t.product_id);
-      return { ...t, batch_qty: val, expected_qty: Math.floor((parseFloat(val) || 0) * (p?.yield_per_batch || 0)) };
     }));
   };
 
@@ -142,10 +115,10 @@ export default function CalendarSchedulePage() {
     }));
   };
 
-  const handleDeleteTask = async (taskId: string, isNew: boolean) => {
+  const handleDeleteTask = async (taskId: string, taskIsNew: boolean) => {
     if (!taskId) return;
     setModalTasks((prev) => prev.filter((t) => String(t.id) !== String(taskId)));
-    if (!isNew) {
+    if (!taskIsNew) {
       try {
         const { error } = await supabase.from('tasks').delete().eq('id', taskId);
         if (error) throw error;
@@ -165,20 +138,22 @@ export default function CalendarSchedulePage() {
       const payload = modalTasks
         .filter((t) => (t.title && t.title.trim()) || t.product_id)
         .map((t) => {
+          const prod = products.find((p) => p.id === t.product_id);
+          const expected_qty = (t.product_id && isAdonan(t.batch_unit)) ? Math.floor((parseFloat(t.batch_qty) || 0) * (prod?.yield_per_batch || 0)) : 0;
           const item: any = {
             date: t.date,
             title: t.title?.trim() || null,
             time_slot: t.time_slot || 'Pagi',
-            category: t.category || null,
             product_id: t.product_id || null,
             batch_qty: t.batch_qty ? parseFloat(t.batch_qty) : null,
-            expected_qty: Number(t.expected_qty) || 0,
+            batch_unit: t.batch_unit?.trim() || null,
+            expected_qty,
             assignee_ids: t.assignee_ids || [],
             staff_id: (t.assignee_ids && t.assignee_ids[0]) || null,
             job_type: t.job_type || 'Pastry',
             status: t.status || 'Pending',
           };
-          if (!t.isNew && t.id) item.id = t.id; // persisted rows keep their uuid; temp ids let DB generate
+          if (!t.isNew && t.id) item.id = t.id;
           return item;
         });
 
@@ -203,12 +178,11 @@ export default function CalendarSchedulePage() {
       .map((p) => {
         const dailyReq = p.weekly_target / 7;
         const stock = p.current_stock || 0;
-        const deficit = dailyReq - stock;
-        const batches = deficit > 0 ? Math.ceil(deficit / p.yield_per_batch) : 0;
+        const batches = dailyReq - stock > 0 ? Math.ceil((dailyReq - stock) / p.yield_per_batch) : 0;
         let status = 'Hijau';
         if (stock < 0.25 * dailyReq) status = 'Merah';
         else if (stock < 0.75 * dailyReq) status = 'Kuning';
-        return { ...p, dailyReq, deficit, batches, status };
+        return { ...p, dailyReq, batches, status };
       })
       .sort((a, b) => ({ Merah: 0, Kuning: 1, Hijau: 2 } as any)[a.status] - ({ Merah: 0, Kuning: 1, Hijau: 2 } as any)[b.status]);
   };
@@ -216,9 +190,8 @@ export default function CalendarSchedulePage() {
   const addTaskFromRec = (p: any) => {
     if (modalTasks.some((t) => t.product_id === p.id)) return;
     setModalTasks((prev) => [...prev, {
-      id: newId('rec'), date: selectedDate, title: p.name, time_slot: 'Pagi', category: 'Produksi',
-      product_id: p.id, batch_qty: String(p.batches), expected_qty: Math.floor(p.batches * p.yield_per_batch),
-      assignee_ids: [], job_type: 'Pastry', status: 'Pending', isNew: true,
+      id: newId('rec'), date: selectedDate, title: p.name, time_slot: 'Pagi',
+      product_id: p.id, batch_qty: String(p.batches), batch_unit: '', assignee_ids: [], job_type: 'Pastry', status: 'Pending', isNew: true,
     }]);
   };
 
@@ -226,9 +199,8 @@ export default function CalendarSchedulePage() {
     const recs = getRecs().filter((r) => r.status === 'Merah' || r.status === 'Kuning');
     const existing = new Set(modalTasks.map((t) => t.product_id));
     const newTasks = recs.filter((r) => !existing.has(r.id)).map((r) => ({
-      id: newId('bulk'), date: selectedDate, title: r.name, time_slot: 'Pagi', category: 'Produksi',
-      product_id: r.id, batch_qty: String(r.batches), expected_qty: Math.floor(r.batches * r.yield_per_batch),
-      assignee_ids: [], job_type: 'Pastry', status: 'Pending', isNew: true,
+      id: newId('bulk'), date: selectedDate, title: r.name, time_slot: 'Pagi',
+      product_id: r.id, batch_qty: String(r.batches), batch_unit: '', assignee_ids: [], job_type: 'Pastry', status: 'Pending', isNew: true,
     }));
     if (newTasks.length > 0) setModalTasks((prev) => [...prev, ...newTasks]);
   };
@@ -243,11 +215,9 @@ export default function CalendarSchedulePage() {
       .filter((t) => (t.product_id ? !existingProd.has(t.product_id) : !existingTitle.has(`${(t.title || '').toLowerCase()}|${t.time_slot || 'Pagi'}`)))
       .map((t) => {
         const p = products.find((pr) => pr.id === t.product_id);
-        const batches = t.batch_qty || 0;
         return {
           id: newId('tpl'), date: selectedDate, title: t.title || p?.name || '', time_slot: t.time_slot || 'Pagi',
-          category: t.category || (t.product_id ? 'Produksi' : ''), product_id: t.product_id || '',
-          batch_qty: t.batch_qty != null ? String(t.batch_qty) : '', expected_qty: p ? Math.floor(batches * (p.yield_per_batch || 0)) : 0,
+          product_id: t.product_id || '', batch_qty: t.batch_qty != null ? String(t.batch_qty) : '', batch_unit: t.batch_unit || '',
           assignee_ids: Array.isArray(t.assignee_ids) ? t.assignee_ids : [], job_type: t.job_type || 'Pastry', status: 'Pending', isNew: true,
         };
       });
@@ -285,11 +255,7 @@ export default function CalendarSchedulePage() {
               const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
               const isToday = fullDate === todayStr;
               return (
-                <button
-                  key={i}
-                  onClick={() => openDateModal(day)}
-                  className={`aspect-square rounded-xl sm:rounded-2xl p-1.5 sm:p-3 flex flex-col justify-between items-start transition-all active:scale-95 border ${isToday ? 'border-raden-gold bg-raden-gold/5 shadow-md' : 'border-gray-100 bg-gray-50/50 hover:border-raden-green/30 hover:shadow-lg'}`}
-                >
+                <button key={i} onClick={() => openDateModal(day)} className={`aspect-square rounded-xl sm:rounded-2xl p-1.5 sm:p-3 flex flex-col justify-between items-start transition-all active:scale-95 border ${isToday ? 'border-raden-gold bg-raden-gold/5 shadow-md' : 'border-gray-100 bg-gray-50/50 hover:border-raden-green/30 hover:shadow-lg'}`}>
                   <span className={`text-sm sm:text-lg font-black ${isToday ? 'text-raden-gold' : 'text-raden-green'}`}>{day}</span>
                   {dayTasksCount > 0 ? (
                     <span className="w-full text-center bg-raden-green text-white text-[7px] sm:text-[9px] font-black uppercase tracking-tighter sm:tracking-widest py-0.5 sm:py-1 rounded sm:rounded-lg shadow-sm">{dayTasksCount} <span className="hidden sm:inline">Tugas</span></span>
@@ -400,27 +366,22 @@ export default function CalendarSchedulePage() {
                         {slotTasks.map((t) => {
                           const p = products.find((pr) => pr.id === t.product_id);
                           return (
-                            <div key={t.id} className={`bg-white rounded-2xl border border-gray-100 border-l-4 ${CAT_BORDER[t.category] || 'border-l-gray-200'} p-3 shadow-sm space-y-2`}>
+                            <div key={t.id} className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm space-y-2">
                               <div className="flex items-start gap-1.5">
                                 <input value={t.title} onChange={(e) => updateModalTask(t.id, 'title', e.target.value)} placeholder="Nama tugas…" className="flex-1 min-w-0 px-2.5 py-2 bg-gray-50 rounded-lg text-sm font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
                                 <button onClick={() => handleDeleteTask(t.id, t.isNew)} className="p-2 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0 transition-colors"><Trash2 size={14} /></button>
                               </div>
 
-                              <div className="flex gap-1.5">
-                                <select value={t.category} onChange={(e) => updateModalTask(t.id, 'category', e.target.value)} className="flex-1 min-w-0 px-2 py-1.5 bg-gray-50 rounded-lg text-[11px] font-bold text-gray-600 outline-none appearance-none">
-                                  <option value="">Kategori…</option>
-                                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                                <select value={t.product_id} onChange={(e) => setTaskProduct(t.id, e.target.value)} className="flex-1 min-w-0 px-2 py-1.5 bg-gray-50 rounded-lg text-[11px] font-bold text-gray-600 outline-none appearance-none" title="Hubungkan ke produk (opsional, buat stok)">
-                                  <option value="">🔗 produk…</option>
-                                  {products.map((pr) => <option key={pr.id} value={pr.id}>{pr.name}{pr.is_hot_kitchen ? ' (HK)' : ''}</option>)}
-                                </select>
-                              </div>
+                              <select value={t.product_id} onChange={(e) => setTaskProduct(t.id, e.target.value)} className="w-full px-2 py-1.5 bg-gray-50 rounded-lg text-[11px] font-bold text-gray-600 outline-none appearance-none" title="Hubungkan ke produk (opsional, buat stok)">
+                                <option value="">🔗 produk (opsional)…</option>
+                                {products.map((pr) => <option key={pr.id} value={pr.id}>{pr.name}{pr.is_hot_kitchen ? ' (HK)' : ''}</option>)}
+                              </select>
 
                               {t.product_id && (
-                                <div className="flex items-center gap-2">
-                                  <input value={t.batch_qty} onChange={(e) => handleBatchChange(t.id, e.target.value)} onFocus={(e) => e.target.select()} placeholder="jml adonan" className="w-24 px-2 py-1.5 bg-raden-gold/5 border border-raden-gold/20 rounded-lg text-[11px] font-bold text-center text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
-                                  <span className="text-[10px] font-bold text-raden-gold">≈ {Math.floor((parseFloat(t.batch_qty) || 0) * (p?.yield_per_batch || 0))} {p?.unit || 'pcs'} · stok {p?.current_stock || 0}</span>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <input value={t.batch_qty} onChange={(e) => updateModalTask(t.id, 'batch_qty', e.target.value)} onFocus={(e) => e.target.select()} placeholder="jml" className="w-14 px-2 py-1.5 bg-raden-gold/5 border border-raden-gold/20 rounded-lg text-[11px] font-bold text-center text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
+                                  <input value={t.batch_unit} onChange={(e) => updateModalTask(t.id, 'batch_unit', e.target.value)} placeholder="adonan" className="w-24 px-2 py-1.5 bg-gray-50 rounded-lg text-[11px] font-bold text-center text-gray-600 outline-none focus:ring-2 focus:ring-raden-gold" />
+                                  {isAdonan(t.batch_unit) && <span className="text-[10px] font-bold text-raden-gold">≈ {Math.floor((parseFloat(t.batch_qty) || 0) * (p?.yield_per_batch || 0))} {p?.unit || 'pcs'} · stok {p?.current_stock || 0}</span>}
                                 </div>
                               )}
 
