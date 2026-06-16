@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Save, Users, Calendar as CalendarIcon, X, Loader2, Check, ChevronLeft, ChevronRight, ChevronDown, Briefcase, Flame } from 'lucide-react';
+import { Plus, Trash2, Save, Users, Calendar as CalendarIcon, X, Loader2, Check, ChevronLeft, ChevronRight, ChevronDown, Briefcase, Flame, Printer } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 // Legacy: old tasks encoded multi-staff inside notes. Decoded on load for back-compat.
 const STAFF_DELIMITER = '||STAFF_IDS:';
 const SLOTS = ['Pagi', 'Siang', 'Sore'];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const AREAS = [{ key: 'Pastry', label: 'Pastry' }, { key: 'HotKitchen', label: 'Hot Kitchen' }] as const;
 
 export default function CalendarSchedulePage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -303,15 +304,15 @@ export default function CalendarSchedulePage() {
               <div className="mb-4 shrink-0 grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
                   <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Shift Leader</label>
-                  <input value={dayHeader.shift_leader} onChange={(e) => setDayHeader({ ...dayHeader, shift_leader: e.target.value })} placeholder="cth. Brandon, Mareno" className="w-full px-3 py-2 bg-gray-50 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
+                  <input value={dayHeader.shift_leader} onChange={(e) => setDayHeader({ ...dayHeader, shift_leader: e.target.value })} placeholder="Nama shift leader…" className="w-full px-3 py-2 bg-gray-50 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
                 </div>
                 <div>
                   <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Target Selesai</label>
-                  <input value={dayHeader.target_time} onChange={(e) => setDayHeader({ ...dayHeader, target_time: e.target.value })} placeholder="cth. 16:00" className="w-full px-3 py-2 bg-gray-50 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
+                  <input value={dayHeader.target_time} onChange={(e) => setDayHeader({ ...dayHeader, target_time: e.target.value })} placeholder="Jam target selesai…" className="w-full px-3 py-2 bg-gray-50 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
                 </div>
                 <div>
                   <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Catatan</label>
-                  <input value={dayHeader.notes} onChange={(e) => setDayHeader({ ...dayHeader, notes: e.target.value })} placeholder="cth. KETAN JGN LUPA" className="w-full px-3 py-2 bg-gray-50 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
+                  <input value={dayHeader.notes} onChange={(e) => setDayHeader({ ...dayHeader, notes: e.target.value })} placeholder="Catatan / pengingat hari ini…" className="w-full px-3 py-2 bg-gray-50 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold" />
                 </div>
               </div>
 
@@ -455,7 +456,10 @@ export default function CalendarSchedulePage() {
                 })}
               </div>
 
-              <div className="mt-6 pt-5 border-t flex justify-end shrink-0">
+              <div className="mt-6 pt-5 border-t flex justify-between items-center gap-3 shrink-0">
+                <button onClick={() => window.print()} className="flex items-center gap-2 bg-white border border-raden-green/20 text-raden-green px-5 py-4 rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-raden-green/5 active:scale-95 transition-all">
+                  <Printer size={16} /> Cetak
+                </button>
                 <button onClick={saveDayJadwal} disabled={isSaving} className="flex items-center gap-2 bg-raden-green text-white px-8 py-4 rounded-[1.5rem] font-black uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-all disabled:opacity-50">
                   {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Simpan
                 </button>
@@ -464,6 +468,72 @@ export default function CalendarSchedulePage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Print layout (hidden on screen, shown only when printing) */}
+      {selectedDate && (
+        <div id="jobdesk-print" className="hidden print:block">
+          <div className="jp-header">
+            <h1 style={{ fontSize: '15pt', fontWeight: 900, textTransform: 'uppercase', margin: 0 }}>
+              Jadwal Harian — {new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </h1>
+            <div style={{ fontSize: '10pt', marginTop: 4 }}>
+              <b>Shift Leader:</b> {dayHeader.shift_leader || '—'} &nbsp;·&nbsp; <b>Target Selesai:</b> {dayHeader.target_time || '—'}
+            </div>
+            {dayHeader.notes && <div style={{ fontSize: '10pt', marginTop: 2 }}><b>Catatan:</b> {dayHeader.notes}</div>}
+          </div>
+
+          {AREAS.map((area) => {
+            const areaTasks = modalTasks.filter((t) => (t.job_type || 'Pastry') === area.key && ((t.title && t.title.trim()) || t.product_id));
+            if (areaTasks.length === 0) return null;
+            return (
+              <div key={area.key} style={{ marginBottom: 14 }}>
+                <div className="jp-area-title">{area.label}</div>
+                <table className="jp-grid">
+                  <thead><tr>{SLOTS.map((s) => <th key={s} style={{ width: '33.33%' }}>{s}</th>)}</tr></thead>
+                  <tbody><tr>
+                    {SLOTS.map((slot) => {
+                      const cell = areaTasks.filter((t) => (t.time_slot || 'Pagi') === slot);
+                      return (
+                        <td key={slot}>
+                          {cell.length === 0 && <span style={{ color: '#bbb' }}>—</span>}
+                          {cell.map((t) => {
+                            const p = products.find((pr) => pr.id === t.product_id);
+                            const qty = t.product_id && t.batch_qty ? ` — ${t.batch_qty} ${p?.batch_unit || 'adonan'}` : '';
+                            const people = (t.assignee_ids || []).map((id: string) => staff.find((s) => s.id === id)?.name).filter(Boolean).join(', ');
+                            return (
+                              <div key={t.id} className="jp-task">
+                                <div className="jp-task-title">{(t.title || p?.name || 'Tugas')}{qty}</div>
+                                {people && <div className="jp-task-people">{people}</div>}
+                              </div>
+                            );
+                          })}
+                        </td>
+                      );
+                    })}
+                  </tr></tbody>
+                </table>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <style jsx global>{`
+        @media print {
+          @page { size: landscape; margin: 12mm; }
+          body * { visibility: hidden; }
+          #jobdesk-print, #jobdesk-print * { visibility: visible; }
+          #jobdesk-print { position: absolute; left: 0; top: 0; width: 100%; }
+          #jobdesk-print .jp-header { border-bottom: 3px solid #1a3c34; padding-bottom: 8px; margin-bottom: 12px; }
+          #jobdesk-print .jp-area-title { font-weight: 900; font-size: 12pt; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 5px; }
+          #jobdesk-print .jp-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          #jobdesk-print .jp-grid th, #jobdesk-print .jp-grid td { border: 1.5px solid #222; padding: 8px 10px; vertical-align: top; text-align: left; }
+          #jobdesk-print .jp-grid th { background: #eee; font-size: 11pt; text-transform: uppercase; letter-spacing: 1px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          #jobdesk-print .jp-task { margin-bottom: 7px; page-break-inside: avoid; }
+          #jobdesk-print .jp-task-title { font-weight: 800; font-size: 10pt; line-height: 1.25; }
+          #jobdesk-print .jp-task-people { font-size: 8.5pt; color: #444; margin-top: 1px; }
+        }
+      `}</style>
     </div>
   );
 }
