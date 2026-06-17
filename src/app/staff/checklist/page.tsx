@@ -199,40 +199,57 @@ export default function StaffChecklistPage() {
         <span className="text-xs font-black text-raden-green">{username || '—'}</span>
       </div>
 
-      <div className="p-4 space-y-2 mb-32">
-        {templates.map((t) => {
-          const isChecked = !!history[t.id];
-          const needsPhoto = !!t.is_mandatory_photo;
-          const photo = photos[t.id];
-          const busy = processingId === t.id;
+      <div className="p-4 mb-32 space-y-6">
+        {selectedAreas.map((area) => {
+          const areaTasks = templates.filter((t) => t.category === area);
+          if (areaTasks.length === 0) return null;
+          const doneCount = areaTasks.filter((t) => history[t.id]).length;
           return (
-            <div key={t.id} className={`w-full p-4 rounded-xl border flex items-center justify-between gap-3 transition-all ${isChecked ? 'bg-green-50/40 border-green-100' : 'bg-white border-gray-200 shadow-sm'}`}>
-              <button onClick={() => (needsPhoto ? openCamera(t.id) : toggleTask(t.id))} className="flex items-center gap-3 flex-1 text-left min-w-0">
-                <div className="min-w-0">
-                  <p className={`text-[13px] font-bold leading-tight ${isChecked ? 'text-gray-400 line-through' : 'text-raden-green'}`}>{t.task_name}</p>
-                  <p className={`text-[8px] font-black uppercase tracking-widest mt-1 flex items-center gap-1 ${needsPhoto ? 'text-raden-gold' : 'text-gray-300'}`}>
-                    {needsPhoto && <Camera size={10} />} {needsPhoto ? 'Wajib Foto' : t.category}
-                  </p>
-                </div>
-              </button>
-
-              <div className="flex items-center gap-2 shrink-0">
-                {needsPhoto && photo && (
-                  <button onClick={() => openCamera(t.id)} title="Ganti foto" className="w-9 h-9 rounded-lg overflow-hidden border border-gray-200">
-                    <img src={photo.url} alt="bukti" className="w-full h-full object-cover" />
-                  </button>
-                )}
-                {needsPhoto && !photo ? (
-                  <button onClick={() => openCamera(t.id)} disabled={busy}
-                    className="flex items-center gap-1.5 bg-raden-gold/10 text-raden-gold px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
-                    {busy ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />} Foto
-                  </button>
-                ) : (
-                  <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${isChecked ? 'bg-raden-green border-raden-green text-white' : 'bg-white border-gray-300'}`}>
-                    {isChecked && <Check size={14} strokeWidth={4} />}
-                  </div>
-                )}
+            <div key={area} className="space-y-2">
+              <div className="flex items-center gap-2 px-1 pt-1">
+                <MapPin size={13} className="text-raden-gold shrink-0" />
+                <h3 className="text-[11px] font-black text-raden-gold uppercase tracking-[0.2em]">{area}</h3>
+                <span className={`text-[9px] font-black tabular-nums ${doneCount === areaTasks.length ? 'text-green-500' : 'text-gray-300'}`}>{doneCount}/{areaTasks.length}</span>
+                <div className="flex-1 h-px bg-gray-100" />
               </div>
+              {areaTasks.map((t) => {
+                const isChecked = !!history[t.id];
+                const needsPhoto = !!t.is_mandatory_photo;
+                const photo = photos[t.id];
+                const busy = processingId === t.id;
+                return (
+                  <div key={t.id} className={`w-full p-4 rounded-xl border flex items-center justify-between gap-3 transition-all ${isChecked ? 'bg-green-50/40 border-green-100' : 'bg-white border-gray-200 shadow-sm'}`}>
+                    <button onClick={() => (needsPhoto ? openCamera(t.id) : toggleTask(t.id))} className="flex items-center gap-3 flex-1 text-left min-w-0">
+                      <div className="min-w-0">
+                        <p className={`text-[13px] font-bold leading-tight ${isChecked ? 'text-gray-400 line-through' : 'text-raden-green'}`}>{t.task_name}</p>
+                        {needsPhoto && (
+                          <p className="text-[8px] font-black uppercase tracking-widest mt-1 flex items-center gap-1 text-raden-gold">
+                            <Camera size={10} /> Wajib Foto
+                          </p>
+                        )}
+                      </div>
+                    </button>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {needsPhoto && photo && (
+                        <button onClick={() => openCamera(t.id)} title="Ganti foto" className="w-9 h-9 rounded-lg overflow-hidden border border-gray-200">
+                          <img src={photo.url} alt="bukti" className="w-full h-full object-cover" />
+                        </button>
+                      )}
+                      {needsPhoto && !photo ? (
+                        <button onClick={() => openCamera(t.id)} disabled={busy}
+                          className="flex items-center gap-1.5 bg-raden-gold/10 text-raden-gold px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
+                          {busy ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />} Foto
+                        </button>
+                      ) : (
+                        <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${isChecked ? 'bg-raden-green border-raden-green text-white' : 'bg-white border-gray-300'}`}>
+                          {isChecked && <Check size={14} strokeWidth={4} />}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           );
         })}

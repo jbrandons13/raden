@@ -45,7 +45,7 @@ export default function AdminChecklistPage() {
       const [tplRes, histRes, recapRes] = await Promise.all([
         supabase.from('checklist_templates').select('*').order('category'),
         supabase.from('checklist_history').select('*', { count: 'exact', head: true }).eq('date', todayString),
-        supabase.from('checklist_history').select('date, staff_id, staff_name, staff(name), checklist_templates(category)').order('date', { ascending: false })
+        supabase.from('checklist_history').select('date, created_at, staff_id, staff_name, staff(name), checklist_templates(category)').order('created_at', { ascending: false })
       ]);
 
       if (tplRes.data) setTemplates(tplRes.data);
@@ -64,6 +64,7 @@ export default function AdminChecklistPage() {
           seenKeys.add(key);
           recaps.push({
             date: r.date,
+            time: r.created_at,
             staffId: r.staff_id,
             staffName: who,
             category: cat
@@ -80,6 +81,7 @@ export default function AdminChecklistPage() {
   };
 
   const [selectedHistory, setSelectedHistory] = useState<any>(null);
+  const [photoLightbox, setPhotoLightbox] = useState<string | null>(null);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
@@ -294,7 +296,7 @@ export default function AdminChecklistPage() {
                     <div>
                       <p className="text-sm font-black text-raden-green tracking-tight uppercase group-hover:text-raden-gold transition-colors">{r.category} Checklist</p>
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                        {new Date(r.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} • Oleh <span className="text-raden-green">{r.staffName || 'Staff'}</span>
+                        {new Date(r.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}{r.time ? ` • ${new Date(r.time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : ''} • Oleh <span className="text-raden-green">{r.staffName || 'Staff'}</span>
                       </p>
                     </div>
                   </div>
@@ -324,7 +326,7 @@ export default function AdminChecklistPage() {
                     <div>
                       <h2 className="text-2xl font-black text-raden-green tracking-tighter uppercase leading-none mb-1">{selectedHistory.category} Detail</h2>
                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                        {new Date(selectedHistory.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} • {selectedHistory.staffName}
+                        {new Date(selectedHistory.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}{selectedHistory.time ? ` • Pukul ${new Date(selectedHistory.time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : ''} • {selectedHistory.staffName}
                       </p>
                     </div>
                     <button onClick={() => setSelectedHistory(null)} className="p-3 bg-gray-50 text-gray-400 rounded-2xl hover:bg-red-50 hover:text-red-500 transition-all"><X size={20}/></button>
@@ -342,9 +344,9 @@ export default function AdminChecklistPage() {
                              <h4 className="font-black text-raden-green leading-tight">{item.checklist_templates?.task_name}</h4>
                           </div>
                           {item.photo_url && (
-                             <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-xl rotate-3 shrink-0">
-                                <img src={item.photo_url} alt="Verification" className="w-full h-full object-cover" />
-                             </div>
+                             <button onClick={() => setPhotoLightbox(item.photo_url)} title="Lihat foto" className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-xl rotate-3 shrink-0 hover:rotate-0 transition-transform cursor-zoom-in">
+                                <img src={item.photo_url} alt="Verification" className="w-full h-full object-cover pointer-events-none" />
+                             </button>
                           )}
                        </div>
                     ))}
@@ -406,6 +408,18 @@ export default function AdminChecklistPage() {
                 <button onClick={handleDelete} className="flex-1 py-4 bg-red-500 text-white font-black uppercase tracking-widest rounded-2xl shadow-lg">Delete</button>
               </div>
             </motion.div>
+          </div>
+        )}
+
+        {photoLightbox && (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" onClick={() => setPhotoLightbox(null)}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
+            <motion.img
+              initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.85, opacity: 0 }}
+              src={photoLightbox} alt="Foto checklist"
+              className="relative max-w-full max-h-[88vh] rounded-2xl shadow-2xl object-contain"
+            />
+            <button onClick={() => setPhotoLightbox(null)} className="absolute top-6 right-6 p-3 bg-white/10 text-white rounded-2xl hover:bg-white/20 transition-all backdrop-blur-md"><X size={22} /></button>
           </div>
         )}
       </AnimatePresence>

@@ -31,6 +31,7 @@ _Update terakhir: 2026-06-16_
 - [x] **Dashboard**: buang omzet, "Perlu Produksi" pintar (cuma distok).
 - [x] **Analisis Penjualan** (page baru `/admin/analytics`): KPI omzet/pesanan/rata²/item · tren omzet · omzet per channel · produk & isian terlaris · pelanggan/branch terbaik · filter periode (30/90 hari, bulan/tahun ini). Chart ringan (CSS/SVG, tanpa library).
 - [x] **Checklist wajib-foto**: admin tandai task "wajib foto" → staff ambil foto (kamera HP, **auto-kompres** ~150 KB) → upload ke storage & `photo_url` kesimpen → admin lihat thumbnail di history. Retensi: **foto 7 hari** (file dihapus dari storage, anti-orphan), **riwayat 30 hari**.
+- [x] Checklist polish: staff lihat tugas **dikelompokkan per area** (header Kitchen/Pastry/General) · admin **klik foto → lightbox** full-screen · **jam submit** tampil di History.
 - [x] **Pesanan**: harga **otomatis per channel** · rincian **isian** per baris · **Eceran** (ketik nama) · Fresh = tanpa stok.
 - [x] **Rekap Distribusi (staff)**: pivot per isian + nama pembeli eceran.
 
