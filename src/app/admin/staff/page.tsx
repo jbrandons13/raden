@@ -444,10 +444,23 @@ export default function StaffManagementPage() {
           </tbody>
         </table>
 
-        <div className="sp-legend">
-          <b>Keterangan Shift:</b>{'  '}{SHIFT_LEGEND.map((l) => `${l.code} = ${l.time}`).join('   ·   ')}
+        <div className="sp-foot">
+          <div className="sp-legend-box">
+            <div className="sp-foot-title">Keterangan Shift</div>
+            <div className="sp-legend-grid">
+              {SHIFT_LEGEND.map((l) => (
+                <div key={l.code} className="sp-legend-item">
+                  <span className="sp-legend-code">{l.code}</span>
+                  <span className="sp-legend-time">{l.time}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="sp-notes-box">
+            <div className="sp-foot-title">Catatan Tambahan</div>
+            <div className="sp-notes-text">{notes || ''}</div>
+          </div>
         </div>
-        {notes && <div className="sp-notes"><b>Catatan:</b> {notes}</div>}
       </div>
 
       <style jsx global>{`
@@ -466,8 +479,15 @@ export default function StaffManagementPage() {
           #shift-print .sp-cell { font-weight: 700; }
           #shift-print .sp-total td { background: #f6edd8; font-weight: 900; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           #shift-print tr { page-break-inside: avoid; }
-          #shift-print .sp-legend { margin-top: 10px; font-size: 8pt; line-height: 1.5; }
-          #shift-print .sp-notes { margin-top: 6px; font-size: 8pt; }
+          #shift-print .sp-foot { display: flex; gap: 14px; margin-top: 14px; align-items: stretch; page-break-inside: avoid; }
+          #shift-print .sp-legend-box { flex: 1.3; }
+          #shift-print .sp-notes-box { flex: 1; display: flex; flex-direction: column; }
+          #shift-print .sp-foot-title { font-size: 8pt; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #1a3c34; margin-bottom: 6px; }
+          #shift-print .sp-legend-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+          #shift-print .sp-legend-item { border: 0.75pt solid #ccc; border-radius: 3px; padding: 4px 6px; }
+          #shift-print .sp-legend-code { font-size: 8pt; font-weight: 800; color: #1a3c34; display: block; }
+          #shift-print .sp-legend-time { font-size: 6.5pt; color: #666; }
+          #shift-print .sp-notes-text { flex: 1; border: 0.75pt solid #ccc; border-radius: 3px; padding: 7px; min-height: 52px; font-size: 8pt; line-height: 1.4; white-space: pre-wrap; }
         }
       `}</style>
     </div>
