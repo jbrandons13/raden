@@ -30,6 +30,7 @@ _Update terakhir: 2026-06-16_
 - [x] **Produk**: 3 harga channel (Eceran/Agen/Branch) · toggle **Distok vs Fresh** · Target Mingguan · **Isian** (varian) · **Satuan Jual** + **Satuan Produksi** per produk.
 - [x] **Dashboard**: buang omzet, "Perlu Produksi" pintar (cuma distok).
 - [x] **Analisis Penjualan** (page baru `/admin/analytics`): KPI omzet/pesanan/rata²/item · tren omzet · omzet per channel · produk & isian terlaris · pelanggan/branch terbaik · filter periode (30/90 hari, bulan/tahun ini). Chart ringan (CSS/SVG, tanpa library).
+- [x] **Checklist wajib-foto**: admin tandai task "wajib foto" → staff ambil foto (kamera HP, **auto-kompres** ~150 KB) → upload ke storage & `photo_url` kesimpen → admin lihat thumbnail di history. Retensi: **foto 7 hari** (file dihapus dari storage, anti-orphan), **riwayat 30 hari**.
 - [x] **Pesanan**: harga **otomatis per channel** · rincian **isian** per baris · **Eceran** (ketik nama) · Fresh = tanpa stok.
 - [x] **Rekap Distribusi (staff)**: pivot per isian + nama pembeli eceran.
 
@@ -88,3 +89,4 @@ _Update terakhir: 2026-06-16_
 13. [x] `20260616010000_jobdesk_batch_unit.sql` — `batch_unit` di tasks/template (kini tak terpakai)
 14. [x] `20260616020000_product_batch_unit.sql` — `batch_unit` per produk (satuan produksi)
 15. [x] `20260616030000_staff_sort_order.sql` — kolom `sort_order` (urutan nama staff bisa digeser ▲▼)
+16. [x] `20260616040000_checklist_photos_storage.sql` — storage bucket `checklist-photos` + policy (foto wajib checklist)

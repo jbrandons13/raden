@@ -1,110 +1,119 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, Circle, Camera, Loader2, ChevronLeft, MapPin, User, Check, Send, AlertCircle, Lock } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Camera, Loader2, ChevronLeft, MapPin, Check, Send, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { compressImage } from '@/lib/image';
 
 const AREAS = ['Kitchen', 'Pastry', 'General'];
+const BUCKET = 'checklist-photos';
 
-const getLocalDate = () => {
-  return new Date().toLocaleDateString('en-CA');
-};
+const getLocalDate = () => new Date().toLocaleDateString('en-CA');
 
 export default function StaffChecklistPage() {
   const { username } = useAuth();
   const [view, setView] = useState<'areas' | 'tasks'>('areas');
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
-  
+
   const [templates, setTemplates] = useState<any[]>([]);
-  const [completedAreas, setCompletedAreas] = useState<string[]>([]); // Areas already submitted today
-  const [history, setHistory] = useState<Record<string, boolean>>({}); // LOCAL ONLY state
-  
+  const [completedAreas, setCompletedAreas] = useState<string[]>([]); // already submitted today
+  const [history, setHistory] = useState<Record<string, boolean>>({}); // checked tasks (local)
+  const [photos, setPhotos] = useState<Record<string, { url: string; blob: Blob }>>({}); // captured photos (local)
+
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // 1. Initial Load: Staff & Today's Completed Areas
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoForTask = useRef<string | null>(null);
+
   useEffect(() => {
     async function init() {
       setLoading(true);
       const today = getLocalDate();
-      
-      const [historyRes] = await Promise.all([
-        supabase.from('checklist_history')
-          .select('template_id, checklist_templates(category)')
-          .eq('date', today)
-      ]);
-      
-      // Determine which categories are already present in DB for today
-      if (historyRes.data) {
-        const categories = new Set<string>();
-        historyRes.data.forEach((h: any) => {
-          if (h.checklist_templates?.category) {
-            categories.add(h.checklist_templates.category);
-          }
-        });
-        setCompletedAreas(Array.from(categories));
+      const { data } = await supabase
+        .from('checklist_history')
+        .select('template_id, checklist_templates(category)')
+        .eq('date', today);
+      if (data) {
+        const cats = new Set<string>();
+        data.forEach((h: any) => { if (h.checklist_templates?.category) cats.add(h.checklist_templates.category); });
+        setCompletedAreas(Array.from(cats));
       }
-
-      
       setLoading(false);
     }
     init();
   }, []);
 
-  // 2. Fetch Templates for selected areas (No DB history fetch for the session)
   const startSession = async () => {
     if (selectedAreas.length === 0) return;
     setLoading(true);
-    
-    const { data } = await supabase
-      .from('checklist_templates')
-      .select('*')
-      .in('category', selectedAreas);
-
+    const { data } = await supabase.from('checklist_templates').select('*').in('category', selectedAreas);
     if (data) setTemplates(data);
-    setHistory({}); // Always start session with empty local state
+    setHistory({});
+    setPhotos({});
     setView('tasks');
     setLoading(false);
   };
 
   const toggleArea = (area: string) => {
-    if (completedAreas.includes(area)) return; // Locked
-    setSelectedAreas(prev => prev.includes(area) ? prev.filter(a => a !== area) : [...prev, area]);
+    if (completedAreas.includes(area)) return; // already done today
+    setSelectedAreas((prev) => (prev.includes(area) ? prev.filter((a) => a !== area) : [...prev, area]));
   };
 
   const toggleTask = (templateId: string) => {
-    setHistory(prev => ({
-      ...prev,
-      [templateId]: !prev[templateId]
-    }));
+    setHistory((prev) => ({ ...prev, [templateId]: !prev[templateId] }));
+  };
+
+  const openCamera = (templateId: string) => {
+    photoForTask.current = templateId;
+    fileInputRef.current?.click();
+  };
+
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const tid = photoForTask.current;
+    e.target.value = ''; // allow re-picking the same file
+    if (!file || !tid) return;
+    setProcessingId(tid);
+    try {
+      let blob: Blob;
+      try { blob = await compressImage(file); } catch { blob = file; } // fall back to original if decode fails
+      const url = URL.createObjectURL(blob);
+      setPhotos((prev) => ({ ...prev, [tid]: { url, blob } }));
+      setHistory((prev) => ({ ...prev, [tid]: true })); // a photographed task counts as done
+    } catch (err: any) {
+      alert('Gagal memproses foto: ' + err.message);
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const handleFinalSubmit = async () => {
-    // Nama pengecek otomatis dari akun yang login.
-    
     setIsSubmitting(true);
     const today = getLocalDate();
-    
-    // Prepare records for checked items
-    const records = Object.entries(history)
-      .filter(([_, isChecked]) => isChecked)
-      .map(([templateId]) => ({
-        template_id: templateId,
-        staff_name: username,
-        date: today,
-        is_completed: true
-      }));
-
     try {
+      const checkedIds = Object.entries(history).filter(([, v]) => v).map(([id]) => id);
+      const records = await Promise.all(checkedIds.map(async (templateId) => {
+        let photo_url: string | null = null;
+        const ph = photos[templateId];
+        if (ph) {
+          const path = `${today}/${templateId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`;
+          const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, ph.blob, { contentType: ph.blob.type || 'image/jpeg', upsert: true });
+          if (upErr) throw new Error('Upload foto gagal: ' + upErr.message);
+          photo_url = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+        }
+        return { template_id: templateId, staff_name: username, date: today, is_completed: true, photo_url };
+      }));
       if (records.length > 0) {
         const { error } = await supabase.from('checklist_history').insert(records);
         if (error) throw error;
       }
       setShowSuccess(true);
     } catch (e: any) {
-      alert("Gagal mengirim checklist: " + e.message);
+      alert('Gagal mengirim checklist: ' + e.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -118,10 +127,7 @@ export default function StaffChecklistPage() {
         </div>
         <h2 className="text-xl font-black text-raden-gold uppercase tracking-tight">Checklist Terkirim!</h2>
         <p className="text-white/60 text-xs text-balance">Data telah tersimpan di sistem. Terima kasih!</p>
-        <button 
-          onClick={() => window.location.reload()} 
-          className="mt-8 bg-raden-gold text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-2xl shadow-xl shadow-raden-gold/30"
-        >
+        <button onClick={() => window.location.reload()} className="mt-8 bg-raden-gold text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-2xl shadow-xl shadow-raden-gold/30">
           Selesai
         </button>
       </div>
@@ -137,36 +143,26 @@ export default function StaffChecklistPage() {
         </header>
 
         {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-             <Loader2 size={24} className="animate-spin text-raden-gold" />
-          </div>
+          <div className="flex-1 flex items-center justify-center"><Loader2 size={24} className="animate-spin text-raden-gold" /></div>
         ) : (
           <div className="space-y-2 max-w-sm mx-auto w-full">
-            {AREAS.map(area => {
+            {AREAS.map((area) => {
               const isDone = completedAreas.includes(area);
               const isSelected = selectedAreas.includes(area);
-              
               return (
-                <button 
-                  key={area} 
-                  disabled={isDone}
-                  onClick={() => toggleArea(area)} 
+                <button key={area} disabled={isDone} onClick={() => toggleArea(area)}
                   className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all ${
                     isDone ? 'bg-gray-100 border-gray-100 opacity-60' :
-                    isSelected ? 'bg-raden-gold text-white border-raden-gold shadow-lg shadow-raden-gold/20' : 
-                    'bg-white text-raden-green border-gray-100 shadow-sm'
-                  }`}
-                >
+                    isSelected ? 'bg-raden-gold text-white border-raden-gold shadow-lg shadow-raden-gold/20' :
+                    'bg-white text-raden-green border-gray-100 shadow-sm'}`}>
                   <div className="flex items-center gap-3">
                     <MapPin size={18} />
                     <span className="font-black text-xs uppercase tracking-widest">{area}</span>
                   </div>
                   <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
                     isDone ? 'bg-green-500 border-green-500 text-white' :
-                    isSelected ? 'border-white bg-white text-raden-gold' : 
-                    'border-gray-200'
-                  }`}>
-                    {isDone ? <Check size={12} strokeWidth={4} /> : isSelected && <Check size={12} strokeWidth={4} />}
+                    isSelected ? 'border-white bg-white text-raden-gold' : 'border-gray-200'}`}>
+                    {(isDone || isSelected) && <Check size={12} strokeWidth={4} />}
                   </div>
                 </button>
               );
@@ -175,13 +171,9 @@ export default function StaffChecklistPage() {
         )}
 
         <div className="max-w-sm mx-auto w-full pt-6">
-          <button 
-            disabled={selectedAreas.length === 0 || loading} 
-            onClick={startSession} 
+          <button disabled={selectedAreas.length === 0 || loading} onClick={startSession}
             className={`w-full py-4 rounded-xl font-black text-[12px] uppercase tracking-widest shadow-lg ${
-              selectedAreas.length > 0 && !loading ? 'bg-raden-green text-raden-gold active:scale-95' : 'bg-gray-200 text-gray-400'
-            }`}
-          >
+              selectedAreas.length > 0 && !loading ? 'bg-raden-green text-raden-gold active:scale-95' : 'bg-gray-200 text-gray-400'}`}>
             Mulai Checklist
           </button>
         </div>
@@ -189,74 +181,85 @@ export default function StaffChecklistPage() {
     );
   }
 
-  const allItemsDone = templates.length > 0 && templates.every(t => history[t.id]);
+  const allItemsDone = templates.length > 0 && templates.every((t) => history[t.id]);
+  const remaining = templates.filter((t) => !history[t.id]).length;
 
   return (
     <div className="min-h-screen bg-white">
-       <div className="sticky top-0 z-40 bg-white border-b border-gray-100 p-3 flex items-center justify-between">
-          <button onClick={() => setView('areas')} className="p-1 text-raden-green"><ChevronLeft size={20}/></button>
-          <div className="text-center">
-            <h2 className="text-[10px] font-black text-raden-gold uppercase tracking-widest truncate">{selectedAreas.join(' + ')}</h2>
-          </div>
-          <div className="w-8" />
-       </div>
+      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFileChange} />
 
-       <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-          <span className="text-[10px] font-black text-raden-gold uppercase tracking-widest">Dicek oleh:</span>
-          <span className="text-xs font-black text-raden-green">{username || '—'}</span>
-       </div>
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-100 p-3 flex items-center justify-between">
+        <button onClick={() => setView('areas')} className="p-1 text-raden-green"><ChevronLeft size={20} /></button>
+        <div className="text-center"><h2 className="text-[10px] font-black text-raden-gold uppercase tracking-widest truncate">{selectedAreas.join(' + ')}</h2></div>
+        <div className="w-8" />
+      </div>
 
-       <div className="p-4 space-y-2 mb-32">
-         {templates.map(t => {
-            const isChecked = !!history[t.id];
-            return (
-               <button 
-                key={t.id} 
-                className={`w-full p-4 rounded-xl border flex items-center justify-between text-left transition-all ${isChecked ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200 shadow-sm'}`}
-                onClick={() => toggleTask(t.id)}
-               >
-                 <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
-                      <p className={`text-[13px] font-bold leading-tight ${isChecked ? 'text-gray-400 line-through' : 'text-raden-green'}`}>{t.task_name}</p>
-                      <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest mt-1">{t.category}</p>
-                    </div>
-                 </div>
-                 <div className="flex items-center gap-3 shrink-0 pointer-events-none">
-                    <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
-                      isChecked ? 'bg-raden-green border-raden-green text-white' : 'bg-white border-gray-300'
-                    }`}>
-                      {isChecked && <Check size={14} strokeWidth={4} />}
-                    </div>
-                 </div>
-               </button>
-            );
-         })}
-       </div>
+      <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+        <span className="text-[10px] font-black text-raden-gold uppercase tracking-widest">Dicek oleh:</span>
+        <span className="text-xs font-black text-raden-green">{username || '—'}</span>
+      </div>
 
-       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-gray-100 z-50">
-          <div className="max-w-sm mx-auto">
-            {!allItemsDone || templates.length === 0 ? (
-              <div className="bg-gray-50 p-4 rounded-2xl flex items-center gap-3 text-raden-green border border-gray-100">
-                 <AlertCircle size={20} className="text-raden-gold shrink-0" />
-                 <div>
-                   <p className="text-[10px] font-black uppercase tracking-widest text-raden-gold">Belum Terlengkapi</p>
-                   <p className="text-[11px] font-bold leading-tight uppercase tracking-tight text-gray-400">
-                     Selesaikan {templates.length - Object.keys(history).length} tugas lagi untuk submit.
-                   </p>
-                 </div>
-              </div>
-            ) : (
-              <button 
-                disabled={isSubmitting}
-                onClick={handleFinalSubmit} 
-                className="w-full bg-raden-green text-raden-gold py-4 rounded-2xl font-black text-sm uppercase tracking-[0.4em] shadow-xl shadow-raden-green/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
-              >
-                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />} 
-                {isSubmitting ? 'Mengirim...' : 'Submit Checklist'}
+      <div className="p-4 space-y-2 mb-32">
+        {templates.map((t) => {
+          const isChecked = !!history[t.id];
+          const needsPhoto = !!t.is_mandatory_photo;
+          const photo = photos[t.id];
+          const busy = processingId === t.id;
+          return (
+            <div key={t.id} className={`w-full p-4 rounded-xl border flex items-center justify-between gap-3 transition-all ${isChecked ? 'bg-green-50/40 border-green-100' : 'bg-white border-gray-200 shadow-sm'}`}>
+              <button onClick={() => (needsPhoto ? openCamera(t.id) : toggleTask(t.id))} className="flex items-center gap-3 flex-1 text-left min-w-0">
+                <div className="min-w-0">
+                  <p className={`text-[13px] font-bold leading-tight ${isChecked ? 'text-gray-400 line-through' : 'text-raden-green'}`}>{t.task_name}</p>
+                  <p className={`text-[8px] font-black uppercase tracking-widest mt-1 flex items-center gap-1 ${needsPhoto ? 'text-raden-gold' : 'text-gray-300'}`}>
+                    {needsPhoto && <Camera size={10} />} {needsPhoto ? 'Wajib Foto' : t.category}
+                  </p>
+                </div>
               </button>
-            )}
-          </div>
-       </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {needsPhoto && photo && (
+                  <button onClick={() => openCamera(t.id)} title="Ganti foto" className="w-9 h-9 rounded-lg overflow-hidden border border-gray-200">
+                    <img src={photo.url} alt="bukti" className="w-full h-full object-cover" />
+                  </button>
+                )}
+                {needsPhoto && !photo ? (
+                  <button onClick={() => openCamera(t.id)} disabled={busy}
+                    className="flex items-center gap-1.5 bg-raden-gold/10 text-raden-gold px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
+                    {busy ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />} Foto
+                  </button>
+                ) : (
+                  <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${isChecked ? 'bg-raden-green border-raden-green text-white' : 'bg-white border-gray-300'}`}>
+                    {isChecked && <Check size={14} strokeWidth={4} />}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-gray-100 z-50">
+        <div className="max-w-sm mx-auto">
+          {!allItemsDone || templates.length === 0 ? (
+            <div className="bg-gray-50 p-4 rounded-2xl flex items-center gap-3 text-raden-green border border-gray-100">
+              <AlertCircle size={20} className="text-raden-gold shrink-0" />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-raden-gold">Belum Terlengkapi</p>
+                <p className="text-[11px] font-bold leading-tight uppercase tracking-tight text-gray-400">
+                  Selesaikan {remaining} tugas lagi untuk submit{' '}
+                  <span className="normal-case tracking-normal">(tugas wajib foto harus difoto dulu).</span>
+                </p>
+              </div>
+            </div>
+          ) : (
+            <button disabled={isSubmitting} onClick={handleFinalSubmit}
+              className="w-full bg-raden-green text-raden-gold py-4 rounded-2xl font-black text-sm uppercase tracking-[0.4em] shadow-xl shadow-raden-green/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50">
+              {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+              {isSubmitting ? 'Mengirim...' : 'Submit Checklist'}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

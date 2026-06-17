@@ -26,11 +26,21 @@ export default function AdminChecklistPage() {
     try {
       const todayString = new Date().toISOString().split('T')[0];
       
-      // AUTO CLEANUP: Delete records older than 7 days
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
-      await supabase.from('checklist_history').delete().lt('date', sevenDaysAgoStr);
+      // AUTO CLEANUP (retention): photos kept 7 days, text history kept 30 days.
+      const dMinus = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0]; };
+      // 1) photos older than 7 days → delete the storage file + clear photo_url (keep the row)
+      const { data: oldPhotos } = await supabase
+        .from('checklist_history')
+        .select('id, photo_url')
+        .lt('date', dMinus(7))
+        .not('photo_url', 'is', null);
+      if (oldPhotos && oldPhotos.length) {
+        const paths = oldPhotos.map((r: any) => (r.photo_url || '').split('/checklist-photos/')[1]).filter(Boolean);
+        if (paths.length) await supabase.storage.from('checklist-photos').remove(paths);
+        await supabase.from('checklist_history').update({ photo_url: null }).in('id', oldPhotos.map((r: any) => r.id));
+      }
+      // 2) history rows older than 30 days → delete entirely
+      await supabase.from('checklist_history').delete().lt('date', dMinus(30));
 
       const [tplRes, histRes, recapRes] = await Promise.all([
         supabase.from('checklist_templates').select('*').order('category'),
@@ -265,7 +275,7 @@ export default function AdminChecklistPage() {
                <div className="p-3 bg-white rounded-2xl text-raden-green shadow-sm"><Clock size={20}/></div>
                <div>
                   <h3 className="font-black text-raden-green text-xs uppercase tracking-widest leading-none">Activity Log</h3>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Showing 15 most recent entries (7-day retention).</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">15 entri terbaru · riwayat 30 hari, foto 7 hari.</p>
                </div>
                <ExportExcelButton
                  onExport={handleExportExcel}
