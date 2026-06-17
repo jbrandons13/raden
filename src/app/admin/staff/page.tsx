@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Save, Loader2, X, Users, Info, AlignLeft, Sparkles, Check } from 'lucide-react';
+import { UserPlus, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Save, Loader2, X, Users, Info, AlignLeft, Sparkles, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import AiImporterModal from './AiImporterModal';
 import StaffModals from './_components/StaffModals';
@@ -29,6 +29,7 @@ export default function StaffManagementPage() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [reordering, setReordering] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{id: string, name: string} | null>(null);
   
   const [showAddStaff, setShowAddStaff] = useState(false);
@@ -51,7 +52,7 @@ export default function StaffManagementPage() {
   const fetchData = async () => {
     try {
       const [stfRes, shfRes] = await Promise.all([
-        supabase.from('staff').select('*').order('name'),
+        supabase.from('staff').select('*').order('sort_order', { ascending: true }).order('name'),
         supabase.from('staff_shifts').select('*').in('shift_date', dates)
       ]);
       
@@ -81,12 +82,39 @@ export default function StaffManagementPage() {
 
   const handleAddStaff = async () => {
     if (!newStaffName) return;
-    const { error } = await supabase.from('staff').insert([{ name: newStaffName, position: 'Staff' }]);
+    // new staff goes to the bottom of the order
+    const { error } = await supabase.from('staff').insert([{ name: newStaffName, position: 'Staff', sort_order: staff.length }]);
     if (error) alert(error.message);
     else {
       setNewStaffName('');
       setShowAddStaff(false);
       fetchData();
+    }
+  };
+
+  // Move a staff row up (dir=-1) or down (dir=+1). Re-numbers sort_order 0..n-1
+  // and persists only the rows whose order actually changed.
+  const moveStaff = async (index: number, dir: -1 | 1) => {
+    const target = index + dir;
+    if (target < 0 || target >= staff.length || reordering) return;
+    const prev = staff;
+    const reordered = [...staff];
+    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+    const withOrder = reordered.map((s, i) => ({ ...s, sort_order: i }));
+    setStaff(withOrder);          // optimistic
+    setReordering(true);
+    try {
+      const changed = withOrder.filter(s => prev.find(o => o.id === s.id)?.sort_order !== s.sort_order);
+      const results = await Promise.all(
+        changed.map(s => supabase.from('staff').update({ sort_order: s.sort_order }).eq('id', s.id))
+      );
+      const failed = results.find(r => r.error);
+      if (failed?.error) throw failed.error;
+    } catch (e: any) {
+      alert('Gagal mengubah urutan: ' + e.message);
+      setStaff(prev);             // revert
+    } finally {
+      setReordering(false);
     }
   };
 
@@ -258,13 +286,17 @@ export default function StaffManagementPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {staff.map(s => (
+              {staff.map((s, idx) => (
                 <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4 border-r border-gray-100 sticky left-0 bg-white group z-20 w-48 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">
-                    <div className="flex items-center gap-3">
-                       <span className="font-bold text-xs text-raden-green truncate">{s.name}</span>
+                  <td className="pl-2 pr-3 py-4 border-r border-gray-100 sticky left-0 bg-white group z-20 w-48 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">
+                    <div className="flex items-center gap-1.5">
+                       <div className="flex flex-col -my-1 shrink-0">
+                         <button onClick={() => moveStaff(idx, -1)} disabled={idx === 0 || reordering} title="Naikkan urutan" className="text-gray-300 hover:text-raden-green disabled:opacity-20 disabled:hover:text-gray-300 transition-colors leading-none"><ChevronUp size={14} /></button>
+                         <button onClick={() => moveStaff(idx, 1)} disabled={idx === staff.length - 1 || reordering} title="Turunkan urutan" className="text-gray-300 hover:text-raden-green disabled:opacity-20 disabled:hover:text-gray-300 transition-colors leading-none"><ChevronDown size={14} /></button>
+                       </div>
+                       <span className="font-bold text-xs text-raden-green truncate flex-1">{s.name}</span>
+                       <button onClick={() => setItemToDelete({id: s.id, name: s.name})} title="Hapus staff" className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 transition-all shrink-0"><Trash2 size={13}/></button>
                     </div>
-                    <button onClick={() => setItemToDelete({id: s.id, name: s.name})} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 transition-all bg-white p-2 rounded-full shadow-sm border border-red-50"><Trash2 size={14}/></button>
                   </td>
                   {dates.map(date => {
                     const currentType = shifts[s.id]?.[date] || '';

@@ -64,6 +64,7 @@ create table if not exists staff (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
   position    text,
+  sort_order  integer default 0,                    -- display order on Staff & Shift matrix (admin ▲▼)
   created_at  timestamptz default now()
 );
 

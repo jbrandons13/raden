@@ -51,6 +51,7 @@ export interface Staff {
   id: string;
   name: string;
   position: string;
+  sort_order?: number;
   created_at?: string;
 }
 

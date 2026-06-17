@@ -55,6 +55,7 @@ _Update terakhir: 2026-06-16_
 - [x] Bahan Baku: hasil cek stok staff jadi **daftar belanja jelas** (dulu jumlah-beli nggak ditampilin).
 - [x] Multi-staff pindah dari hack `||STAFF_IDS:` di notes → kolom **`assignee_ids`**.
 - [x] Halaman root `/` (portal "pilih Admin/Staff" lama, sisa pra-auth) → **pengalih otomatis** sesuai login: belum login→`/login`, admin→`/admin`, staff→`/staff`.
+- [x] Staff & Shift: urutan nama staff bisa **digeser ▲▼** (kolom `sort_order`); staff baru masuk paling bawah.
 
 ---
 
@@ -82,3 +83,4 @@ _Update terakhir: 2026-06-16_
 12. [x] `20260616000000_jobdesk_board.sql` — kolom papan (title/slot/area/assignee) + `jobdesk_days`
 13. [x] `20260616010000_jobdesk_batch_unit.sql` — `batch_unit` di tasks/template (kini tak terpakai)
 14. [x] `20260616020000_product_batch_unit.sql` — `batch_unit` per produk (satuan produksi)
+15. [x] `20260616030000_staff_sort_order.sql` — kolom `sort_order` (urutan nama staff bisa digeser ▲▼)
