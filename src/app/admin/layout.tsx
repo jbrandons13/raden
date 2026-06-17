@@ -33,6 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       title: 'Utama',
       items: [
         { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+        { name: 'Analisis', href: '/admin/analytics', icon: TrendingUp },
       ]
     },
     {

@@ -29,6 +29,7 @@ _Update terakhir: 2026-06-16_
 - [x] **Branch & Agen**: add/edit/delete, tipe Branch/Agen, tanpa angka income.
 - [x] **Produk**: 3 harga channel (Eceran/Agen/Branch) · toggle **Distok vs Fresh** · Target Mingguan · **Isian** (varian) · **Satuan Jual** + **Satuan Produksi** per produk.
 - [x] **Dashboard**: buang omzet, "Perlu Produksi" pintar (cuma distok).
+- [x] **Analisis Penjualan** (page baru `/admin/analytics`): KPI omzet/pesanan/rata²/item · tren omzet · omzet per channel · produk & isian terlaris · pelanggan/branch terbaik · filter periode (30/90 hari, bulan/tahun ini). Chart ringan (CSS/SVG, tanpa library).
 - [x] **Pesanan**: harga **otomatis per channel** · rincian **isian** per baris · **Eceran** (ketik nama) · Fresh = tanpa stok.
 - [x] **Rekap Distribusi (staff)**: pivot per isian + nama pembeli eceran.
 
@@ -65,6 +66,7 @@ _Update terakhir: 2026-06-16_
 - [ ] **Integrasi POS kasir** (eceran) yang masih di spreadsheet — 🎯 **ini target berikutnya** (yang belum dikerjain).
 - [ ] **Filter "Tugasku" per orang** di HP staff (sekarang papan bersama) — perlu link akun login staff ↔ data staff.
 - [ ] **Error monitoring** (mis. Sentry) — biar tau kalau ada error di HP staff.
+- [ ] **Analisis lanjutan**: Keuangan (laba & arus kas dari Buku Kas) + Produksi (rencana vs aktual jobdesk).
 - [ ] Halaman `/admin/hot-kitchen` dirapikan/dihapus (mungkin redundan setelah papan jobdesk).
 - [ ] Re-capture screenshot README halaman jobdesk; kurangi tipe `any`.
 
