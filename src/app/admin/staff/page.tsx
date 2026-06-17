@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Save, Loader2, X, Users, Info, AlignLeft, Sparkles, Check } from 'lucide-react';
+import { UserPlus, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Save, Loader2, X, Users, Info, AlignLeft, Sparkles, Check, Printer } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import AiImporterModal from './AiImporterModal';
 import StaffModals from './_components/StaffModals';
@@ -221,6 +221,12 @@ export default function StaffManagementPage() {
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50"
           />
           <button
+            onClick={() => window.print()}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+          >
+            <Printer size={18} /> Cetak
+          </button>
+          <button
             onClick={saveShifts}
             disabled={isSaving || !hasChanges}
             className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-30 ${
@@ -384,6 +390,86 @@ export default function StaffManagementPage() {
         itemToDelete={itemToDelete} setItemToDelete={setItemToDelete}
         handleDeleteStaff={handleDeleteStaff}
       />
+
+      {/* Print layout — shift matrix (hidden on screen, shown only when printing) */}
+      <div id="shift-print" className="hidden print:block">
+        <div className="sp-header">
+          <h1 style={{ fontSize: '15pt', fontWeight: 900, textTransform: 'uppercase', margin: 0 }}>
+            Jadwal Shift — {baseDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+          </h1>
+          <div style={{ fontSize: '9pt', marginTop: 4 }}>
+            Periode {new Date(dates[0]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} – {new Date(dates[dates.length - 1]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            {'  ·  '}Dicetak: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+            {'  ·  '}{staff.length} staff
+          </div>
+        </div>
+
+        <table className="sp-grid">
+          <thead>
+            <tr>
+              <th className="sp-name-col">Nama Staff</th>
+              {dates.map((date) => {
+                const d = new Date(date);
+                return (
+                  <th key={date} className="sp-date-col">
+                    <div className="sp-dow">{d.toLocaleDateString('id-ID', { weekday: 'narrow' })}</div>
+                    <div>{d.getDate()}</div>
+                  </th>
+                );
+              })}
+              <th className="sp-jml-col">Jml</th>
+            </tr>
+          </thead>
+          <tbody>
+            {staff.map((s) => {
+              const count = dates.filter((date) => !!shifts[s.id]?.[date]).length;
+              return (
+                <tr key={s.id}>
+                  <td className="sp-name-col">{s.name}</td>
+                  {dates.map((date) => (
+                    <td key={date} className="sp-cell">{shifts[s.id]?.[date] || ''}</td>
+                  ))}
+                  <td className="sp-jml-col">{count}</td>
+                </tr>
+              );
+            })}
+            <tr className="sp-total">
+              <td className="sp-name-col">TOTAL</td>
+              {dates.map((date) => {
+                const tot = staff.filter((s) => !!shifts[s.id]?.[date]).length;
+                return <td key={date} className="sp-cell">{tot || ''}</td>;
+              })}
+              <td className="sp-jml-col" />
+            </tr>
+          </tbody>
+        </table>
+
+        <div className="sp-legend">
+          <b>Keterangan Shift:</b>{'  '}{SHIFT_LEGEND.map((l) => `${l.code} = ${l.time}`).join('   ·   ')}
+        </div>
+        {notes && <div className="sp-notes"><b>Catatan:</b> {notes}</div>}
+      </div>
+
+      <style jsx global>{`
+        @media print {
+          @page { size: A4 landscape; margin: 8mm; }
+          body * { visibility: hidden; }
+          #shift-print, #shift-print * { visibility: visible; }
+          #shift-print { position: absolute; left: 0; top: 0; width: 100%; }
+          #shift-print .sp-header { border-bottom: 3px solid #1a3c34; padding-bottom: 6px; margin-bottom: 10px; }
+          #shift-print .sp-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          #shift-print .sp-grid th, #shift-print .sp-grid td { border: 0.75pt solid #333; padding: 2px 1px; text-align: center; font-size: 6.5pt; line-height: 1.15; overflow: hidden; }
+          #shift-print .sp-grid th { background: #ececec; font-weight: 800; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          #shift-print .sp-name-col { width: 30mm; text-align: left; font-weight: 700; padding-left: 4px; white-space: nowrap; }
+          #shift-print .sp-jml-col { width: 9mm; font-weight: 800; }
+          #shift-print .sp-dow { font-size: 5pt; color: #777; text-transform: uppercase; }
+          #shift-print .sp-cell { font-weight: 700; }
+          #shift-print .sp-total td { background: #f6edd8; font-weight: 900; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          #shift-print tr { page-break-inside: avoid; }
+          #shift-print .sp-legend { margin-top: 10px; font-size: 8pt; line-height: 1.5; }
+          #shift-print .sp-notes { margin-top: 6px; font-size: 8pt; }
+        }
+      `}</style>
     </div>
   );
 }
