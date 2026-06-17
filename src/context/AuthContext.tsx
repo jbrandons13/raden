@@ -24,7 +24,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes
+const INACTIVITY_LIMIT = 60 * 60 * 1000; // 1 hour
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -118,7 +118,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     router.replace('/login');
   }, [router]);
 
-  // Auto-logout after 30 minutes of inactivity.
+  // Auto-logout after 1 hour of inactivity.
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -127,7 +127,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const last = localStorage.getItem('raden_last_activity');
       if (last && Date.now() - parseInt(last) > INACTIVITY_LIMIT) {
         logout();
-        alert('Sesi Anda berakhir karena tidak ada aktivitas selama 30 menit.');
+        alert('Sesi Anda berakhir karena tidak ada aktivitas selama 1 jam.');
       }
     };
 

@@ -14,6 +14,7 @@ _Update terakhir: 2026-06-16_
 - [x] Terverifikasi: orang tanpa login **nggak bisa baca apa-apa** (dicek via script).
 - [x] Tutup lubang `staff_shifts` yang sempat kelewat.
 - [x] `acc.txt` dihapus + di-gitignore. (Rotasi key: opsional, di-skip — nggak pernah bocor publik.)
+- [x] **Auto-logout** setelah **idle 1 jam** (deteksi klik/ketik/scroll/touch, timestamp di localStorage → lintas-tab; cek tiap menit). Mekanismenya diverifikasi nyala.
 
 ### 👤 Auth & Akun
 - [x] Login username + PIN 6 digit (email sintetis di belakang layar).
