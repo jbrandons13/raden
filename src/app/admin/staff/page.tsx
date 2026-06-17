@@ -208,7 +208,7 @@ export default function StaffManagementPage() {
   };
 
   return (
-    <div className="space-y-6 relative pb-12">
+    <div className="space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight">Manajemen Staff</h1>
@@ -458,7 +458,7 @@ export default function StaffManagementPage() {
           #shift-print { position: absolute; left: 0; top: 0; width: 100%; }
           #shift-print .sp-header { border-bottom: 3px solid #1a3c34; padding-bottom: 6px; margin-bottom: 10px; }
           #shift-print .sp-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
-          #shift-print .sp-grid th, #shift-print .sp-grid td { border: 0.75pt solid #333; padding: 2px 1px; text-align: center; font-size: 6.5pt; line-height: 1.15; overflow: hidden; }
+          #shift-print .sp-grid th, #shift-print .sp-grid td { border: 0.75pt solid #333; padding: 4px 2px; text-align: center; font-size: 7pt; line-height: 1.2; overflow: hidden; }
           #shift-print .sp-grid th { background: #ececec; font-weight: 800; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           #shift-print .sp-name-col { width: 30mm; text-align: left; font-weight: 700; padding-left: 4px; white-space: nowrap; }
           #shift-print .sp-jml-col { width: 9mm; font-weight: 800; }
