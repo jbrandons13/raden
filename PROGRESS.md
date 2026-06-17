@@ -57,6 +57,7 @@ _Update terakhir: 2026-06-16_
 - [x] Halaman root `/` (portal "pilih Admin/Staff" lama, sisa pra-auth) → **pengalih otomatis** sesuai login: belum login→`/login`, admin→`/admin`, staff→`/staff`.
 - [x] Staff & Shift: urutan nama staff bisa **digeser ▲▼** (kolom `sort_order`); staff baru masuk paling bawah.
 - [x] Staff & Shift: **cetak jadwal shift** — matriks 30 hari (kode shift per sel) + baris total + keterangan + catatan, layout landscape.
+- [x] Staff & Shift: **urutkan tampilan** — Manual (▲▼) / Jadwal Terbanyak / Tersedikit / Nama A–Z / Z–A + badge jumlah shift per orang (ikut ke print & Excel).
 
 ---
 

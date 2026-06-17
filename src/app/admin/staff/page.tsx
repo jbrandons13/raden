@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserPlus, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Save, Loader2, X, Users, Info, AlignLeft, Sparkles, Check, Printer } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -30,6 +30,7 @@ export default function StaffManagementPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [reordering, setReordering] = useState(false);
+  const [sortMode, setSortMode] = useState<'manual' | 'shifts-desc' | 'shifts-asc' | 'name-asc' | 'name-desc'>('manual');
   const [itemToDelete, setItemToDelete] = useState<{id: string, name: string} | null>(null);
   
   const [showAddStaff, setShowAddStaff] = useState(false);
@@ -48,6 +49,20 @@ export default function StaffManagementPage() {
     // Use local date parts instead of toISOString to avoid UTC offset bugs
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
+
+  // how many shifts a staff has in the visible 30-day window
+  const shiftCount = (id: string) => dates.reduce((n, d) => n + (shifts[id]?.[d] ? 1 : 0), 0);
+
+  // staff in the chosen display order: manual (sort_order), by shift count, or by name
+  const displayStaff = useMemo(() => {
+    const arr = [...staff];
+    if (sortMode === 'shifts-desc') arr.sort((a, b) => shiftCount(b.id) - shiftCount(a.id));
+    else if (sortMode === 'shifts-asc') arr.sort((a, b) => shiftCount(a.id) - shiftCount(b.id));
+    else if (sortMode === 'name-asc') arr.sort((a, b) => a.name.localeCompare(b.name));
+    else if (sortMode === 'name-desc') arr.sort((a, b) => b.name.localeCompare(a.name));
+    return arr; // 'manual' keeps the sort_order coming from fetchData
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staff, sortMode, shifts, dates]);
 
   const fetchData = async () => {
     try {
@@ -186,7 +201,7 @@ export default function StaffManagementPage() {
       ...dateCols,
       { header: 'Jml Shift', key: 'jml', width: 10 },
     ];
-    const rows: Record<string, unknown>[] = staff.map((s) => {
+    const rows: Record<string, unknown>[] = displayStaff.map((s) => {
       const row: Record<string, unknown> = { nama: s.name };
       let count = 0;
       dates.forEach((dt, i) => {
@@ -265,10 +280,24 @@ export default function StaffManagementPage() {
             <div className="p-2 bg-white rounded-xl shadow-sm"><CalendarIcon size={20} className="text-raden-green" /></div>
             <h3 className="font-black text-raden-green uppercase tracking-widest text-[9px] sm:text-[10px]">30-Day Matrix Overview</h3>
           </div>
-          <div className="flex border bg-white rounded-xl p-1 shadow-sm self-stretch sm:self-auto justify-between sm:justify-start">
-            <button onClick={() => { const d = new Date(baseDate); d.setDate(d.getDate() - 30); setBaseDate(d); }} className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 transition-all"><ChevronLeft size={18}/></button>
-            <span className="font-black text-[10px] uppercase tracking-widest self-center px-4 min-w-[100px] text-center">{baseDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}</span>
-            <button onClick={() => { const d = new Date(baseDate); d.setDate(d.getDate() + 30); setBaseDate(d); }} className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 transition-all"><ChevronRight size={18}/></button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 self-stretch sm:self-auto">
+            <select
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as typeof sortMode)}
+              title="Urutkan staff"
+              className="border bg-white rounded-xl px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-raden-green shadow-sm outline-none cursor-pointer appearance-none"
+            >
+              <option value="manual">↕ Urutan Manual</option>
+              <option value="shifts-desc">Jadwal Terbanyak</option>
+              <option value="shifts-asc">Jadwal Tersedikit</option>
+              <option value="name-asc">Nama A–Z</option>
+              <option value="name-desc">Nama Z–A</option>
+            </select>
+            <div className="flex border bg-white rounded-xl p-1 shadow-sm justify-between sm:justify-start">
+              <button onClick={() => { const d = new Date(baseDate); d.setDate(d.getDate() - 30); setBaseDate(d); }} className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 transition-all"><ChevronLeft size={18}/></button>
+              <span className="font-black text-[10px] uppercase tracking-widest self-center px-4 min-w-[100px] text-center">{baseDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}</span>
+              <button onClick={() => { const d = new Date(baseDate); d.setDate(d.getDate() + 30); setBaseDate(d); }} className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 transition-all"><ChevronRight size={18}/></button>
+            </div>
           </div>
         </div>
         
@@ -292,15 +321,18 @@ export default function StaffManagementPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {staff.map((s, idx) => (
+              {displayStaff.map((s, idx) => (
                 <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="pl-2 pr-3 py-4 border-r border-gray-100 sticky left-0 bg-white group z-20 w-48 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-1.5">
-                       <div className="flex flex-col -my-1 shrink-0">
-                         <button onClick={() => moveStaff(idx, -1)} disabled={idx === 0 || reordering} title="Naikkan urutan" className="text-gray-300 hover:text-raden-green disabled:opacity-20 disabled:hover:text-gray-300 transition-colors leading-none"><ChevronUp size={14} /></button>
-                         <button onClick={() => moveStaff(idx, 1)} disabled={idx === staff.length - 1 || reordering} title="Turunkan urutan" className="text-gray-300 hover:text-raden-green disabled:opacity-20 disabled:hover:text-gray-300 transition-colors leading-none"><ChevronDown size={14} /></button>
-                       </div>
+                       {sortMode === 'manual' && (
+                         <div className="flex flex-col -my-1 shrink-0">
+                           <button onClick={() => moveStaff(idx, -1)} disabled={idx === 0 || reordering} title="Naikkan urutan" className="text-gray-300 hover:text-raden-green disabled:opacity-20 disabled:hover:text-gray-300 transition-colors leading-none"><ChevronUp size={14} /></button>
+                           <button onClick={() => moveStaff(idx, 1)} disabled={idx === displayStaff.length - 1 || reordering} title="Turunkan urutan" className="text-gray-300 hover:text-raden-green disabled:opacity-20 disabled:hover:text-gray-300 transition-colors leading-none"><ChevronDown size={14} /></button>
+                         </div>
+                       )}
                        <span className="font-bold text-xs text-raden-green truncate flex-1">{s.name}</span>
+                       <span title="Jumlah shift periode ini" className={`shrink-0 text-[9px] font-black rounded-full px-1.5 py-0.5 tabular-nums ${shiftCount(s.id) > 0 ? 'text-raden-gold bg-raden-gold/10' : 'text-gray-300 bg-gray-50'}`}>{shiftCount(s.id)}</span>
                        <button onClick={() => setItemToDelete({id: s.id, name: s.name})} title="Hapus staff" className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 transition-all shrink-0"><Trash2 size={13}/></button>
                     </div>
                   </td>
@@ -421,7 +453,7 @@ export default function StaffManagementPage() {
             </tr>
           </thead>
           <tbody>
-            {staff.map((s) => {
+            {displayStaff.map((s) => {
               const count = dates.filter((date) => !!shifts[s.id]?.[date]).length;
               return (
                 <tr key={s.id}>
