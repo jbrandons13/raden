@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, ClipboardList, Calendar, Users, ShoppingCart, Plus, Search, Edit3, Trash2, Printer, Check, X, Loader2, Receipt, ArrowRight, CheckCircle2, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import PenjualanTokoBox from '@/components/PenjualanTokoBox';
 import ExportExcelButton from '@/components/ExportExcelButton';
 import { exportWorkbook, CURRENCY_FMT, todayStamp } from '@/lib/exportExcel';
 import { fetchAllRows } from '@/lib/fetchAll';
@@ -458,6 +459,8 @@ export default function OrdersPage() {
         <button onClick={() => setActiveTab('active')} className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'active' ? 'bg-raden-green text-white shadow-md' : 'text-gray-400'}`}>Aktif</button>
         <button onClick={() => setActiveTab('history')} className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'history' ? 'bg-raden-green text-white shadow-md' : 'text-gray-400'}`}>Riwayat</button>
       </div>
+
+      {activeTab === 'history' && <PenjualanTokoBox />}
 
       <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-sm border border-gray-100 relative min-h-[400px]">
         {loading && (
