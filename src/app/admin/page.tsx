@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Clock, AlertTriangle, Loader2, ClipboardList } from 'lucide-react';
+import { ShoppingBag, Clock, AlertTriangle, Loader2, ClipboardList, Package } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 type Rec = { name: string; current_stock: number; weekly_target: number; unit: string; status: 'Merah' | 'Kuning' };
+type MatRec = { name: string; qty: number; weekly_target: number; unit: string; status: 'Merah' | 'Kuning' };
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function AdminDashboard() {
   const [activeCount, setActiveCount] = useState(0);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [recs, setRecs] = useState<Rec[]>([]);
+  const [lowMaterials, setLowMaterials] = useState<MatRec[]>([]);
   const [loading, setLoading] = useState(true);
   const [checklistCompleted, setChecklistCompleted] = useState(true);
 
@@ -24,12 +26,13 @@ export default function AdminDashboard() {
     const yesterdayStr = yesterday.toISOString().split('T')[0];
 
     try {
-      const [ordersTodayRes, activeCountRes, activeListRes, productsRes, checklistRes] = await Promise.all([
+      const [ordersTodayRes, activeCountRes, activeListRes, productsRes, checklistRes, materialsRes] = await Promise.all([
         supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', today),
         supabase.from('orders').select('*', { count: 'exact', head: true }).neq('status', 'Selesai'),
         supabase.from('orders').select('*, customers(name)').neq('status', 'Selesai').order('created_at', { ascending: false }).limit(6),
         supabase.from('products').select('*').eq('is_hot_kitchen', false),
         supabase.from('checklist_history').select('*', { count: 'exact', head: true }).eq('date', yesterdayStr),
+        supabase.from('materials').select('name, qty, weekly_target, unit'),
       ]);
 
       setOrdersToday(ordersTodayRes.count || 0);
@@ -53,6 +56,19 @@ export default function AdminDashboard() {
         .sort((a, b) => (a.status === 'Merah' ? 0 : 1) - (b.status === 'Merah' ? 0 : 1));
 
       setRecs(computed);
+
+      // Bahan baku menipis = qty di bawah target mingguan (Merah jika < 50% target).
+      const lowMats: MatRec[] = (materialsRes.data || [])
+        .filter((m: any) => (m.weekly_target || 0) > 0 && (m.qty || 0) < (m.weekly_target || 0))
+        .map((m: any) => ({
+          name: m.name,
+          qty: m.qty || 0,
+          weekly_target: m.weekly_target,
+          unit: m.unit || '',
+          status: ((m.qty || 0) < 0.5 * (m.weekly_target || 1) ? 'Merah' : 'Kuning') as 'Merah' | 'Kuning',
+        }))
+        .sort((a, b) => (a.status === 'Merah' ? 0 : 1) - (b.status === 'Merah' ? 0 : 1));
+      setLowMaterials(lowMats);
     } catch (e) {
       console.error('Dashboard Fetch Error:', e);
     } finally {
@@ -63,9 +79,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchDashboardData();
     const channel = supabase
-      .channel('dashboard-sync-v6')
+      .channel('dashboard-sync-v7')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchDashboardData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchDashboardData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'materials' }, () => fetchDashboardData())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchDashboardData]);
@@ -74,6 +91,7 @@ export default function AdminDashboard() {
     { name: 'Pesanan Hari Ini', value: String(ordersToday), icon: ShoppingBag, color: 'bg-blue-100 text-blue-600' },
     { name: 'Pesanan Aktif', value: String(activeCount), icon: Clock, color: 'bg-raden-gold/20 text-raden-green' },
     { name: 'Perlu Produksi', value: String(recs.length), icon: AlertTriangle, color: recs.length > 0 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600' },
+    { name: 'Bahan Menipis', value: String(lowMaterials.length), icon: Package, color: lowMaterials.length > 0 ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600' },
   ];
 
   return (
@@ -111,7 +129,7 @@ export default function AdminDashboard() {
       </AnimatePresence>
 
       {/* Lean stats (no revenue) */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
         {stats.map((stat, i) => (
           <motion.div
             key={stat.name}
@@ -189,6 +207,32 @@ export default function AdminDashboard() {
           <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-raden-gold opacity-5 rounded-full blur-3xl"></div>
         </div>
       </div>
+
+      {/* Bahan Baku menipis (di bawah target mingguan) */}
+      {!loading && lowMaterials.length > 0 && (
+        <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-8 shadow-sm border border-gray-100">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h3 className="text-lg sm:text-xl font-black text-raden-green tracking-tight flex items-center gap-3">
+              <Package size={20} className="text-amber-500" /> Bahan Baku Menipis
+              <span className="text-[9px] sm:text-[10px] bg-amber-100 text-amber-600 px-3 py-1 rounded-full font-black uppercase tracking-widest">{lowMaterials.length}</span>
+            </h3>
+            <button onClick={() => router.push('/admin/materials')} className="px-4 py-2 bg-gray-50 text-raden-gold rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-gray-100 transition-all border border-gray-100 shrink-0">Daftar Belanja</button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {lowMaterials.map((m, i) => (
+              <div key={i} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
+                <div className="min-w-0">
+                  <p className="font-bold text-xs sm:text-sm text-raden-green truncate">{m.name}</p>
+                  <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                    Sisa <span className={m.status === 'Merah' ? 'text-red-500' : 'text-amber-500'}>{m.qty} {m.unit}</span> · Target {m.weekly_target}
+                  </p>
+                </div>
+                <span className={`w-3 h-3 rounded-full shrink-0 ml-3 ${m.status === 'Merah' ? 'bg-red-500' : 'bg-amber-400'}`} title={m.status} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

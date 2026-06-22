@@ -14,7 +14,7 @@ _Update terakhir: 2026-06-16_
 - [x] Terverifikasi: orang tanpa login **nggak bisa baca apa-apa** (dicek via script).
 - [x] Tutup lubang `staff_shifts` yang sempat kelewat.
 - [x] `acc.txt` dihapus + di-gitignore. (Rotasi key: opsional, di-skip — nggak pernah bocor publik.)
-- [x] **Auto-logout** setelah **idle 1 jam** (deteksi klik/ketik/scroll/touch, timestamp di localStorage → lintas-tab; cek tiap menit). Mekanismenya diverifikasi nyala.
+- [x] **Auto-logout** setelah **idle 1 jam** (deteksi klik/ketik/scroll/touch, timestamp di localStorage → lintas-tab) + **peringatan 5 menit sebelum keluar** (modal countdown "Tetap Masuk"). `/kasir` dikecualikan. Diverifikasi nyala.
 
 ### 👤 Auth & Akun
 - [x] Login username + PIN 6 digit (email sintetis di belakang layar).
@@ -29,7 +29,7 @@ _Update terakhir: 2026-06-16_
 ### 🧩 Model bisnis & fitur inti
 - [x] **Branch & Agen**: add/edit/delete, tipe Branch/Agen, tanpa angka income.
 - [x] **Produk**: 3 harga channel (Eceran/Agen/Branch) · toggle **Distok vs Fresh** · Target Mingguan · **Isian** (varian) · **Satuan Jual** + **Satuan Produksi** per produk.
-- [x] **Dashboard**: buang omzet, "Perlu Produksi" pintar (cuma distok).
+- [x] **Dashboard**: buang omzet, "Perlu Produksi" pintar (cuma distok) + **alert Bahan Baku menipis** (kartu hitung + panel daftar belanja, dot merah/kuning by tingkat).
 - [x] **Analisis Penjualan** (page baru `/admin/analytics`): KPI omzet/pesanan/rata²/item · tren omzet · omzet per channel · produk & isian terlaris · pelanggan/branch terbaik · filter periode (30/90 hari, bulan/tahun ini). Chart ringan (CSS/SVG, tanpa library).
 - [x] **POS Kasir** (`/kasir`): kasir full-screen — grid produk (harga eceran) + isian → keranjang (qty) → metode bayar (Cash/Transfer/COD) + nama pembeli opsional → simpan sbg penjualan **eceran (Selesai)** → **langsung masuk Analisis**. Tanpa struk, tanpa potong stok. Login sekali, `/kasir` dikecualikan dari auto-logout. Akun kasir = **staff** (RLS scoped: staff cuma boleh insert order eceran). Link Kasir **tidak** ditaruh di menu admin (cuma buat device counter).
 - [x] **Pesanan/Riwayat dikelompokkan per tanggal** (header + jumlah transaksi + total harian); eceran/kasir tanpa nama → label **"Pembeli Eceran"** (bukan "Tanpa Nama"); badge **channel · metode bayar** (mis. "Eceran · Cash").
@@ -70,7 +70,8 @@ _Update terakhir: 2026-06-16_
 
 ## 🔮 Ide ke depan (opsional)
 - [ ] **Filter "Tugasku" per orang** di HP staff (sekarang papan bersama) — perlu link akun login staff ↔ data staff.
-- [ ] **Error monitoring** (mis. Sentry) — biar tau kalau ada error di HP staff.
+- [ ] **Error monitoring** (mis. Sentry) — biar tau kalau ada error di HP staff. (Butuh akun Sentry.)
+- [ ] **Fix cold-start** Render free (app "tidur" ~15 mnt → buka pertama lama) — pasang ping otomatis (UptimeRobot, gratis). Butuh akun eksternal.
 - [ ] **Analisis lanjutan**: Keuangan (laba & arus kas dari Buku Kas) + Produksi (rencana vs aktual jobdesk).
 - [ ] Halaman `/admin/hot-kitchen` dirapikan/dihapus (mungkin redundan setelah papan jobdesk).
 - [ ] Re-capture screenshot README halaman jobdesk; kurangi tipe `any`.
