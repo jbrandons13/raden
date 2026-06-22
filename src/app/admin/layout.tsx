@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Users, Package, ClipboardCheck, Calendar, LogOut, Loader2, CheckSquare, Menu, X, Flame, Activity, Receipt, Briefcase, TrendingUp, KeyRound, Store } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Users, Package, ClipboardCheck, Calendar, LogOut, Loader2, CheckSquare, Menu, X, Flame, Activity, Receipt, Briefcase, TrendingUp, KeyRound } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -40,7 +40,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       title: 'Penjualan',
       items: [
         { name: 'Pesanan', href: '/admin/orders', icon: ShoppingCart },
-        { name: 'Kasir', href: '/kasir', icon: Store },
         { name: 'Branch & Agen', href: '/admin/customers', icon: Users },
       ]
     },

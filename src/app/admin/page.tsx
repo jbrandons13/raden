@@ -148,7 +148,7 @@ export default function AdminDashboard() {
                   <div className="p-2 bg-white rounded-xl shadow-sm"><ShoppingBag size={18} className="text-raden-green" /></div>
                   <span className={`px-3 py-1 text-[9px] font-black uppercase tracking-tighter rounded-full ${order.status === 'Draft' ? 'bg-gray-200 text-gray-500' : 'bg-blue-100 text-blue-600'}`}>{order.status}</span>
                 </div>
-                <p className="font-black text-raden-green mb-1 truncate">{order.customers?.name || order.customer_name || 'Tanpa Nama'}</p>
+                <p className="font-black text-raden-green mb-1 truncate">{order.customers?.name || order.customer_name || ((order.channel === 'eceran' || order.channel === 'online') ? 'Pembeli Eceran' : 'Tanpa Nama')}</p>
                 <p className="text-[10px] font-bold text-gray-400">{order.order_date ? new Date(order.order_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-'}</p>
               </div>
             ))}
