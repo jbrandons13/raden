@@ -117,6 +117,7 @@ create table if not exists orders (
   order_date     date default current_date,
   status         text default 'Draft',                -- Draft | Siap Kirim | Siap Ambil | Selesai
   total_revenue  numeric default 0,
+  payment_method text,                                -- Cash | Transfer | COD (retail/POS sales)
   created_at     timestamptz default now()
 );
 

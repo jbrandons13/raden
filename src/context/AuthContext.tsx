@@ -121,6 +121,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Auto-logout after 1 hour of inactivity.
   useEffect(() => {
     if (!isAuthenticated) return;
+    // The cashier terminal (/kasir) stays signed in all day — skip idle logout there.
+    if (pathname.startsWith('/kasir')) return;
 
     const updateActivity = () => localStorage.setItem('raden_last_activity', Date.now().toString());
     const checkInactivity = () => {
@@ -140,7 +142,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       clearInterval(interval);
       events.forEach((e) => window.removeEventListener(e, updateActivity));
     };
-  }, [isAuthenticated, logout]);
+  }, [isAuthenticated, logout, pathname]);
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, role, username, login, logout, isInitialLoading }}>

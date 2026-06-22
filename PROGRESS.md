@@ -31,6 +31,7 @@ _Update terakhir: 2026-06-16_
 - [x] **Produk**: 3 harga channel (Eceran/Agen/Branch) · toggle **Distok vs Fresh** · Target Mingguan · **Isian** (varian) · **Satuan Jual** + **Satuan Produksi** per produk.
 - [x] **Dashboard**: buang omzet, "Perlu Produksi" pintar (cuma distok).
 - [x] **Analisis Penjualan** (page baru `/admin/analytics`): KPI omzet/pesanan/rata²/item · tren omzet · omzet per channel · produk & isian terlaris · pelanggan/branch terbaik · filter periode (30/90 hari, bulan/tahun ini). Chart ringan (CSS/SVG, tanpa library).
+- [x] **POS Kasir** (`/kasir`): kasir full-screen — grid produk (harga eceran) + isian → keranjang (qty) → metode bayar (Cash/Transfer/COD) + nama pembeli opsional → simpan sbg penjualan **eceran (Selesai)** → **langsung masuk Analisis**. Tanpa struk, tanpa potong stok. Login sekali, `/kasir` dikecualikan dari auto-logout. Akun kasir = **staff** (RLS scoped: staff cuma boleh insert order eceran).
 - [x] **Checklist wajib-foto**: admin tandai task "wajib foto" → staff ambil foto (kamera HP, **auto-kompres** ~150 KB) → upload ke storage & `photo_url` kesimpen → admin lihat thumbnail di history. Retensi: **foto 7 hari** (file dihapus dari storage, anti-orphan), **riwayat 30 hari**.
 - [x] Checklist polish: staff lihat tugas **dikelompokkan per area** (header Kitchen/Pastry/General) · admin **klik foto → lightbox** full-screen · **jam submit** tampil di History.
 - [x] **Pesanan**: harga **otomatis per channel** · rincian **isian** per baris · **Eceran** (ketik nama) · Fresh = tanpa stok.
@@ -66,7 +67,6 @@ _Update terakhir: 2026-06-16_
 ---
 
 ## 🔮 Ide ke depan (opsional)
-- [ ] **Integrasi POS kasir** (eceran) yang masih di spreadsheet — 🎯 **ini target berikutnya** (yang belum dikerjain).
 - [ ] **Filter "Tugasku" per orang** di HP staff (sekarang papan bersama) — perlu link akun login staff ↔ data staff.
 - [ ] **Error monitoring** (mis. Sentry) — biar tau kalau ada error di HP staff.
 - [ ] **Analisis lanjutan**: Keuangan (laba & arus kas dari Buku Kas) + Produksi (rencana vs aktual jobdesk).
@@ -92,3 +92,5 @@ _Update terakhir: 2026-06-16_
 14. [x] `20260616020000_product_batch_unit.sql` — `batch_unit` per produk (satuan produksi)
 15. [x] `20260616030000_staff_sort_order.sql` — kolom `sort_order` (urutan nama staff bisa digeser ▲▼)
 16. [x] `20260616040000_checklist_photos_storage.sql` — storage bucket `checklist-photos` + policy (foto wajib checklist)
+17. [x] `20260616050000_orders_payment_method.sql` — kolom `payment_method` di orders (Cash/Transfer/COD)
+18. [x] `20260616060000_kasir_staff_orders.sql` — staff boleh insert order eceran (akun kasir tanpa akses admin penuh)
