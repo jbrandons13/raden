@@ -311,7 +311,10 @@ export default function OrdersPage() {
     (c.phone && c.phone.includes(customerSearch))
   );
 
-  const filteredOrders = orders.filter(o => activeTab === 'active' ? o.status !== 'Selesai' : o.status === 'Selesai');
+  // Pesanan = distribution only (branch/agen). Retail/kasir (eceran/online) lives in /admin/kasir.
+  const filteredOrders = orders.filter(o =>
+    o.channel !== 'eceran' && o.channel !== 'online' &&
+    (activeTab === 'active' ? o.status !== 'Selesai' : o.status === 'Selesai'));
 
   // Group the visible orders by date (newest first) for the history view.
   const groupedOrders = (() => {
