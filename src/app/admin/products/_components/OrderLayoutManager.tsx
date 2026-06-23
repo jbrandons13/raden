@@ -51,7 +51,12 @@ export default function OrderLayoutManager({ show, onClose, products }: OrderLay
       const { data: secs, error } = await supabase.from('pos_sections').select('*, items:pos_section_items(*)').order('sort_order');
       if (error) throw error;
       if (secs) {
-        setSections(secs);
+        // Sort each section's items by sort_order ONCE here so the state array is
+        // the source of truth — the render must NOT re-sort (that fights the drag).
+        setSections(secs.map((s: any) => ({
+          ...s,
+          items: (s.items || []).slice().sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)),
+        })));
       }
     } catch (e: any) {
       console.error('Fetch error:', e);
@@ -150,14 +155,6 @@ export default function OrderLayoutManager({ show, onClose, products }: OrderLay
     setPendingSync({ sectionId, items: newItems });
   };
 
-  const enrichedSections = sections.map(sec => ({
-    ...sec,
-    items: (sec.items || []).map(item => ({
-      ...item,
-      products: products.find(p => p.id === item.product_id)
-    })).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-  }));
-
   if (!show) return null;
 
   const filteredProducts = products.filter(p => {
@@ -217,7 +214,7 @@ export default function OrderLayoutManager({ show, onClose, products }: OrderLay
         {/* Content - Side by Side Columns */}
         <div className="flex-1 overflow-x-auto p-8 bg-gray-50/30">
           <div className="flex items-start gap-6 h-full min-w-max">
-            {enrichedSections.map(sec => (
+            {sections.map(sec => (
               <div key={sec.id} className="w-80 flex flex-col bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden h-full">
                 {/* Section Header */}
                 <div className="p-5 border-b bg-gray-50 flex justify-between items-center">
@@ -251,7 +248,7 @@ export default function OrderLayoutManager({ show, onClose, products }: OrderLay
                     className="space-y-2"
                   >
                     {sec.items?.map(item => {
-                      const p = item.products;
+                      const p = products.find(pp => pp.id === item.product_id);
                       return (
                         <Reorder.Item 
                           key={item.id} 
