@@ -41,13 +41,11 @@ export async function POST(req: Request) {
   }
 
   if (action === 'catalog') {
-    const { data: products } = await svc
-      .from('products')
-      .select('id, name, price_branch, options')
-      .eq('is_hot_kitchen', false)
-      .order('sort_order', { ascending: true })
-      .order('name');
-    return NextResponse.json({ branchName: branch.name, products: products ?? [] });
+    const [pr, sec] = await Promise.all([
+      svc.from('products').select('id, name, price_branch, options, tracks_stock').eq('is_hot_kitchen', false).order('sort_order', { ascending: true }).order('name'),
+      svc.from('pos_sections').select('id, title, sort_order, items:pos_section_items(id, sort_order, products(id, name, price_branch, options, tracks_stock))').order('sort_order', { ascending: true }),
+    ]);
+    return NextResponse.json({ branchName: branch.name, products: pr.data ?? [], posSections: sec.data ?? [] });
   }
 
   if (action === 'submit') {
