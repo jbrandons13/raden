@@ -106,6 +106,7 @@ create table if not exists customers (
   phone         text,
   total_orders  integer default 0,
   total_revenue numeric default 0,
+  preorder_password_hash text,                       -- branch self-service pre-order password (hashed; admin-set)
   created_at    timestamptz default now()
 );
 
@@ -118,6 +119,7 @@ create table if not exists orders (
   status         text default 'Draft',                -- Draft | Siap Kirim | Siap Ambil | Selesai
   total_revenue  numeric default 0,
   payment_method text,                                -- Cash | Transfer | COD (retail/POS sales)
+  is_preorder    boolean not null default false,      -- true = branch submitted it via /preorder
   created_at     timestamptz default now()
 );
 

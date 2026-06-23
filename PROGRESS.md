@@ -28,6 +28,7 @@ _Update terakhir: 2026-06-16_
 
 ### 🧩 Model bisnis & fitur inti
 - [x] **Branch & Agen**: add/edit/delete, tipe Branch/Agen, tanpa angka income.
+- [x] **Portal Pre-Order Branch** (`/preorder`, publik): branch login (pilih nama + password yang admin set) → pesan sendiri (harga branch, isian, tanggal kirim) → masuk sbg pesanan **branch · Draft · "Pre-Order"** buat dikonfirmasi admin. Password **di-hash (scrypt)**, semua lewat **API server (service-role)** — branch nggak nyentuh DB. Admin set/ganti/hapus password (🔑) di Branch & Agen.
 - [x] **Produk**: 3 harga channel (Eceran/Agen/Branch) · toggle **Distok vs Fresh** · Target Mingguan · **Isian** (varian) · **Satuan Jual** + **Satuan Produksi** per produk.
 - [x] **Dashboard**: buang omzet, "Perlu Produksi" pintar (cuma distok) + **alert Bahan Baku menipis** (kartu hitung + panel daftar belanja, dot merah/kuning by tingkat).
 - [x] **Analisis Penjualan** (page baru `/admin/analytics`): KPI omzet/pesanan/rata²/item · tren omzet · omzet per channel · produk & isian terlaris · pelanggan/branch terbaik · filter periode (30/90 hari, bulan/tahun ini). Chart ringan (CSS/SVG, tanpa library).
@@ -97,3 +98,4 @@ _Update terakhir: 2026-06-16_
 16. [x] `20260616040000_checklist_photos_storage.sql` — storage bucket `checklist-photos` + policy (foto wajib checklist)
 17. [x] `20260616050000_orders_payment_method.sql` — kolom `payment_method` di orders (Cash/Transfer/COD)
 18. [x] `20260616060000_kasir_staff_orders.sql` — staff boleh insert order eceran (akun kasir tanpa akses admin penuh)
+19. [x] `20260616070000_branch_preorder.sql` — `preorder_password_hash` (customers) + `is_preorder` (orders)

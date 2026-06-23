@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Store, Search, Plus, Edit3, Trash2, Loader2, X, Phone, MapPin, AlertCircle, Save } from 'lucide-react';
+import { Building2, Store, Search, Plus, Edit3, Trash2, Loader2, X, Phone, MapPin, AlertCircle, Save, KeyRound } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Customer, CustomerType } from '@/types/raden';
 import ExportExcelButton from '@/components/ExportExcelButton';
@@ -28,6 +28,10 @@ export default function BranchAgentPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [toDelete, setToDelete] = useState<Customer | null>(null);
+  const [pwTarget, setPwTarget] = useState<Customer | null>(null);
+  const [pwValue, setPwValue] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState('');
 
   const fetchData = useCallback(async () => {
     try {
@@ -113,6 +117,26 @@ export default function BranchAgentPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Set/clear a branch's pre-order password (server route holds the service key + hashes it).
+  const savePassword = async (clear = false) => {
+    if (!pwTarget) return;
+    if (!clear && pwValue.trim().length < 4) { setPwMsg('Password minimal 4 karakter.'); return; }
+    setPwSaving(true); setPwMsg('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const r = await fetch('/api/admin/branch-password', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ branchId: pwTarget.id, password: clear ? '' : pwValue.trim() }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setPwMsg(d.error || 'Gagal menyimpan.'); return; }
+      setPwTarget(null); setPwValue('');
+      fetchData();
+    } catch (e: any) { setPwMsg(e.message); }
+    finally { setPwSaving(false); }
   };
 
   const handleExportExcel = async () => {
@@ -239,6 +263,15 @@ export default function BranchAgentPage() {
                   >
                     <Edit3 size={14} /> Edit
                   </button>
+                  {getType(c) === 'branch' && (
+                    <button
+                      onClick={() => { setPwTarget(c); setPwValue(''); setPwMsg(''); }}
+                      title="Password Pre-Order"
+                      className={`p-2.5 rounded-xl transition-colors ${(c as any).preorder_password_hash ? 'text-raden-gold bg-raden-gold/10' : 'text-gray-400 hover:bg-gray-100'}`}
+                    >
+                      <KeyRound size={16} />
+                    </button>
+                  )}
                   <button
                     onClick={() => setToDelete(c)}
                     className="p-2.5 rounded-xl text-red-400 hover:bg-red-50 transition-colors"
@@ -367,6 +400,39 @@ export default function BranchAgentPage() {
                   {saving ? <Loader2 className="animate-spin" size={16} /> : 'Hapus'}
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Pre-order password modal (branch) */}
+      <AnimatePresence>
+        {pwTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setPwTarget(null)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-xl font-black text-raden-green tracking-tight flex items-center gap-2"><KeyRound size={20} className="text-raden-gold" /> Password Pre-Order</h3>
+                <button onClick={() => setPwTarget(null)} className="p-2 bg-gray-50 rounded-full text-gray-400"><X size={20} /></button>
+              </div>
+              <p className="text-xs text-gray-400 font-medium mb-5">Buat password buat <b className="text-raden-green">{pwTarget.name}</b> akses <b>/preorder</b>. Serahkan password ini ke mereka.</p>
+              <input
+                type="text" value={pwValue} autoFocus
+                onChange={(e) => setPwValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && savePassword(false)}
+                placeholder={(pwTarget as any).preorder_password_hash ? 'Password baru (ganti)…' : 'Buat password…'}
+                className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold"
+              />
+              <p className="text-[10px] text-gray-400 mt-2 mb-4">Min. 4 karakter. Disimpan ter-enkripsi (hash) — kami nggak nyimpen password aslinya.</p>
+              {pwMsg && <p className="text-red-500 text-xs font-bold mb-3">{pwMsg}</p>}
+              <button onClick={() => savePassword(false)} disabled={pwSaving} className="w-full py-4 bg-raden-green text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl flex items-center justify-center gap-2 disabled:opacity-50">
+                {pwSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} Simpan Password
+              </button>
+              {(pwTarget as any).preorder_password_hash && (
+                <button onClick={() => savePassword(true)} disabled={pwSaving} className="w-full mt-2 py-3 text-red-400 font-black uppercase tracking-widest text-[10px] hover:bg-red-50 rounded-2xl transition-colors">
+                  Nonaktifkan pre-order (hapus password)
+                </button>
+              )}
             </motion.div>
           </div>
         )}

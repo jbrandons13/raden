@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Route guard for UX (the real security boundary is RLS in the database).
   useEffect(() => {
     if (isInitialLoading) return;
-    if (!isAuthenticated && pathname !== '/login') {
+    if (!isAuthenticated && pathname !== '/login' && !pathname.startsWith('/preorder')) {
       router.replace('/login');
     } else if (isAuthenticated && pathname === '/login') {
       router.replace(role === 'admin' ? '/admin' : '/staff');
