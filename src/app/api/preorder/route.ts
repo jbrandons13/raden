@@ -45,7 +45,9 @@ export async function POST(req: Request) {
       svc.from('products').select('id, name, price_branch, options, tracks_stock').eq('is_hot_kitchen', false).order('sort_order', { ascending: true }).order('name'),
       svc.from('pos_sections').select('id, title, sort_order, items:pos_section_items(id, sort_order, products(id, name, price_branch, options, tracks_stock))').order('sort_order', { ascending: true }),
     ]);
-    return NextResponse.json({ branchName: branch.name, products: pr.data ?? [], posSections: sec.data ?? [] });
+    // sort each section's items by sort_order (the query only orders the outer sections)
+    const posSections = (sec.data || []).map((s: any) => ({ ...s, items: (s.items || []).slice().sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)) }));
+    return NextResponse.json({ branchName: branch.name, products: pr.data ?? [], posSections });
   }
 
   if (action === 'submit') {

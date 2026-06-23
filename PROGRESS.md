@@ -63,6 +63,7 @@ _Update terakhir: 2026-06-16_
 - [x] Bahan Baku: hasil cek stok staff jadi **daftar belanja jelas** (dulu jumlah-beli nggak ditampilin).
 - [x] Multi-staff pindah dari hack `||STAFF_IDS:` di notes → kolom **`assignee_ids`**.
 - [x] Fix drag-drop **"Atur Susunan Order"** (Produk): item nggak balik ke urutan semula + lebih smooth — buang re-sort + re-map tiap render, kasih framer `Reorder` referensi item yang stabil (sort sekali pas fetch).
+- [x] Fix: susunan order (`sort_order`) sekarang **kebawa ke Tambah Pesanan & /preorder** — item dalam tiap section di-sort by `sort_order` (dulu cuma section luar yang ke-sort, jadi perubahan nggak nongol) + realtime `pos_sections`/`pos_section_items` di halaman Pesanan.
 - [x] Halaman root `/` (portal "pilih Admin/Staff" lama, sisa pra-auth) → **pengalih otomatis** sesuai login: belum login→`/login`, admin→`/admin`, staff→`/staff`.
 - [x] Staff & Shift: urutan nama staff bisa **digeser ▲▼** (kolom `sort_order`); staff baru masuk paling bawah.
 - [x] Staff & Shift: **cetak jadwal shift** — matriks 30 hari (kode shift per sel) + baris total + keterangan + catatan, layout landscape.

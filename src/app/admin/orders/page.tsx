@@ -66,7 +66,12 @@ export default function OrdersPage() {
       if (ordsRes.data) setOrders(ordsRes.data);
       if (prodsRes.data) setProducts(prodsRes.data);
       if (custsRes.data) setCustomers(custsRes.data);
-      if (posSectionsRes.data) setPosSections(posSectionsRes.data);
+      // Sort each section's items by sort_order — the query only orders the
+      // outer sections, so without this the layout arranged in Produk doesn't apply.
+      if (posSectionsRes.data) setPosSections(posSectionsRes.data.map((s: any) => ({
+        ...s,
+        items: (s.items || []).slice().sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)),
+      })));
       setOrdersTotalCount(countRes?.count || 0);
 
       const draftOrderIds = ordsRes.data?.filter((o: any) => o.status === 'Draft').map((o: any) => o.id) || [];
@@ -92,8 +97,10 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchData();
-    const channel = supabase.channel('orders-sync-v10')
+    const channel = supabase.channel('orders-sync-v11')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pos_sections' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pos_section_items' }, () => fetchData())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [ordersLimit]);
