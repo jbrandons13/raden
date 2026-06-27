@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Snowflake, LayoutDashboard, Package, Building2, LogOut, Loader2, Menu } from 'lucide-react';
+import { Snowflake, LayoutDashboard, Package, Building2, LogOut, Loader2, Menu, PackagePlus, Boxes } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { homeFor } from '@/lib/auth';
 
@@ -31,6 +31,8 @@ export default function FrozenLayout({ children }: { children: React.ReactNode }
 
   const nav = [
     { name: 'Beranda', href: '/frozen', icon: LayoutDashboard },
+    { name: 'Barang Masuk', href: '/frozen/receive', icon: PackagePlus },
+    { name: 'Stok', href: '/frozen/stock', icon: Boxes },
     { name: 'Produk', href: '/frozen/products', icon: Package },
     { name: 'Branch', href: '/frozen/customers', icon: Building2 },
   ];
