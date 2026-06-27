@@ -78,6 +78,10 @@ begin
         values (v_item.product_id, v_batch.id, v_batch.exp_date, -v_take, 'shipment', 'order', p_order_id, v_uid);
       v_remaining := v_remaining - v_take;
     end loop;
+    -- safety: kalau (karena race) tak teralokasi penuh -> rollback semua
+    if v_remaining > 0 then
+      raise exception 'stok tidak cukup untuk produk % saat alokasi (kurang %)', v_item.product_id, v_remaining;
+    end if;
   end loop;
 
   update frozen_orders
