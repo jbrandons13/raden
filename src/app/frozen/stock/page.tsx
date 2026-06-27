@@ -1,18 +1,25 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Boxes, Loader2, Layers, CalendarDays } from 'lucide-react';
+import { Boxes, Loader2, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 type Batch = { id: string; exp_date: string | null; qty: number; frozen_products: { id: string; name: string; unit: string | null } | null };
+type Prod = { id: string; name: string; unit: string | null; total: number; batches: { id: string; exp: string | null; qty: number }[] };
 
 const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Tanpa EXP');
-const daysTo = (d: string | null) => (d ? Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) : 9999);
+const daysTo = (d: string | null) => (d ? Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) : 99999);
+const expLabel = (d: string | null) => {
+  if (!d) return 'Tanpa EXP';
+  const n = daysTo(d);
+  return `EXP ${fmtDate(d)} · ${n < 0 ? 'KADALUARSA' : `${n} hari lagi`}`;
+};
+const tone = (d: string | null) => { const n = daysTo(d); return n <= 7 ? 'text-red-500' : n <= 30 ? 'text-amber-500' : 'text-gray-400'; };
 
 export default function FrozenStockPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'total' | 'detail'>('total');
+  const [open, setOpen] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     (async () => {
@@ -22,75 +29,69 @@ export default function FrozenStockPage() {
     })();
   }, []);
 
-  const totals = useMemo(() => {
-    const map = new Map<string, { name: string; unit: string | null; total: number }>();
+  const products = useMemo<Prod[]>(() => {
+    const map = new Map<string, Prod>();
     for (const b of batches) {
       const p = b.frozen_products; if (!p) continue;
-      const cur = map.get(p.id) || { name: p.name, unit: p.unit, total: 0 };
-      cur.total += Number(b.qty) || 0; map.set(p.id, cur);
+      const cur = map.get(p.id) || { id: p.id, name: p.name, unit: p.unit, total: 0, batches: [] };
+      cur.total += Number(b.qty) || 0;
+      cur.batches.push({ id: b.id, exp: b.exp_date, qty: Number(b.qty) || 0 });
+      map.set(p.id, cur);
     }
+    for (const v of map.values()) v.batches.sort((a, b) => (a.exp || '9999').localeCompare(b.exp || '9999'));
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [batches]);
 
-  const detail = useMemo(() => {
-    return [...batches].sort((a, b) => {
-      const na = a.frozen_products?.name || ''; const nb = b.frozen_products?.name || '';
-      if (na !== nb) return na.localeCompare(nb);
-      return (a.exp_date || '9999').localeCompare(b.exp_date || '9999'); // EXP terdekat dulu
-    });
-  }, [batches]);
+  const toggle = (id: string) => setOpen((o) => ({ ...o, [id]: !o[id] }));
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight flex items-center gap-2"><Boxes className="text-cyan-500" /> Stok Gudang</h1>
-          <p className="text-gray-400 text-xs sm:text-sm font-medium">Total per produk &amp; detail per tanggal Expired.</p>
-        </div>
-        <div className="flex gap-1 bg-white border border-gray-100 rounded-2xl p-1 shadow-sm">
-          <button onClick={() => setView('total')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${view === 'total' ? 'bg-raden-green text-white shadow' : 'text-gray-400'}`}>Total</button>
-          <button onClick={() => setView('detail')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${view === 'detail' ? 'bg-raden-green text-white shadow' : 'text-gray-400'}`}>Detail / EXP</button>
-        </div>
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight flex items-center gap-2"><Boxes className="text-cyan-500" /> Stok Gudang</h1>
+        <p className="text-gray-400 text-xs sm:text-sm font-medium">Ketuk produk untuk lihat rincian per tanggal Expired (EXP terdekat dulu).</p>
       </div>
 
       {loading ? (
         <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-cyan-500" /></div>
-      ) : batches.length === 0 ? (
-        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm py-20 text-center">
+      ) : products.length === 0 ? (
+        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm py-20 text-center max-w-2xl">
           <Boxes className="w-10 h-10 text-gray-200 mx-auto mb-3" />
           <p className="font-black text-raden-green">Stok masih kosong</p>
           <p className="text-gray-400 text-xs mt-1">Catat stok lewat menu Barang Masuk.</p>
         </div>
-      ) : view === 'total' ? (
-        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2"><Layers size={14} className="text-cyan-500" /><span className="text-[10px] font-black text-raden-green uppercase tracking-widest">Total Stok (abaikan EXP)</span></div>
-          <div className="divide-y divide-gray-50">
-            {totals.map((t, i) => (
-              <div key={i} className="px-5 py-3.5 flex items-center justify-between">
-                <span className="font-bold text-raden-green text-sm">{t.name}</span>
-                <span className="font-black text-raden-green tabular-nums">{t.total}{t.unit ? ` ${t.unit}` : ''}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       ) : (
-        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2"><CalendarDays size={14} className="text-cyan-500" /><span className="text-[10px] font-black text-raden-green uppercase tracking-widest">Detail per EXP (terdekat kadaluarsa dulu)</span></div>
-          <div className="divide-y divide-gray-50">
-            {detail.map((b) => {
-              const d = daysTo(b.exp_date);
-              const tone = d <= 7 ? 'text-red-500' : d <= 30 ? 'text-amber-500' : 'text-gray-400';
-              return (
-                <div key={b.id} className="px-5 py-3 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-bold text-raden-green text-sm truncate">{b.frozen_products?.name || 'Produk'}</p>
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${tone}`}>EXP {fmtDate(b.exp_date)}{b.exp_date ? ` · ${d < 0 ? 'KADALUARSA' : `${d} hari lagi`}` : ''}</p>
+        <div className="space-y-2.5 max-w-2xl">
+          {products.map((p) => {
+            const isOpen = !!open[p.id];
+            const near = p.batches[0]?.exp ?? null;        // EXP terdekat
+            const warn = daysTo(near) <= 30;
+            return (
+              <div key={p.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <button onClick={() => toggle(p.id)} className="w-full flex items-center gap-3 p-4 text-left hover:bg-gray-50/60 transition-colors">
+                  <ChevronDown size={18} className={`shrink-0 text-cyan-500 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2.5">
+                      <span className="font-black text-raden-green truncate">{p.name}</span>
+                      <span className="font-black text-cyan-600 tabular-nums shrink-0">{p.total}{p.unit ? ` ${p.unit}` : ''}</span>
+                    </div>
+                    {warn && <p className={`text-[10px] font-black uppercase tracking-wider mt-0.5 ${tone(near)}`}>⚠ {expLabel(near)}</p>}
                   </div>
-                  <span className="font-black text-raden-green tabular-nums shrink-0">{b.qty}{b.frozen_products?.unit ? ` ${b.frozen_products.unit}` : ''}</span>
-                </div>
-              );
-            })}
-          </div>
+                  <span className="text-[10px] font-bold text-gray-300 shrink-0">{p.batches.length} batch</span>
+                </button>
+
+                {isOpen && (
+                  <div className="px-4 pb-4 pt-1 pl-11 space-y-2 border-t border-gray-50">
+                    {p.batches.map((b) => (
+                      <div key={b.id} className="flex items-center justify-between gap-3">
+                        <span className={`text-[11px] font-black uppercase tracking-wide ${tone(b.exp)}`}>{expLabel(b.exp)}</span>
+                        <span className="font-black text-raden-green text-sm tabular-nums shrink-0">{b.qty}{p.unit ? ` ${p.unit}` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
