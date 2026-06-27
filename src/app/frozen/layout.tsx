@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Snowflake, LayoutDashboard, Package, Building2, LogOut, Loader2, Menu, PackagePlus, Boxes } from 'lucide-react';
+import { Snowflake, LayoutDashboard, Package, Building2, LogOut, Loader2, Menu, PackagePlus, Boxes, Truck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { homeFor } from '@/lib/auth';
 
@@ -32,6 +32,7 @@ export default function FrozenLayout({ children }: { children: React.ReactNode }
   const nav = [
     { name: 'Beranda', href: '/frozen', icon: LayoutDashboard },
     { name: 'Barang Masuk', href: '/frozen/receive', icon: PackagePlus },
+    { name: 'Barang Keluar', href: '/frozen/orders', icon: Truck },
     { name: 'Stok', href: '/frozen/stock', icon: Boxes },
     { name: 'Produk', href: '/frozen/products', icon: Package },
     { name: 'Branch', href: '/frozen/customers', icon: Building2 },
@@ -40,7 +41,7 @@ export default function FrozenLayout({ children }: { children: React.ReactNode }
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {menuOpen && <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setMenuOpen(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-raden-green text-white flex flex-col transition-transform duration-300 md:relative md:translate-x-0 ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-raden-green text-white flex flex-col transition-transform duration-300 md:relative md:translate-x-0 print:hidden ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-white/10">
           <h1 className="text-cyan-300 text-2xl font-black tracking-widest flex items-center gap-2"><Snowflake size={22} /> FROZEN</h1>
           <p className="text-white/30 text-[9px] uppercase tracking-[0.25em] mt-1">Sistem Gudang</p>
@@ -62,11 +63,11 @@ export default function FrozenLayout({ children }: { children: React.ReactNode }
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 md:hidden">
+        <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 md:hidden print:hidden">
           <button onClick={() => setMenuOpen(true)} className="p-2 text-raden-green"><Menu size={22} /></button>
           <span className="font-black text-raden-green tracking-widest text-sm flex items-center gap-1.5"><Snowflake size={16} className="text-cyan-500" /> FROZEN</span>
         </header>
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8">{children}</div>
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 print:p-0 print:overflow-visible">{children}</div>
       </main>
     </div>
   );
