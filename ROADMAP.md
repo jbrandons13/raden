@@ -52,6 +52,7 @@ Gudang terpisah, di luar admin/staff. **DB terpisah** (prefix `frozen_`), **role
 - ☐ **F6 — Upload Excel** untuk 出貨 + polish _(ditunda — user minta nanti dengan contoh format Excel)_
 
 > ✅ **FROZEN core (F1–F5) SELESAI & fully verified E2E** (14/14 cek lulus: FEFO, atomic confirm, revisi, back-order, buku besar). 2 migration sudah live di Supabase.
+> 🔑 **Akun:** 2 fixed `admin_frozen` — **`gudang1`** & **`gudang2`** (PIN awal `123456`) + fitur **Ganti Password** sendiri di sidebar /frozen _(verified E2E)_.
 
 ---
 

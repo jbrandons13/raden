@@ -3,15 +3,17 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Snowflake, LayoutDashboard, Package, Building2, LogOut, Loader2, Menu, PackagePlus, Boxes, Truck } from 'lucide-react';
+import { Snowflake, LayoutDashboard, Package, Building2, LogOut, Loader2, Menu, PackagePlus, Boxes, Truck, KeyRound } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { homeFor } from '@/lib/auth';
+import ChangePasswordModal from './_components/ChangePasswordModal';
 
 export default function FrozenLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, role, logout, isInitialLoading } = useAuth();
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [pwOpen, setPwOpen] = React.useState(false);
 
   const allowed = role === 'admin_frozen' || role === 'admin';
   useEffect(() => {
@@ -57,7 +59,8 @@ export default function FrozenLayout({ children }: { children: React.ReactNode }
             );
           })}
         </nav>
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 space-y-1">
+          <button onClick={() => { setMenuOpen(false); setPwOpen(true); }} className="flex items-center gap-2 text-white/50 hover:text-cyan-300 font-black text-[10px] uppercase tracking-widest px-4 py-3 w-full transition-colors"><KeyRound size={16} /> Ganti Password</button>
           <button onClick={() => logout()} className="flex items-center gap-2 text-red-300 hover:text-red-200 font-black text-[10px] uppercase tracking-widest px-4 py-3 w-full"><LogOut size={16} /> Keluar</button>
         </div>
       </aside>
@@ -69,6 +72,7 @@ export default function FrozenLayout({ children }: { children: React.ReactNode }
         </header>
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 print:p-0 print:overflow-visible">{children}</div>
       </main>
+      <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} />
     </div>
   );
 }
