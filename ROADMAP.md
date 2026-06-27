@@ -47,11 +47,11 @@ Gudang terpisah, di luar admin/staff. **DB terpisah** (prefix `frozen_`), **role
 - ✅ **F1 — Fondasi:** migration (role `admin_frozen` + tabel `frozen_*` + RLS) · shell + login `/frozen` · CRUD **`frozen_products`** + **`frozen_customers`** (branch tujuan — add/edit/hapus) — keduanya mulai kosong _(verified E2E)_
 - ✅ **F2 — 進貨** (barang masuk): produk + qty + EXP → tambah batch + log movement (+) _(verified: 100+50 → 2 batch = 150)_
 - ✅ **F3 — Stok:** tampilan **Total** + **Detail per-EXP** (urut EXP terdekat) _(verified)_
-- ✅ **F4 — 出貨 + FEFO:** pilih **branch/customer** + produk → draft → **確認 (lock)** via **RPC atomik `frozen_confirm_order`** (alokasi FEFO + potong batch) → **撿貨單** + **invoice customer** (+ print) _(UI verified render; RPC built — butuh paste `20260618000000_frozen_rpc.sql` + E2E)_
-- ✅ **F5 — Revisi & Back Order:** **`frozen_unlock_order`** (balikin stok → Draft → edit → 確認 ulang) · stok kurang → **Back Order** (shortage detail, tidak lock) _(built — pending paste + E2E)_
-- ☐ **F6 — Upload Excel** untuk 出貨 + polish _(butuh contoh format Excel dari user)_
+- ✅ **F4 — 出貨 + FEFO:** draft → **確認** via RPC atomik `frozen_confirm_order` (alokasi FEFO + potong batch) → **撿貨單** + **invoice** (+ print) _(verified E2E live: 120 → 100 dari EXP-dekat + 20 dari EXP-jauh)_
+- ✅ **F5 — Revisi & Back Order:** `frozen_unlock_order` (balikin stok → Draft) · stok kurang → **Back Order** (shortage, tidak lock) _(verified E2E live: stok balik utuh; 999>150 → back-order, stok tak tersentuh)_
+- ☐ **F6 — Upload Excel** untuk 出貨 + polish _(ditunda — user minta nanti dengan contoh format Excel)_
 
-> ⏳ **Aksi user:** paste `supabase/migrations/20260618000000_frozen_rpc.sql` di Supabase SQL Editor → lalu kita E2E-verifikasi alur 確認/revisi (potong & balikin stok) bareng.
+> ✅ **FROZEN core (F1–F5) SELESAI & fully verified E2E** (14/14 cek lulus: FEFO, atomic confirm, revisi, back-order, buku besar). 2 migration sudah live di Supabase.
 
 ---
 
