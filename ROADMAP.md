@@ -35,6 +35,7 @@ Gudang terpisah, di luar admin/staff. **DB terpisah** (prefix `frozen_`), **role
 | Tabel | Fungsi |
 |---|---|
 | `frozen_products` | Master produk (kosong) |
+| `frozen_customers` | Master **branch/customer** tujuan 出貨 (add/edit/hapus, kosong) |
 | `frozen_stock_batches` | Stok per (produk + EXP) — inti FEFO |
 | `frozen_purchases` (進貨) | Log barang masuk → menambah batch |
 | `frozen_orders` (出貨單) | Header order: customer, status (draft/confirmed) |
@@ -43,10 +44,10 @@ Gudang terpisah, di luar admin/staff. **DB terpisah** (prefix `frozen_`), **role
 | `frozen_stock_movements` | Buku besar semua pergerakan stok (audit) |
 
 **Build order (sub-fase):**
-- ☐ **F1 — Fondasi:** migration (role `admin_frozen` + tabel `frozen_*` + RLS) · shell + login `/frozen` · CRUD **`frozen_products`** (master kosong)
+- ☐ **F1 — Fondasi:** migration (role `admin_frozen` + tabel `frozen_*` + RLS) · shell + login `/frozen` · CRUD **`frozen_products`** + **`frozen_customers`** (branch tujuan — add/edit/hapus) — keduanya mulai kosong
 - ☐ **F2 — 進貨** (barang masuk): produk + qty + EXP → tambah batch + log movement (+)
 - ☐ **F3 — Stok:** tampilan **Total** + **Detail per-EXP** (urut EXP terdekat)
-- ☐ **F4 — 出貨 + FEFO:** input manual → draft → **確認 (lock)** via **RPC atomik** (alokasi FEFO + potong batch) → **撿貨單** + **invoice customer**
+- ☐ **F4 — 出貨 + FEFO:** pilih **branch/customer** (dari master) + produk → draft → **確認 (lock)** via **RPC atomik** (alokasi FEFO + potong batch) → **撿貨單** + **invoice customer**
 - ☐ **F5 — Revisi & Back Order:** unlock → balikin stok → edit → 確認 ulang · stok kurang → **Back Order** (tidak bisa 確認)
 - ☐ **F6 — Upload Excel** untuk 出貨 + polish
 
@@ -56,6 +57,7 @@ Gudang terpisah, di luar admin/staff. **DB terpisah** (prefix `frozen_`), **role
 - **D**: template = model "Susunan Order".
 - **E**: pakai **print-template** (bukan API) — recommended.
 - **FROZEN**: DB dipisah · role `admin_frozen` · katalog kosong · skema di atas.
+- **FROZEN 出貨**: keluar ke **branch** → ada **master branch/customer** sendiri (add/edit/hapus), bukan teks bebas.
 
 ## 🟡 Masih perlu dikonfirmasi
 - **B-3**: cara simpan customer individual (rekomendasi: tipe `individual` di tabel `customers`).
