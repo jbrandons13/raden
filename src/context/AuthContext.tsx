@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { usernameToEmail, type AppRole } from '@/lib/auth';
+import { usernameToEmail, homeFor, type AppRole } from '@/lib/auth';
 import { Clock } from 'lucide-react';
 
 type Role = AppRole | null;
@@ -90,7 +90,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!isAuthenticated && pathname !== '/login' && !pathname.startsWith('/preorder')) {
       router.replace('/login');
     } else if (isAuthenticated && pathname === '/login') {
-      router.replace(role === 'admin' ? '/admin' : '/staff');
+      router.replace(homeFor(role));
     }
   }, [isAuthenticated, role, isInitialLoading, pathname, router]);
 
@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUsername(profile.username);
     setIsAuthenticated(true);
     localStorage.setItem('raden_last_activity', Date.now().toString());
-    router.replace(profile.role === 'admin' ? '/admin' : '/staff');
+    router.replace(homeFor(profile.role));
     return { ok: true, role: profile.role };
   }, [fetchProfile, router]);
 

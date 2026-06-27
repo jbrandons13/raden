@@ -3,7 +3,14 @@
  * Must NOT contain any secrets (no service key here).
  */
 
-export type AppRole = 'admin' | 'staff';
+export type AppRole = 'admin' | 'staff' | 'admin_frozen';
+
+/** Where each role lands after login. */
+export function homeFor(role: AppRole | null | undefined): string {
+  if (role === 'admin') return '/admin';
+  if (role === 'admin_frozen') return '/frozen';
+  return '/staff';
+}
 
 /**
  * Supabase Auth needs an email. Staff/admin only type a username + PIN,

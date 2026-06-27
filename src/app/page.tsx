@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { homeFor } from '@/lib/auth';
 
 // Root just routes you to the right place based on login state — no manual
 // "pick Admin / Staff" portal (that was a leftover from before per-user auth).
@@ -14,7 +15,7 @@ export default function HomePage() {
   useEffect(() => {
     if (isInitialLoading) return;
     if (!isAuthenticated) router.replace('/login');
-    else router.replace(role === 'admin' ? '/admin' : '/staff');
+    else router.replace(homeFor(role));
   }, [isAuthenticated, role, isInitialLoading, router]);
 
   return (
