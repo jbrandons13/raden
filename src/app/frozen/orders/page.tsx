@@ -57,7 +57,7 @@ export default function FrozenOrdersPage() {
 
   const save = async () => {
     setError('');
-    if (!customerId) return setError('Pilih branch/customer tujuan.');
+    if (!customerId) return setError('Pilih customer tujuan.');
     const valid = lines.map((l) => ({ product_id: l.product_id, qty: Math.floor(Number(l.qty) || 0), price: Math.max(0, Number(l.price) || 0) })).filter((l) => l.product_id && l.qty > 0);
     if (valid.length === 0) return setError('Tambah minimal 1 produk dengan jumlah > 0.');
     setSaving(true);
@@ -98,7 +98,7 @@ export default function FrozenOrdersPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight flex items-center gap-2"><Truck className="text-cyan-500" /> Barang Keluar <span className="text-base text-gray-300 font-bold">出貨</span></h1>
-          <p className="text-gray-400 text-xs sm:text-sm font-medium">Buat order keluar ke branch → konfirmasi (alokasi FEFO otomatis).</p>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Buat order keluar ke customer → konfirmasi (alokasi FEFO otomatis).</p>
         </div>
         <button onClick={() => { reset(); setOpen(true); }} className="px-5 py-3 bg-raden-green text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl flex items-center gap-2 shrink-0"><Plus size={16} /> Buat 出貨</button>
       </div>
@@ -145,7 +145,7 @@ export default function FrozenOrdersPage() {
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Branch / Customer</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Customer</label>
                   <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="w-full p-3.5 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400 appearance-none">
                     <option value="">— Pilih —</option>
                     {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -156,7 +156,7 @@ export default function FrozenOrdersPage() {
                   <input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} className="w-full p-3.5 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
                 </div>
               </div>
-              {customers.length === 0 && <p className="text-[10px] text-amber-500 font-bold">Belum ada branch — tambah dulu di menu Branch.</p>}
+              {customers.length === 0 && <p className="text-[10px] text-amber-500 font-bold">Belum ada customer — tambah dulu di menu Customer.</p>}
 
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Produk</label>

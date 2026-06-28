@@ -284,7 +284,7 @@ export default function FrozenOrderDetail() {
         {printMode === 'picking' ? (
           <div>
             <h1 className="text-xl font-black">撿貨單 · Daftar Ambil</h1>
-            <p className="text-sm mb-1">Branch: <b>{cust?.name}</b> · {fmtDate(order.order_date)}</p>
+            <p className="text-sm mb-1">Customer: <b>{cust?.name}</b> · {fmtDate(order.order_date)}</p>
             <table className="w-full text-sm border-collapse mt-3">
               <thead><tr className="border-b-2 border-black text-left"><th className="py-1.5">Produk</th><th className="py-1.5">EXP (batch)</th><th className="py-1.5 text-right">Qty</th></tr></thead>
               <tbody>

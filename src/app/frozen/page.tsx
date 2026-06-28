@@ -33,17 +33,17 @@ export default function FrozenHome() {
           <p className="text-2xl font-black text-raden-green">{loading ? '–' : counts.products}</p>
         </Link>
         <Link href="/frozen/customers" className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:border-cyan-300/50 hover:shadow-md transition-all">
-          <div className="flex items-center gap-2 text-cyan-600 mb-2"><Building2 size={18} /><p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Branch</p></div>
+          <div className="flex items-center gap-2 text-cyan-600 mb-2"><Building2 size={18} /><p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Customer</p></div>
           <p className="text-2xl font-black text-raden-green">{loading ? '–' : counts.customers}</p>
         </Link>
       </div>
 
       <div className="bg-cyan-50/50 border border-cyan-100 rounded-[2rem] p-6">
         <p className="font-black text-raden-green text-sm mb-2">Mulai dari sini 👇</p>
-        <p className="text-gray-500 text-xs mb-4 leading-relaxed">Isi dulu master <b>Produk</b> & <b>Branch</b> (masih kosong). Setelah itu modul <b>Barang Masuk (進貨)</b>, <b>Stok</b>, & <b>Barang Keluar (出貨)</b> nyusul di update berikutnya.</p>
+        <p className="text-gray-500 text-xs mb-4 leading-relaxed">Isi dulu master <b>Produk</b> & <b>Customer</b> (masih kosong). Setelah itu modul <b>Barang Masuk (進貨)</b>, <b>Stok</b>, & <b>Barang Keluar (出貨)</b> nyusul di update berikutnya.</p>
         <div className="flex flex-wrap gap-2">
           <Link href="/frozen/products" className="flex items-center gap-1.5 bg-raden-green text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">Kelola Produk <ArrowRight size={12} /></Link>
-          <Link href="/frozen/customers" className="flex items-center gap-1.5 bg-white border border-gray-200 text-raden-green px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">Kelola Branch <ArrowRight size={12} /></Link>
+          <Link href="/frozen/customers" className="flex items-center gap-1.5 bg-white border border-gray-200 text-raden-green px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">Kelola Customer <ArrowRight size={12} /></Link>
         </div>
       </div>
     </div>

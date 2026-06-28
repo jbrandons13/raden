@@ -49,7 +49,7 @@ export default function FrozenCustomersPage() {
     setSaving(true);
     try {
       const { error: e } = await supabase.from('frozen_customers').delete().eq('id', toDelete.id);
-      if (e) { if (e.code === '23503') throw new Error('Tidak bisa dihapus: branch ini sudah punya riwayat 出貨.'); throw e; }
+      if (e) { if (e.code === '23503') throw new Error('Tidak bisa dihapus: customer ini sudah punya riwayat 出貨.'); throw e; }
       setToDelete(null); fetchData();
     } catch (e: any) { alert(e.message); } finally { setSaving(false); }
   };
@@ -58,15 +58,15 @@ export default function FrozenCustomersPage() {
     <div className="space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight flex items-center gap-2"><Building2 className="text-cyan-500" /> Branch FROZEN</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight flex items-center gap-2"><Building2 className="text-cyan-500" /> Customer FROZEN</h1>
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Tujuan barang keluar (出貨).</p>
         </div>
-        <button onClick={openAdd} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-green text-white px-8 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all"><Plus size={18} /> Tambah Branch</button>
+        <button onClick={openAdd} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-green text-white px-8 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all"><Plus size={18} /> Tambah Customer</button>
       </div>
 
       <div className="relative w-full sm:w-72">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari branch..." className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl text-xs font-bold outline-none focus:border-cyan-300/40 shadow-sm" />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari customer..." className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl text-xs font-bold outline-none focus:border-cyan-300/40 shadow-sm" />
       </div>
 
       <div className="relative min-h-[200px]">
@@ -96,7 +96,7 @@ export default function FrozenCustomersPage() {
         {!loading && filtered.length === 0 && (
           <div className="py-20 text-center flex flex-col items-center">
             <Building2 size={40} className="text-gray-200 mb-3" />
-            <p className="italic text-gray-300 font-bold uppercase tracking-widest text-[10px]">{search ? 'Tidak ditemukan' : 'Belum ada branch — klik "Tambah Branch"'}</p>
+            <p className="italic text-gray-300 font-bold uppercase tracking-widest text-[10px]">{search ? 'Tidak ditemukan' : 'Belum ada customer — klik "Tambah Customer"'}</p>
           </div>
         )}
       </div>
@@ -108,14 +108,14 @@ export default function FrozenCustomersPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowForm(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-black text-raden-green tracking-tight">{form.id ? 'Edit Branch' : 'Tambah Branch'}</h3>
+                <h3 className="text-xl font-black text-raden-green tracking-tight">{form.id ? 'Edit Customer' : 'Tambah Customer'}</h3>
                 <button onClick={() => setShowForm(false)} className="p-2 bg-gray-50 rounded-full text-gray-400"><X size={20} /></button>
               </div>
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama</label>
-                    <input type="text" autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="cth. Branch Taipei" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+                    <input type="text" autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="cth. GS Taichung" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kode</label>
@@ -145,7 +145,7 @@ export default function FrozenCustomersPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setToDelete(null)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl text-center">
               <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 size={28} /></div>
-              <h3 className="text-lg font-black text-raden-green mb-1">Hapus branch ini?</h3>
+              <h3 className="text-lg font-black text-raden-green mb-1">Hapus customer ini?</h3>
               <p className="text-sm text-gray-400 font-medium mb-6"><span className="font-bold text-raden-green">{toDelete.name}</span> akan dihapus.</p>
               <div className="flex gap-3">
                 <button onClick={() => setToDelete(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest text-[10px]">Batal</button>

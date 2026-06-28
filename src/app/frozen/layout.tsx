@@ -37,7 +37,7 @@ export default function FrozenLayout({ children }: { children: React.ReactNode }
     { name: 'Barang Keluar', href: '/frozen/orders', icon: Truck },
     { name: 'Stok', href: '/frozen/stock', icon: Boxes },
     { name: 'Produk', href: '/frozen/products', icon: Package },
-    { name: 'Branch', href: '/frozen/customers', icon: Building2 },
+    { name: 'Customer', href: '/frozen/customers', icon: Building2 },
     { name: 'Pengaturan', href: '/frozen/settings', icon: Settings },
   ];
 
