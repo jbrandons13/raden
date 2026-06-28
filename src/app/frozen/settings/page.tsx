@@ -31,12 +31,13 @@ export default function FrozenSettingsPage() {
   const save = async () => {
     setSaving(true); setError('');
     try {
+      const clean = (v: string | null | undefined) => (v || '').trim() || null; // tahan null
       const payload = {
-        company_name: s.company_name.trim() || null, contact_name: s.contact_name.trim() || null,
-        vendor_no: s.vendor_no.trim() || null, address: s.address.trim() || null, phone: s.phone.trim() || null,
-        salesperson: s.salesperson.trim() || null, sales_title: s.sales_title.trim() || null,
-        delivery_method: s.delivery_method.trim() || null, delivery_terms: s.delivery_terms.trim() || null,
-        payment_terms: s.payment_terms.trim() || null, updated_at: new Date().toISOString(),
+        company_name: clean(s.company_name), contact_name: clean(s.contact_name),
+        vendor_no: clean(s.vendor_no), address: clean(s.address), phone: clean(s.phone),
+        salesperson: clean(s.salesperson), sales_title: clean(s.sales_title),
+        delivery_method: clean(s.delivery_method), delivery_terms: clean(s.delivery_terms),
+        payment_terms: clean(s.payment_terms), updated_at: new Date().toISOString(),
       };
       const { error: e } = s.id
         ? await supabase.from('frozen_settings').update(payload).eq('id', s.id)
