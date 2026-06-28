@@ -301,20 +301,26 @@ export default function FrozenOrderDetail() {
               <div className="text-center text-2xl font-black py-1.5 border-b-2 border-black">{s.company_name}</div>
               <div className="flex border-b-2 border-black">
                 <div className="w-1/2 p-2 border-r-2 border-black">
-                  <div className="flex"><span className="font-bold w-24 shrink-0">日期 :</span><span className="text-red-600">{fmtSlash(order.order_date)}</span></div>
-                  <div className="flex"><span className="font-bold w-24 shrink-0">發票號碼 :</span><span /></div>
-                  <div className="flex"><span className="font-bold w-24 shrink-0">客戶編號 :</span><span className="font-bold">{cust?.code || ''}</span></div>
-                  <div className="flex mt-2"><span className="font-bold w-24 shrink-0">收件者 :</span><span>{cust?.name || ''}</span></div>
-                  <div className="flex"><span className="w-24 shrink-0" /><span>{cust?.address || ''}</span></div>
-                  <div className="flex"><span className="font-bold w-24 shrink-0">電話</span><span>{cust?.phone || ''}</span></div>
-                  <div className="flex"><span className="font-bold w-24 shrink-0">手機</span><span>{cust?.phone || ''}</span></div>
+                  <div className="grid grid-cols-[5.5rem_1fr] gap-x-1 gap-y-1">
+                    <span className="font-bold">日期 :</span><span className="text-red-600">{fmtSlash(order.order_date)}</span>
+                    <span className="font-bold">發票號碼 :</span><span />
+                    <span className="font-bold">客戶編號 :</span><span className="font-bold">{cust?.code || ''}</span>
+                  </div>
+                  <div className="grid grid-cols-[5.5rem_1fr] gap-x-1 gap-y-1 mt-2.5">
+                    <span className="font-bold">收件者 :</span><span>{cust?.name || ''}</span>
+                    <span className="font-bold">地址 :</span><span>{cust?.address || ''}</span>
+                    <span className="font-bold">電話 :</span><span>{cust?.phone || ''}</span>
+                    <span className="font-bold">手機 :</span><span>{cust?.phone || ''}</span>
+                  </div>
                 </div>
                 <div className="w-1/2 p-2">
-                  <div className="flex"><span className="font-bold whitespace-nowrap pr-2 shrink-0">送貨地址 :</span><span>[姓名]&nbsp;&nbsp;{s.contact_name || ''}</span></div>
-                  <div className="flex"><span className="w-16 shrink-0" /><span>[公司名稱]&nbsp;&nbsp;{s.company_name || ''}</span></div>
-                  <div className="flex"><span className="w-16 shrink-0" /><span>廠商編號&nbsp;&nbsp;{s.vendor_no || '-'}</span></div>
-                  <div className="flex"><span className="w-16 shrink-0" /><span>[街道地址]&nbsp;&nbsp;{s.address || ''}</span></div>
-                  <div className="flex"><span className="w-16 shrink-0" /><span>[電話]&nbsp;&nbsp;{s.phone || ''}</span></div>
+                  <div className="grid grid-cols-[5.5rem_5rem_1fr] gap-x-1 gap-y-1">
+                    <span className="font-bold">送貨地址 :</span><span>[姓名]</span><span>{s.contact_name || ''}</span>
+                    <span /><span>[公司名稱]</span><span>{s.company_name || ''}</span>
+                    <span /><span>[廠商編號]</span><span>{s.vendor_no || '-'}</span>
+                    <span /><span>[街道地址]</span><span>{s.address || ''}</span>
+                    <span /><span>[電話]</span><span>{s.phone || ''}</span>
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-7 text-center text-[10px]">
