@@ -84,8 +84,16 @@ export default function FrozenOrderDetail() {
 
   // ---- confirm / unlock (RPC atomik) ----
   const confirmOrder = async () => {
-    setError(''); setShortages([]); setBusy('confirm');
+    setError(''); setShortages([]);
+    // Simpan item terbaru dulu (biar baris yang belum di-"Simpan Item" tetap ikut)
+    const valid = editLines.map((l) => ({ product_id: l.product_id, qty: Math.floor(Number(l.qty) || 0) })).filter((l) => l.product_id && l.qty > 0);
+    if (valid.length === 0) return setError('Tambah minimal 1 produk dengan jumlah > 0.');
+    setBusy('confirm');
     try {
+      await supabase.from('frozen_order_items').delete().eq('order_id', id);
+      const { error: ie } = await supabase.from('frozen_order_items').insert(valid.map((l) => ({ order_id: id, product_id: l.product_id, qty: l.qty })));
+      if (ie) throw ie;
+
       const { data, error: e } = await supabase.rpc('frozen_confirm_order', { p_order_id: id });
       if (e) throw e;
       if (data?.ok) { await fetchAll(); }

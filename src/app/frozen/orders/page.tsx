@@ -26,6 +26,7 @@ export default function FrozenOrdersPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState('');
 
   const [customerId, setCustomerId] = useState('');
   const [orderDate, setOrderDate] = useState(todayStr());
@@ -69,6 +70,25 @@ export default function FrozenOrdersPage() {
     } catch (e: any) { setError(e.message); setSaving(false); }
   };
 
+  const deleteOrder = async (o: Order) => {
+    const name = o.frozen_customers?.name || '';
+    const msg = o.status === 'Confirmed'
+      ? `Hapus order ke ${name}?\n\nStok yang sudah dialokasi akan DIKEMBALIKAN dulu, baru order dihapus.`
+      : `Hapus draft order ke ${name}?`;
+    if (!confirm(msg)) return;
+    setBusyId(o.id);
+    try {
+      if (o.status === 'Confirmed') {
+        const { data, error } = await supabase.rpc('frozen_unlock_order', { p_order_id: o.id });
+        if (error) throw error;
+        if (!data?.ok) throw new Error(data?.error || 'Gagal mengembalikan stok.');
+      }
+      const { error: de } = await supabase.from('frozen_orders').delete().eq('id', o.id); // items/allocations cascade
+      if (de) throw de;
+      await fetchAll();
+    } catch (e: any) { alert('Gagal hapus: ' + e.message); } finally { setBusyId(''); }
+  };
+
   return (
     <div className="space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -90,17 +110,22 @@ export default function FrozenOrdersPage() {
       ) : (
         <div className="space-y-2.5">
           {orders.map((o) => (
-            <button key={o.id} onClick={() => router.push(`/frozen/orders/${o.id}`)} className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between gap-3 hover:border-cyan-200 transition-all text-left">
-              <div className="min-w-0">
-                <p className="font-black text-raden-green truncate">{o.frozen_customers?.name || '—'}</p>
-                <p className="text-[11px] text-gray-400 font-medium">{fmtDate(o.order_date)} · {o.frozen_order_items?.[0]?.count ?? 0} produk</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {o.is_backorder && o.status === 'Draft' && <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-widest flex items-center gap-1"><AlertTriangle size={10} /> Back Order</span>}
-                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${o.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{o.status === 'Confirmed' ? '確認 Terkonfirmasi' : 'Draft'}</span>
-                <ChevronRight size={18} className="text-gray-300" />
-              </div>
-            </button>
+            <div key={o.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center hover:border-cyan-200 transition-all">
+              <button onClick={() => router.push(`/frozen/orders/${o.id}`)} className="flex-1 min-w-0 p-4 flex items-center justify-between gap-3 text-left">
+                <div className="min-w-0">
+                  <p className="font-black text-raden-green truncate">{o.frozen_customers?.name || '—'}</p>
+                  <p className="text-[11px] text-gray-400 font-medium">{fmtDate(o.order_date)} · {o.frozen_order_items?.[0]?.count ?? 0} produk</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {o.is_backorder && o.status === 'Draft' && <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-widest flex items-center gap-1"><AlertTriangle size={10} /> Back Order</span>}
+                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${o.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{o.status === 'Confirmed' ? '確認 Terkonfirmasi' : 'Draft'}</span>
+                  <ChevronRight size={18} className="text-gray-300" />
+                </div>
+              </button>
+              <button onClick={() => deleteOrder(o)} disabled={busyId === o.id} className="p-3 mr-1.5 ml-1 text-gray-300 hover:text-red-500 shrink-0 disabled:opacity-50" title="Hapus order">
+                {busyId === o.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+              </button>
+            </div>
           ))}
         </div>
       )}
