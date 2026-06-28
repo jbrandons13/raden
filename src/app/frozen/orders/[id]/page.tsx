@@ -11,7 +11,11 @@ import {
 type Order = {
   id: string; status: string; order_date: string | null; is_backorder: boolean; notes: string | null;
   locked_at: string | null; customer_id: string;
-  frozen_customers: { name: string; phone: string | null; address: string | null } | null;
+  frozen_customers: { name: string; phone: string | null; address: string | null; code: string | null } | null;
+};
+type FSettings = {
+  company_name: string | null; contact_name: string | null; vendor_no: string | null; address: string | null; phone: string | null;
+  salesperson: string | null; sales_title: string | null; delivery_method: string | null; delivery_terms: string | null; payment_terms: string | null;
 };
 type Item = { id: string; product_id: string; qty: number; price: number; frozen_products: { name: string; unit: string | null; code: string | null } | null };
 type Alloc = { id: string; product_id: string; exp_date: string | null; qty: number; frozen_products: { name: string; unit: string | null } | null };
@@ -19,9 +23,10 @@ type Product = { id: string; name: string; unit: string | null; code: string | n
 type Line = { product_id: string; qty: string; price: string };
 type Shortage = { product_id: string; requested: number; available: number };
 
-// "Data kita" — header invoice (statis). Ubah di sini kalau perlu.
-const COMPANY = { name: '樂奕有限公司', address: '台北市中山區新生北路3段65-3號1樓', phone: '0987-349-250' };
+// "Data kita" — fallback kalau /frozen/settings belum diisi.
+const DEFAULT_SETTINGS: FSettings = { company_name: '樂奕有限公司', contact_name: '', vendor_no: '', address: '', phone: '', salesperson: '', sales_title: '', delivery_method: '', delivery_terms: '', payment_terms: '' };
 const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+const fmtSlash = (d: string | null) => { if (!d) return ''; const x = new Date(d); return `${x.getFullYear()}/${x.getMonth() + 1}/${x.getDate()}`; }; // 2026/6/28 (ala template)
 const nt = (n: number) => 'NT$ ' + Math.round(n || 0).toLocaleString();
 
 export default function FrozenOrderDetail() {
@@ -36,15 +41,18 @@ export default function FrozenOrderDetail() {
   const [error, setError] = useState('');
   const [shortages, setShortages] = useState<Shortage[]>([]);
   const [editLines, setEditLines] = useState<Line[]>([]);
+  const [settings, setSettings] = useState<FSettings>(DEFAULT_SETTINGS);
   const [printMode, setPrintMode] = useState<'picking' | 'invoice' | null>(null);
 
   const fetchAll = useCallback(async () => {
-    const [o, it, al, pr] = await Promise.all([
-      supabase.from('frozen_orders').select('id, status, order_date, is_backorder, notes, locked_at, customer_id, frozen_customers(name, phone, address)').eq('id', id).single(),
+    const [o, it, al, pr, st] = await Promise.all([
+      supabase.from('frozen_orders').select('id, status, order_date, is_backorder, notes, locked_at, customer_id, frozen_customers(name, phone, address, code)').eq('id', id).single(),
       supabase.from('frozen_order_items').select('id, product_id, qty, price, frozen_products(name, unit, code)').eq('order_id', id),
       supabase.from('frozen_allocations').select('id, product_id, exp_date, qty, frozen_products(name, unit)').eq('order_id', id),
       supabase.from('frozen_products').select('id, name, unit, code, price').order('name'),
+      supabase.from('frozen_settings').select('*').limit(1).maybeSingle(),
     ]);
+    if (st.data) setSettings({ ...DEFAULT_SETTINGS, ...st.data });
     if (o.data) {
       setOrder(o.data as any);
       const its = (it.data || []) as unknown as Item[];
@@ -140,8 +148,9 @@ export default function FrozenOrderDetail() {
 
   const isDraft = order.status === 'Draft';
   const cust = order.frozen_customers;
-  const grandTotal = items.reduce((s, it) => s + it.qty * (Number(it.price) || 0), 0);
-  const draftTotal = editLines.reduce((s, l) => s + Math.floor(Number(l.qty) || 0) * (Number(l.price) || 0), 0);
+  const grandTotal = items.reduce((sum, it) => sum + it.qty * (Number(it.price) || 0), 0);
+  const draftTotal = editLines.reduce((sum, l) => sum + Math.floor(Number(l.qty) || 0) * (Number(l.price) || 0), 0);
+  const s = settings;
 
   return (
     <>
@@ -286,53 +295,70 @@ export default function FrozenOrderDetail() {
             </table>
           </div>
         ) : printMode === 'invoice' ? (
-          <div className="text-[12px] leading-snug">
-            <h1 className="text-2xl font-black text-center mb-2">{COMPANY.name}</h1>
-            <div className="flex justify-between border-b-2 border-black pb-2 mb-3 text-[11px]">
-              <div>
-                <p>{COMPANY.address}</p>
-                <p>電話 / Telp: {COMPANY.phone}</p>
+          <div className="text-[11px] leading-tight">
+            {/* ===== Header grid (mirip template) ===== */}
+            <div className="border-2 border-black">
+              <div className="text-center text-2xl font-black py-1.5 border-b-2 border-black">{s.company_name}</div>
+              <div className="flex border-b-2 border-black">
+                <div className="w-1/2 p-2 border-r-2 border-black">
+                  <div className="flex"><span className="font-bold w-24 shrink-0">日期 :</span><span className="text-red-600">{fmtSlash(order.order_date)}</span></div>
+                  <div className="flex"><span className="font-bold w-24 shrink-0">發票號碼 :</span><span /></div>
+                  <div className="flex"><span className="font-bold w-24 shrink-0">客戶編號 :</span><span className="font-bold">{cust?.code || ''}</span></div>
+                  <div className="flex mt-2"><span className="font-bold w-24 shrink-0">收件者 :</span><span>{cust?.name || ''}</span></div>
+                  <div className="flex"><span className="w-24 shrink-0" /><span>{cust?.address || ''}</span></div>
+                  <div className="flex"><span className="font-bold w-24 shrink-0">電話</span><span>{cust?.phone || ''}</span></div>
+                  <div className="flex"><span className="font-bold w-24 shrink-0">手機</span><span>{cust?.phone || ''}</span></div>
+                </div>
+                <div className="w-1/2 p-2">
+                  <div className="flex"><span className="font-bold whitespace-nowrap pr-2 shrink-0">送貨地址 :</span><span>[姓名]&nbsp;&nbsp;{s.contact_name || ''}</span></div>
+                  <div className="flex"><span className="w-16 shrink-0" /><span>[公司名稱]&nbsp;&nbsp;{s.company_name || ''}</span></div>
+                  <div className="flex"><span className="w-16 shrink-0" /><span>廠商編號&nbsp;&nbsp;{s.vendor_no || '-'}</span></div>
+                  <div className="flex"><span className="w-16 shrink-0" /><span>[街道地址]&nbsp;&nbsp;{s.address || ''}</span></div>
+                  <div className="flex"><span className="w-16 shrink-0" /><span>[電話]&nbsp;&nbsp;{s.phone || ''}</span></div>
+                </div>
               </div>
-              <div className="text-right">
-                <p>日期 / Tanggal: <b>{fmtDate(order.order_date)}</b></p>
-                {order.notes && <p>備註: {order.notes}</p>}
+              <div className="grid grid-cols-7 text-center text-[10px]">
+                {['銷售人員', '職稱', '交貨方式', '交貨條件', '交貨日期', '付款條件', '到期日'].map((h, i) => (
+                  <div key={i} className={`font-bold py-0.5 border-black border-b ${i < 6 ? 'border-r' : ''}`}>{h}</div>
+                ))}
+                {[s.salesperson, s.sales_title, s.delivery_method, s.delivery_terms, fmtSlash(order.order_date), s.payment_terms, ''].map((v, i) => (
+                  <div key={i} className={`py-0.5 border-black ${i < 6 ? 'border-r' : ''}`}>{v || ''}</div>
+                ))}
               </div>
             </div>
-            <div className="mb-3 text-[11px]">
-              <p className="font-black">客戶 / Kepada</p>
-              <p className="font-bold text-[14px]">{cust?.name}</p>
-              {cust?.address && <p>{cust.address}</p>}
-              {cust?.phone && <p>電話 / Telp: {cust.phone}</p>}
-            </div>
-            <table className="w-full text-[11px] border-collapse">
+
+            {/* ===== Tabel barang ===== */}
+            <table className="w-full text-[11px] border-collapse border-2 border-t-0 border-black">
               <thead>
-                <tr className="border-y-2 border-black">
-                  <th className="py-1 text-left">商品 / Produk</th>
-                  <th className="py-1 text-left">條碼</th>
-                  <th className="py-1 text-center">單位</th>
-                  <th className="py-1 text-right">數量</th>
-                  <th className="py-1 text-right">單價</th>
-                  <th className="py-1 text-right">項目合計</th>
+                <tr className="bg-gray-100">
+                  <th className="border border-black py-1 px-1 text-center w-12">數量</th>
+                  <th className="border border-black py-1 px-1 text-left">條碼</th>
+                  <th className="border border-black py-1 px-1 text-center w-10">單位</th>
+                  <th className="border border-black py-1 px-1 text-left">商品 / Produk</th>
+                  <th className="border border-black py-1 px-1 text-right">單價</th>
+                  <th className="border border-black py-1 px-1 text-right">項目合計</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((it) => (
-                  <tr key={it.id} className="border-b border-gray-400">
-                    <td className="py-1 pr-2">{it.frozen_products?.name || pName(it.product_id)}</td>
-                    <td className="py-1 pr-2">{it.frozen_products?.code || ''}</td>
-                    <td className="py-1 text-center">{it.frozen_products?.unit || ''}</td>
-                    <td className="py-1 text-right">{it.qty}</td>
-                    <td className="py-1 text-right">{nt(it.price)}</td>
-                    <td className="py-1 text-right font-bold">{nt(it.qty * it.price)}</td>
+                  <tr key={it.id}>
+                    <td className="border border-black py-1 px-1 text-center">{it.qty}</td>
+                    <td className="border border-black py-1 px-1">{it.frozen_products?.code || ''}</td>
+                    <td className="border border-black py-1 px-1 text-center">{it.frozen_products?.unit || ''}</td>
+                    <td className="border border-black py-1 px-1">{it.frozen_products?.name || pName(it.product_id)}</td>
+                    <td className="border border-black py-1 px-1 text-right">{nt(it.price)}</td>
+                    <td className="border border-black py-1 px-1 text-right font-bold">{nt(it.qty * it.price)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div className="flex justify-end mt-3">
-              <table className="text-[12px]">
+
+            {/* ===== Total ===== */}
+            <div className="flex justify-end">
+              <table className="border-collapse border-2 border-t-0 border-black text-[12px]">
                 <tbody>
-                  <tr><td className="pr-8 py-0.5 text-right">小計 / Subtotal</td><td className="text-right font-bold w-28">{nt(grandTotal)}</td></tr>
-                  <tr className="border-t-2 border-black"><td className="pr-8 py-1 text-right font-black">總計 / Total</td><td className="text-right font-black text-[15px]">{nt(grandTotal)}</td></tr>
+                  <tr><td className="border border-black px-3 py-0.5 text-right">小計 Subtotal</td><td className="border border-black px-3 py-0.5 text-right font-bold w-28">{nt(grandTotal)}</td></tr>
+                  <tr><td className="border border-black px-3 py-1 text-right font-black">總計 Total</td><td className="border border-black px-3 py-1 text-right font-black text-[14px]">{nt(grandTotal)}</td></tr>
                 </tbody>
               </table>
             </div>

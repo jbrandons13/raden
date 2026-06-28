@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Snowflake, LayoutDashboard, Package, Building2, LogOut, Loader2, Menu, PackagePlus, Boxes, Truck, KeyRound } from 'lucide-react';
+import { Snowflake, LayoutDashboard, Package, Building2, LogOut, Loader2, Menu, PackagePlus, Boxes, Truck, KeyRound, Settings } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { homeFor } from '@/lib/auth';
 import ChangePasswordModal from './_components/ChangePasswordModal';
@@ -38,6 +38,7 @@ export default function FrozenLayout({ children }: { children: React.ReactNode }
     { name: 'Stok', href: '/frozen/stock', icon: Boxes },
     { name: 'Produk', href: '/frozen/products', icon: Package },
     { name: 'Branch', href: '/frozen/customers', icon: Building2 },
+    { name: 'Pengaturan', href: '/frozen/settings', icon: Settings },
   ];
 
   return (

@@ -56,6 +56,7 @@ Gudang terpisah, di luar admin/staff. **DB terpisah** (prefix `frozen_`), **role
 > 🔑 **Akun:** 2 fixed `admin_frozen` — **`gudang1`** & **`gudang2`** (PIN awal `123456`) + fitur **Ganti Password** sendiri di sidebar /frozen _(verified E2E)_.
 > 🛠️ **Perbaikan (28 Jun):** bug 確認 cuma proses 1 item (saat baris ke-2 belum di-"Simpan Item") → kini **確認 auto-simpan item dulu** · tambah **hapus order di history** (Confirmed → stok dibalikin dulu). _(verified E2E)_
 > 🧾 **Harga + Invoice (28 Jun):** `price` per produk (di menu Produk) + snapshot per baris order (bisa override harga khusus). **Invoice print di-upgrade** mirip template resmi: header 樂奕有限公司 + data customer + tabel 商品/條碼/單位/數量/單價/項目合計 + 小計/總計. Migration `20260620000000_frozen_pricing.sql` live. _(verified E2E layar + print)_
+> 🏢 **Pengaturan + header invoice persis template (28 Jun):** page **`/frozen/settings`** (edit data perusahaan/pengirim + default penjualan) → header invoice jadi **grid persis template**: judul + blok 日期/發票號碼/客戶編號/收件者 + blok 送貨地址 + baris 銷售人員/職稱/交貨方式/交貨條件/交貨日期/付款條件/到期日, semua berbingkai. Migration `20260621000000_frozen_settings.sql` live. _(verified E2E)_
 
 ---
 
