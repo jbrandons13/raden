@@ -6,13 +6,13 @@ import { Truck, Loader2, Plus, X, Trash2, Check, ChevronRight, AlertTriangle } f
 import { supabase } from '@/lib/supabase';
 
 type Customer = { id: string; name: string };
-type Product = { id: string; name: string; unit: string | null };
+type Product = { id: string; name: string; unit: string | null; price: number | null };
 type Order = {
   id: string; status: string; order_date: string | null; is_backorder: boolean; created_at: string;
   frozen_customers: { name: string } | null;
   frozen_order_items: { count: number }[];
 };
-type Line = { product_id: string; qty: string };
+type Line = { product_id: string; qty: string; price: string };
 
 const todayStr = () => new Date().toLocaleDateString('en-CA');
 const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
@@ -31,13 +31,13 @@ export default function FrozenOrdersPage() {
   const [customerId, setCustomerId] = useState('');
   const [orderDate, setOrderDate] = useState(todayStr());
   const [notes, setNotes] = useState('');
-  const [lines, setLines] = useState<Line[]>([{ product_id: '', qty: '' }]);
+  const [lines, setLines] = useState<Line[]>([{ product_id: '', qty: '', price: '' }]);
 
   const fetchAll = useCallback(async () => {
     const [o, c, p] = await Promise.all([
       supabase.from('frozen_orders').select('id, status, order_date, is_backorder, created_at, frozen_customers(name), frozen_order_items(count)').order('created_at', { ascending: false }),
       supabase.from('frozen_customers').select('id, name').order('name'),
-      supabase.from('frozen_products').select('id, name, unit').order('name'),
+      supabase.from('frozen_products').select('id, name, unit, price').order('name'),
     ]);
     if (o.data) setOrders(o.data as any);
     if (c.data) setCustomers(c.data as Customer[]);
@@ -46,15 +46,19 @@ export default function FrozenOrdersPage() {
   }, []);
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const reset = () => { setCustomerId(''); setOrderDate(todayStr()); setNotes(''); setLines([{ product_id: '', qty: '' }]); setError(''); };
+  const reset = () => { setCustomerId(''); setOrderDate(todayStr()); setNotes(''); setLines([{ product_id: '', qty: '', price: '' }]); setError(''); };
   const setLine = (i: number, k: keyof Line, v: string) => setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, [k]: v } : l)));
-  const addLine = () => setLines((ls) => [...ls, { product_id: '', qty: '' }]);
+  const selectProduct = (i: number, pid: string) => {
+    const p = products.find((x) => x.id === pid);
+    setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, product_id: pid, price: p && p.price != null && !l.price ? String(p.price) : l.price } : l)));
+  };
+  const addLine = () => setLines((ls) => [...ls, { product_id: '', qty: '', price: '' }]);
   const removeLine = (i: number) => setLines((ls) => (ls.length === 1 ? ls : ls.filter((_, idx) => idx !== i)));
 
   const save = async () => {
     setError('');
     if (!customerId) return setError('Pilih branch/customer tujuan.');
-    const valid = lines.map((l) => ({ product_id: l.product_id, qty: Math.floor(Number(l.qty) || 0) })).filter((l) => l.product_id && l.qty > 0);
+    const valid = lines.map((l) => ({ product_id: l.product_id, qty: Math.floor(Number(l.qty) || 0), price: Math.max(0, Number(l.price) || 0) })).filter((l) => l.product_id && l.qty > 0);
     if (valid.length === 0) return setError('Tambah minimal 1 produk dengan jumlah > 0.');
     setSaving(true);
     try {
@@ -63,7 +67,7 @@ export default function FrozenOrdersPage() {
         .insert({ customer_id: customerId, order_date: orderDate || todayStr(), notes: notes.trim() || null, status: 'Draft', created_by: u.user?.id || null })
         .select('id').single();
       if (oe) throw oe;
-      const { error: ie } = await supabase.from('frozen_order_items').insert(valid.map((l) => ({ order_id: ord.id, product_id: l.product_id, qty: l.qty })));
+      const { error: ie } = await supabase.from('frozen_order_items').insert(valid.map((l) => ({ order_id: ord.id, product_id: l.product_id, qty: l.qty, price: l.price })));
       if (ie) throw ie;
       setOpen(false); reset();
       router.push(`/frozen/orders/${ord.id}`);
@@ -156,19 +160,26 @@ export default function FrozenOrdersPage() {
 
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Produk</label>
+                <div className="flex gap-2 px-1 mb-1 text-[9px] font-black text-gray-300 uppercase tracking-widest">
+                  <span className="flex-1">Produk</span><span className="w-12 text-center">Qty</span><span className="w-[4.5rem] text-center">Harga</span><span className="w-7" />
+                </div>
                 <div className="space-y-2">
                   {lines.map((l, i) => (
                     <div key={i} className="flex gap-2">
-                      <select value={l.product_id} onChange={(e) => setLine(i, 'product_id', e.target.value)} className="flex-1 min-w-0 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm outline-none focus:ring-2 focus:ring-cyan-400 appearance-none">
+                      <select value={l.product_id} onChange={(e) => selectProduct(i, e.target.value)} className="flex-1 min-w-0 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm outline-none focus:ring-2 focus:ring-cyan-400 appearance-none">
                         <option value="">— Produk —</option>
                         {products.map((p) => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
                       </select>
-                      <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="qty" className="w-20 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm outline-none focus:ring-2 focus:ring-cyan-400" />
-                      <button onClick={() => removeLine(i)} className="p-3 text-gray-300 hover:text-red-500"><Trash2 size={16} /></button>
+                      <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="0" className="w-12 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-cyan-400" />
+                      <input type="number" min="0" value={l.price} onChange={(e) => setLine(i, 'price', e.target.value)} placeholder="0" className="w-[4.5rem] p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm text-right outline-none focus:ring-2 focus:ring-cyan-400" />
+                      <button onClick={() => removeLine(i)} className="p-2 text-gray-300 hover:text-red-500 shrink-0"><Trash2 size={16} /></button>
                     </div>
                   ))}
                 </div>
-                <button onClick={addLine} className="mt-2 text-cyan-600 font-black text-[11px] uppercase tracking-widest flex items-center gap-1"><Plus size={14} /> Tambah Produk</button>
+                <div className="flex items-center justify-between mt-2.5">
+                  <button onClick={addLine} className="text-cyan-600 font-black text-[11px] uppercase tracking-widest flex items-center gap-1"><Plus size={14} /> Tambah Produk</button>
+                  <span className="text-xs font-black text-raden-green">Total: <span className="text-cyan-600">NT$ {lines.reduce((s, l) => s + Math.floor(Number(l.qty) || 0) * (Number(l.price) || 0), 0).toLocaleString()}</span></span>
+                </div>
               </div>
 
               <div>

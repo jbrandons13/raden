@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Package, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-type FP = { id: string; name: string; code: string | null; unit: string | null; notes: string | null };
-type Form = { id?: string; name: string; code: string; unit: string; notes: string };
-const EMPTY: Form = { name: '', code: '', unit: '', notes: '' };
+type FP = { id: string; name: string; code: string | null; unit: string | null; notes: string | null; price: number | null };
+type Form = { id?: string; name: string; code: string; unit: string; notes: string; price: string };
+const EMPTY: Form = { name: '', code: '', unit: '', notes: '', price: '' };
 
 export default function FrozenProductsPage() {
   const [rows, setRows] = useState<FP[]>([]);
@@ -29,13 +29,13 @@ export default function FrozenProductsPage() {
   const filtered = rows.filter((r) => `${r.name} ${r.code || ''}`.toLowerCase().includes(search.toLowerCase()));
 
   const openAdd = () => { setForm(EMPTY); setError(''); setShowForm(true); };
-  const openEdit = (r: FP) => { setForm({ id: r.id, name: r.name, code: r.code || '', unit: r.unit || '', notes: r.notes || '' }); setError(''); setShowForm(true); };
+  const openEdit = (r: FP) => { setForm({ id: r.id, name: r.name, code: r.code || '', unit: r.unit || '', notes: r.notes || '', price: r.price != null ? String(r.price) : '' }); setError(''); setShowForm(true); };
 
   const save = async () => {
     if (!form.name.trim()) { setError('Nama wajib diisi.'); return; }
     setSaving(true); setError('');
     try {
-      const payload = { name: form.name.trim(), code: form.code.trim() || null, unit: form.unit.trim() || null, notes: form.notes.trim() || null };
+      const payload = { name: form.name.trim(), code: form.code.trim() || null, unit: form.unit.trim() || null, notes: form.notes.trim() || null, price: Math.max(0, Number(form.price) || 0) };
       const { error: e } = form.id
         ? await supabase.from('frozen_products').update(payload).eq('id', form.id)
         : await supabase.from('frozen_products').insert([payload]);
@@ -82,6 +82,7 @@ export default function FrozenProductsPage() {
                     {r.code && <span className="text-[9px] font-black uppercase tracking-widest text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded">{r.code}</span>}
                     {r.unit && <span className="text-[9px] font-bold text-gray-400">{r.unit}</span>}
                   </div>
+                  <p className="text-sm font-black text-raden-green mt-1.5">NT$ {Number(r.price || 0).toLocaleString()}<span className="text-[10px] text-gray-400 font-bold">{r.unit ? ` / ${r.unit}` : ''}</span></p>
                 </div>
               </div>
               {r.notes && <p className="text-xs text-gray-400 line-clamp-2 mb-3">{r.notes}</p>}
@@ -124,6 +125,10 @@ export default function FrozenProductsPage() {
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Satuan</label>
                     <input type="text" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="pack / kg" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
                   </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Harga (NT$) — 単価</label>
+                  <input type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Catatan</label>

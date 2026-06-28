@@ -13,13 +13,16 @@ type Order = {
   locked_at: string | null; customer_id: string;
   frozen_customers: { name: string; phone: string | null; address: string | null } | null;
 };
-type Item = { id: string; product_id: string; qty: number; frozen_products: { name: string; unit: string | null } | null };
+type Item = { id: string; product_id: string; qty: number; price: number; frozen_products: { name: string; unit: string | null; code: string | null } | null };
 type Alloc = { id: string; product_id: string; exp_date: string | null; qty: number; frozen_products: { name: string; unit: string | null } | null };
-type Product = { id: string; name: string; unit: string | null };
-type Line = { product_id: string; qty: string };
+type Product = { id: string; name: string; unit: string | null; code: string | null; price: number | null };
+type Line = { product_id: string; qty: string; price: string };
 type Shortage = { product_id: string; requested: number; available: number };
 
+// "Data kita" — header invoice (statis). Ubah di sini kalau perlu.
+const COMPANY = { name: '樂奕有限公司', address: '台北市中山區新生北路3段65-3號1樓', phone: '0987-349-250' };
 const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+const nt = (n: number) => 'NT$ ' + Math.round(n || 0).toLocaleString();
 
 export default function FrozenOrderDetail() {
   const { id } = useParams<{ id: string }>();
@@ -38,15 +41,15 @@ export default function FrozenOrderDetail() {
   const fetchAll = useCallback(async () => {
     const [o, it, al, pr] = await Promise.all([
       supabase.from('frozen_orders').select('id, status, order_date, is_backorder, notes, locked_at, customer_id, frozen_customers(name, phone, address)').eq('id', id).single(),
-      supabase.from('frozen_order_items').select('id, product_id, qty, frozen_products(name, unit)').eq('order_id', id),
+      supabase.from('frozen_order_items').select('id, product_id, qty, price, frozen_products(name, unit, code)').eq('order_id', id),
       supabase.from('frozen_allocations').select('id, product_id, exp_date, qty, frozen_products(name, unit)').eq('order_id', id),
-      supabase.from('frozen_products').select('id, name, unit').order('name'),
+      supabase.from('frozen_products').select('id, name, unit, code, price').order('name'),
     ]);
     if (o.data) {
       setOrder(o.data as any);
       const its = (it.data || []) as unknown as Item[];
       setItems(its);
-      if ((o.data as any).status === 'Draft') setEditLines(its.length ? its.map((i) => ({ product_id: i.product_id, qty: String(i.qty) })) : [{ product_id: '', qty: '' }]);
+      if ((o.data as any).status === 'Draft') setEditLines(its.length ? its.map((i) => ({ product_id: i.product_id, qty: String(i.qty), price: i.price != null ? String(i.price) : '' })) : [{ product_id: '', qty: '', price: '' }]);
     }
     if (al.data) setAllocs(al.data as any);
     if (pr.data) setProducts(pr.data as Product[]);
@@ -58,17 +61,22 @@ export default function FrozenOrderDetail() {
 
   // ---- draft editing ----
   const setLine = (i: number, k: keyof Line, v: string) => setEditLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, [k]: v } : l)));
-  const addLine = () => setEditLines((ls) => [...ls, { product_id: '', qty: '' }]);
+  const selectProduct = (i: number, pid: string) => {
+    const p = products.find((x) => x.id === pid);
+    setEditLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, product_id: pid, price: p && p.price != null && !l.price ? String(p.price) : l.price } : l)));
+  };
+  const addLine = () => setEditLines((ls) => [...ls, { product_id: '', qty: '', price: '' }]);
   const removeLine = (i: number) => setEditLines((ls) => (ls.length === 1 ? ls : ls.filter((_, idx) => idx !== i)));
+  const lineItems = () => editLines.map((l) => ({ product_id: l.product_id, qty: Math.floor(Number(l.qty) || 0), price: Math.max(0, Number(l.price) || 0) })).filter((l) => l.product_id && l.qty > 0);
 
   const saveItems = async () => {
     setError('');
-    const valid = editLines.map((l) => ({ product_id: l.product_id, qty: Math.floor(Number(l.qty) || 0) })).filter((l) => l.product_id && l.qty > 0);
+    const valid = lineItems();
     if (valid.length === 0) return setError('Minimal 1 produk dengan jumlah > 0.');
     setBusy('items');
     try {
       await supabase.from('frozen_order_items').delete().eq('order_id', id);
-      const { error: ie } = await supabase.from('frozen_order_items').insert(valid.map((l) => ({ order_id: id, product_id: l.product_id, qty: l.qty })));
+      const { error: ie } = await supabase.from('frozen_order_items').insert(valid.map((l) => ({ order_id: id, product_id: l.product_id, qty: l.qty, price: l.price })));
       if (ie) throw ie;
       setShortages([]);
       await fetchAll();
@@ -86,12 +94,12 @@ export default function FrozenOrderDetail() {
   const confirmOrder = async () => {
     setError(''); setShortages([]);
     // Simpan item terbaru dulu (biar baris yang belum di-"Simpan Item" tetap ikut)
-    const valid = editLines.map((l) => ({ product_id: l.product_id, qty: Math.floor(Number(l.qty) || 0) })).filter((l) => l.product_id && l.qty > 0);
+    const valid = lineItems();
     if (valid.length === 0) return setError('Tambah minimal 1 produk dengan jumlah > 0.');
     setBusy('confirm');
     try {
       await supabase.from('frozen_order_items').delete().eq('order_id', id);
-      const { error: ie } = await supabase.from('frozen_order_items').insert(valid.map((l) => ({ order_id: id, product_id: l.product_id, qty: l.qty })));
+      const { error: ie } = await supabase.from('frozen_order_items').insert(valid.map((l) => ({ order_id: id, product_id: l.product_id, qty: l.qty, price: l.price })));
       if (ie) throw ie;
 
       const { data, error: e } = await supabase.rpc('frozen_confirm_order', { p_order_id: id });
@@ -132,6 +140,8 @@ export default function FrozenOrderDetail() {
 
   const isDraft = order.status === 'Draft';
   const cust = order.frozen_customers;
+  const grandTotal = items.reduce((s, it) => s + it.qty * (Number(it.price) || 0), 0);
+  const draftTotal = editLines.reduce((s, l) => s + Math.floor(Number(l.qty) || 0) * (Number(l.price) || 0), 0);
 
   return (
     <>
@@ -173,16 +183,23 @@ export default function FrozenOrderDetail() {
         {/* DRAFT: editable items */}
         {isDraft ? (
           <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 space-y-4">
-            <h3 className="text-xs font-black text-raden-green uppercase tracking-[0.2em]">Produk Diminta</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black text-raden-green uppercase tracking-[0.2em]">Produk Diminta</h3>
+              <span className="text-xs font-black text-raden-green">Total: <span className="text-cyan-600">{nt(draftTotal)}</span></span>
+            </div>
+            <div className="flex gap-2 px-1 text-[9px] font-black text-gray-300 uppercase tracking-widest">
+              <span className="flex-1">Produk</span><span className="w-12 text-center">Qty</span><span className="w-[4.5rem] text-center">Harga</span><span className="w-7" />
+            </div>
             <div className="space-y-2">
               {editLines.map((l, i) => (
                 <div key={i} className="flex gap-2">
-                  <select value={l.product_id} onChange={(e) => setLine(i, 'product_id', e.target.value)} className="flex-1 min-w-0 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm outline-none focus:ring-2 focus:ring-cyan-400 appearance-none">
+                  <select value={l.product_id} onChange={(e) => selectProduct(i, e.target.value)} className="flex-1 min-w-0 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm outline-none focus:ring-2 focus:ring-cyan-400 appearance-none">
                     <option value="">— Produk —</option>
                     {products.map((p) => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
                   </select>
-                  <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="qty" className="w-20 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm outline-none focus:ring-2 focus:ring-cyan-400" />
-                  <button onClick={() => removeLine(i)} className="p-3 text-gray-300 hover:text-red-500"><Trash2 size={16} /></button>
+                  <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="0" className="w-12 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-cyan-400" />
+                  <input type="number" min="0" value={l.price} onChange={(e) => setLine(i, 'price', e.target.value)} placeholder="0" className="w-[4.5rem] p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm text-right outline-none focus:ring-2 focus:ring-cyan-400" />
+                  <button onClick={() => removeLine(i)} className="p-2 text-gray-300 hover:text-red-500 shrink-0"><Trash2 size={16} /></button>
                 </div>
               ))}
             </div>
@@ -231,11 +248,18 @@ export default function FrozenOrderDetail() {
               </div>
               <div className="divide-y divide-gray-50">
                 {items.map((it) => (
-                  <div key={it.id} className="px-5 py-3 flex items-center justify-between">
-                    <span className="font-bold text-raden-green text-sm">{it.frozen_products?.name || pName(it.product_id)}</span>
-                    <span className="font-black text-raden-green tabular-nums">{it.qty}{it.frozen_products?.unit ? ` ${it.frozen_products.unit}` : ''}</span>
+                  <div key={it.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-bold text-raden-green text-sm truncate">{it.frozen_products?.name || pName(it.product_id)}</p>
+                      <p className="text-[10px] text-gray-400 font-medium">{it.qty}{it.frozen_products?.unit ? ` ${it.frozen_products.unit}` : ''} × {nt(it.price)}</p>
+                    </div>
+                    <span className="font-black text-raden-green tabular-nums shrink-0">{nt(it.qty * it.price)}</span>
                   </div>
                 ))}
+              </div>
+              <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">總計 · Total</span>
+                <span className="font-black text-raden-green text-lg tabular-nums">{nt(grandTotal)}</span>
               </div>
             </div>
 
@@ -262,20 +286,56 @@ export default function FrozenOrderDetail() {
             </table>
           </div>
         ) : printMode === 'invoice' ? (
-          <div>
-            <h1 className="text-xl font-black">INVOICE</h1>
-            <p className="text-sm">Kepada: <b>{cust?.name}</b></p>
-            {cust?.phone && <p className="text-sm">Telp: {cust.phone}</p>}
-            {cust?.address && <p className="text-sm">Alamat: {cust.address}</p>}
-            <p className="text-sm mb-1">Tanggal: {fmtDate(order.order_date)}</p>
-            <table className="w-full text-sm border-collapse mt-3">
-              <thead><tr className="border-b-2 border-black text-left"><th className="py-1.5">Produk</th><th className="py-1.5 text-right">Jumlah</th></tr></thead>
+          <div className="text-[12px] leading-snug">
+            <h1 className="text-2xl font-black text-center mb-2">{COMPANY.name}</h1>
+            <div className="flex justify-between border-b-2 border-black pb-2 mb-3 text-[11px]">
+              <div>
+                <p>{COMPANY.address}</p>
+                <p>電話 / Telp: {COMPANY.phone}</p>
+              </div>
+              <div className="text-right">
+                <p>日期 / Tanggal: <b>{fmtDate(order.order_date)}</b></p>
+                {order.notes && <p>備註: {order.notes}</p>}
+              </div>
+            </div>
+            <div className="mb-3 text-[11px]">
+              <p className="font-black">客戶 / Kepada</p>
+              <p className="font-bold text-[14px]">{cust?.name}</p>
+              {cust?.address && <p>{cust.address}</p>}
+              {cust?.phone && <p>電話 / Telp: {cust.phone}</p>}
+            </div>
+            <table className="w-full text-[11px] border-collapse">
+              <thead>
+                <tr className="border-y-2 border-black">
+                  <th className="py-1 text-left">商品 / Produk</th>
+                  <th className="py-1 text-left">條碼</th>
+                  <th className="py-1 text-center">單位</th>
+                  <th className="py-1 text-right">數量</th>
+                  <th className="py-1 text-right">單價</th>
+                  <th className="py-1 text-right">項目合計</th>
+                </tr>
+              </thead>
               <tbody>
                 {items.map((it) => (
-                  <tr key={it.id} className="border-b border-gray-300"><td className="py-1.5">{it.frozen_products?.name || pName(it.product_id)}</td><td className="py-1.5 text-right font-bold">{it.qty}{it.frozen_products?.unit ? ` ${it.frozen_products.unit}` : ''}</td></tr>
+                  <tr key={it.id} className="border-b border-gray-400">
+                    <td className="py-1 pr-2">{it.frozen_products?.name || pName(it.product_id)}</td>
+                    <td className="py-1 pr-2">{it.frozen_products?.code || ''}</td>
+                    <td className="py-1 text-center">{it.frozen_products?.unit || ''}</td>
+                    <td className="py-1 text-right">{it.qty}</td>
+                    <td className="py-1 text-right">{nt(it.price)}</td>
+                    <td className="py-1 text-right font-bold">{nt(it.qty * it.price)}</td>
+                  </tr>
                 ))}
               </tbody>
             </table>
+            <div className="flex justify-end mt-3">
+              <table className="text-[12px]">
+                <tbody>
+                  <tr><td className="pr-8 py-0.5 text-right">小計 / Subtotal</td><td className="text-right font-bold w-28">{nt(grandTotal)}</td></tr>
+                  <tr className="border-t-2 border-black"><td className="pr-8 py-1 text-right font-black">總計 / Total</td><td className="text-right font-black text-[15px]">{nt(grandTotal)}</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : null}
       </div>

@@ -55,6 +55,7 @@ Gudang terpisah, di luar admin/staff. **DB terpisah** (prefix `frozen_`), **role
 > ✅ **FROZEN core (F1–F5) SELESAI & fully verified E2E** (14/14 cek lulus: FEFO, atomic confirm, revisi, back-order, buku besar). 2 migration sudah live di Supabase.
 > 🔑 **Akun:** 2 fixed `admin_frozen` — **`gudang1`** & **`gudang2`** (PIN awal `123456`) + fitur **Ganti Password** sendiri di sidebar /frozen _(verified E2E)_.
 > 🛠️ **Perbaikan (28 Jun):** bug 確認 cuma proses 1 item (saat baris ke-2 belum di-"Simpan Item") → kini **確認 auto-simpan item dulu** · tambah **hapus order di history** (Confirmed → stok dibalikin dulu). _(verified E2E)_
+> 🧾 **Harga + Invoice (28 Jun):** `price` per produk (di menu Produk) + snapshot per baris order (bisa override harga khusus). **Invoice print di-upgrade** mirip template resmi: header 樂奕有限公司 + data customer + tabel 商品/條碼/單位/數量/單價/項目合計 + 小計/總計. Migration `20260620000000_frozen_pricing.sql` live. _(verified E2E layar + print)_
 
 ---
 
