@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { usernameToEmail, homeFor, type AppRole } from '@/lib/auth';
@@ -127,17 +127,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIdleWarning(false);
   }, []);
 
+  // Latest-ref pattern: keep logout & pathname fresh without making them effect deps
+  // (otherwise the effect re-runs on every nav/re-render and keeps resetting the timer).
+  const logoutRef = useRef(logout); logoutRef.current = logout;
+  const pathnameRef = useRef(pathname); pathnameRef.current = pathname;
+
   // Auto-logout after inactivity, with a warning 5 min before. Cross-tab via localStorage.
+  // Depends ONLY on isAuthenticated so the timer isn't reset by re-renders/navigation.
   useEffect(() => {
-    if (!isAuthenticated || pathname.startsWith('/kasir')) { setIdleWarning(false); return; }
+    if (!isAuthenticated) { setIdleWarning(false); return; }
+    localStorage.setItem('raden_last_activity', Date.now().toString()); // reset saat (re)login/refresh
 
     const bump = () => { localStorage.setItem('raden_last_activity', Date.now().toString()); setIdleWarning(false); };
     const check = () => {
+      if (pathnameRef.current.startsWith('/kasir')) { setIdleWarning(false); return; } // kasir dikecualikan
       const last = parseInt(localStorage.getItem('raden_last_activity') || '0', 10);
       const idle = Date.now() - last;
       if (idle >= INACTIVITY_LIMIT) {
         setIdleWarning(false);
-        logout();
+        logoutRef.current();
       } else if (idle >= INACTIVITY_LIMIT - WARN_BEFORE) {
         setIdleSeconds(Math.max(0, Math.ceil((INACTIVITY_LIMIT - idle) / 1000)));
         setIdleWarning(true);
@@ -146,16 +154,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    bump();
-    const interval = setInterval(check, 1000); // 1s so the warning countdown is smooth
+    // Cek langsung saat tab kembali aktif (komputer wake / tab unfreeze) -> logout instan kalau sudah lewat.
+    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+    const interval = setInterval(check, 1000); // 1s biar countdown warning mulus
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
     events.forEach((e) => window.addEventListener(e, bump));
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
       clearInterval(interval);
       events.forEach((e) => window.removeEventListener(e, bump));
+      document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [isAuthenticated, logout, pathname]);
+  }, [isAuthenticated]);
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, role, username, login, logout, isInitialLoading }}>
