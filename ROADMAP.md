@@ -49,10 +49,12 @@ Gudang terpisah, di luar admin/staff. **DB terpisah** (prefix `frozen_`), **role
 - ✅ **F3 — Stok:** tampilan **Total** + **Detail per-EXP** (urut EXP terdekat) _(verified)_
 - ✅ **F4 — 出貨 + FEFO:** draft → **確認** via RPC atomik `frozen_confirm_order` (alokasi FEFO + potong batch) → **撿貨單** + **invoice** (+ print) _(verified E2E live: 120 → 100 dari EXP-dekat + 20 dari EXP-jauh)_
 - ✅ **F5 — Revisi & Back Order:** `frozen_unlock_order` (balikin stok → Draft) · stok kurang → **Back Order** (shortage, tidak lock) _(verified E2E live: stok balik utuh; 999>150 → back-order, stok tak tersentuh)_
-- ☐ **F6 — Upload Excel** untuk 出貨 + polish _(ditunda — user minta nanti dengan contoh format Excel)_
+- ☐ **F6 — Upload Excel buat bikin 出貨** → **BELUM dikerjakan.** Nunggu **contoh file Excel** dari user (buat nentuin kolom/format). Setelah itu: upload sheet → auto-bikin draft order (banyak baris sekaligus).
+- ☐ **F6b — Polish** (nice-to-have, menyusul).
 
 > ✅ **FROZEN core (F1–F5) SELESAI & fully verified E2E** (14/14 cek lulus: FEFO, atomic confirm, revisi, back-order, buku besar). 2 migration sudah live di Supabase.
 > 🔑 **Akun:** 2 fixed `admin_frozen` — **`gudang1`** & **`gudang2`** (PIN awal `123456`) + fitur **Ganti Password** sendiri di sidebar /frozen _(verified E2E)_.
+> 🛠️ **Perbaikan (28 Jun):** bug 確認 cuma proses 1 item (saat baris ke-2 belum di-"Simpan Item") → kini **確認 auto-simpan item dulu** · tambah **hapus order di history** (Confirmed → stok dibalikin dulu). _(verified E2E)_
 
 ---
 
