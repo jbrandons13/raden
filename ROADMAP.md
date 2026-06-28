@@ -7,15 +7,15 @@ _Status:_ ☐ belum · 🔄 jalan · ✅ selesai _· Sumber: meeting supervisor 
 
 ---
 
-## A. Engine Stok 🔴 (prioritas tinggi — fondasi, item 1/2/4 nyambung)
-- ☐ **(1) BUG:** stok produk **tidak berkurang** saat order di-**Tuntas**. → cek logika `completeOrder` & fix.
-- ☐ **(4)** Saat buat order: kalau **qty > stok → alert + tidak bisa diproses** (validasi stok).
-- ☐ **(2)** Order di **Riwayat bisa diedit** → stok **auto menyesuaikan** (selisih ±) + **release back** (kembalikan stok jika dibatalkan/dikurangi).
-- 💡 _Inti: bikin pencatatan stok yang benar & ter-log (semacam buku besar / stock movement) supaya potong & kembalikan stok selalu akurat._
+## A. Engine Stok ✅ (SELESAI — model profesional: reserve→potong saat Tuntas→balikin)
+- ✅ **(1) BUG fixed:** **Tuntas** → potong stok fisik + catat (`complete_order` RPC). Konfirmasi/Siap Kirim **gak potong** lagi (biar gak dobel).
+- ✅ **(4)** Buat order: **qty > available → ditolak** (alert). Available = stok fisik − reserved order terbuka.
+- ✅ **(2)** Edit di Riwayat → stok **auto-sesuaikan selisih** (`save_order_items`) · Hapus → **balikin stok** (`delete_order`). Semua dicatat.
+- 💡 _Inti: **buku besar `stock_movements`** + flag `orders.stock_deducted` + 4 RPC atomik. Migration `20260622000000_toko_stock_engine.sql` live._ _(verified E2E: potong/edit±/hapus → ledger net 0)_
 
 ## B. Data Pelanggan
 - ☐ **(3)** Eceran bisa **simpan pelanggan individual**: input **nama + alamat + no telp** (jika baru); jika sudah ada → **dropdown** (tampil nama/telp/alamat). + **halaman baru** kelola data customer.
-  - 🟡 _Keputusan pending: individual disimpan sebagai **tipe baru di `customers`** (Branch/Agen/**Individual**) — rekomendasiku. Konfirmasi._
+  - ✅ _Keputusan: individual = **tipe baru di `customers`** (Branch/Agen/**Individual**). (user ACC "ikut caramu")_
 - ☐ **(5)** Di form buat order (branch/agen/eceran) **tampilkan alamat + no telp**. Branch/agen di-set di page Branch & Agen; eceran dari data (3).
 
 ## C. POS Kasir

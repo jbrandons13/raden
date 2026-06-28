@@ -20,6 +20,7 @@ export default function OrdersPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [reservedStock, setReservedStock] = useState<Record<string, number>>({});
+  const [editOriginalItems, setEditOriginalItems] = useState<Record<string, number>>({});
   const [posSections, setPosSections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [ordersLimit, setOrdersLimit] = useState(50);
@@ -74,9 +75,11 @@ export default function OrdersPage() {
       })));
       setOrdersTotalCount(countRes?.count || 0);
 
-      const draftOrderIds = ordsRes.data?.filter((o: any) => o.status === 'Draft').map((o: any) => o.id) || [];
-      if (draftOrderIds.length > 0) {
-        const { data: items } = await supabase.from('order_items').select('product_id, qty').in('order_id', draftOrderIds);
+      // Reserved = order terbuka yang BELUM memotong stok (Draft/Siap Kirim).
+      // Kecualikan 'Selesai' (termasuk kasir yang by-design gak potong stok).
+      const reservedOrderIds = ordsRes.data?.filter((o: any) => o.status !== 'Selesai' && !o.stock_deducted).map((o: any) => o.id) || [];
+      if (reservedOrderIds.length > 0) {
+        const { data: items } = await supabase.from('order_items').select('product_id, qty').in('order_id', reservedOrderIds);
         if (items) {
           const resMap: Record<string, number> = {};
           items.forEach((item: any) => {
@@ -122,44 +125,24 @@ export default function OrdersPage() {
     
     try {
       setLoading(true);
-      
-      // OPTIMIZED: Update all stocks in parallel for speed
-      await Promise.all(orderItems.map(async (item) => {
-        // Fresh / made-to-order products don't track stock — skip them.
-        if (item.products?.tracks_stock === false) return;
-        const { data: prod, error: fetchError } = await supabase
-          .from('products')
-          .select('current_stock')
-          .eq('id', item.product_id)
-          .single();
-        
-        if (fetchError) throw new Error(`Gagal mengambil stok ${item.products?.name}`);
-        
-        const newStock = (prod?.current_stock || 0) - item.qty;
-        const { error: updateError } = await supabase
-          .from('products')
-          .update({ current_stock: Math.max(0, newStock) })
-          .eq('id', item.product_id);
-          
-        if (updateError) throw new Error(`Gagal update stok ${item.products?.name}`);
-      }));
 
-      // Update Order Status
+      // Konfirmasi = cetak invoice + tandai Siap Kirim. Stok BELUM dipotong di sini —
+      // pemotongan stok fisik terjadi saat order di-Tuntas (Selesai).
       const { error: orderError } = await supabase
         .from('orders')
         .update({ status: 'Siap Kirim' })
         .eq('id', selectedOrder.id);
-        
+
       if (orderError) throw orderError;
 
       setShowPrintModal(false);
       await fetchData();
-      alert("Pesanan berhasil dikonfirmasi & Stok diperbarui! ✨");
-    } catch (e: any) { 
+      alert("Pesanan dikonfirmasi (Siap Kirim) ✨ Stok dipotong saat Tuntas.");
+    } catch (e: any) {
       console.error(e);
-      alert("Gagal Konfirmasi: " + e.message); 
-    } finally { 
-      setLoading(false); 
+      alert("Gagal Konfirmasi: " + e.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -172,8 +155,10 @@ export default function OrdersPage() {
     if (!orderToComplete) return;
     try {
       setLoading(true);
-      const { error } = await supabase.from('orders').update({ status: 'Selesai' }).eq('id', orderToComplete);
+      // Tuntas: potong stok fisik + catat di buku besar (atomik, idempoten).
+      const { data, error } = await supabase.rpc('complete_order', { p_order_id: orderToComplete });
       if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || 'Gagal menyelesaikan order.');
       setOrderToComplete(null);
       await fetchData();
     } catch (e: any) { alert("Error: " + e.message); }
@@ -193,6 +178,7 @@ export default function OrdersPage() {
           variantsMap[item.product_id][item.variant] = (variantsMap[item.product_id][item.variant] || 0) + item.qty;
         }
       });
+      setEditOriginalItems(itemsMap);
       setNewOrder({
         customerId: order.customer_id || '',
         customerName: order.customer_name || '',
@@ -212,8 +198,10 @@ export default function OrdersPage() {
     if (!orderToDelete) return;
     try {
       setLoading(true);
-      const { error } = await supabase.from('orders').delete().eq('id', orderToDelete);
+      // Hapus: kalau order sudah ke-potong stoknya, dikembalikan dulu + dicatat.
+      const { data, error } = await supabase.rpc('delete_order', { p_order_id: orderToDelete });
       if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || 'Gagal hapus order.');
       fetchData();
       setOrderToDelete(null);
     } catch (err: any) { alert("Terjadi kesalahan: " + err.message); }
@@ -265,35 +253,46 @@ export default function OrdersPage() {
       if (remainder > 0) itemsToInsert.push({ product_id: pid, qty: remainder, variant: null });
     }
     if (itemsToInsert.length === 0) return alert("Please add at least one item!");
-    
+
+    // (4) Validasi stok: qty tidak boleh melebihi available (stok fisik - reserved order lain).
+    for (const [pid, qtyRaw] of Object.entries(newOrder.items)) {
+      const qty = qtyRaw || 0;
+      if (qty <= 0) continue;
+      const prod = products.find(p => p.id === pid);
+      if (!prod || prod.tracks_stock === false) continue;
+      const reservedExcl = (reservedStock[pid] || 0) - (isEditing ? (editOriginalItems[pid] || 0) : 0);
+      const available = (prod.current_stock || 0) - reservedExcl;
+      if (qty > available) {
+        return alert(`Stok "${prod.name}" tidak cukup.\nDiminta: ${qty} · Tersedia: ${available}`);
+      }
+    }
+
     setLoading(true);
     try {
-      let orderId = editingOrderId;
+      const header = {
+        customer_id: newOrder.mode === 'eceran' ? null : newOrder.customerId,
+        customer_name: newOrder.mode === 'eceran' ? newOrder.customerName.trim() : null,
+        channel: ch,
+        order_date: newOrder.date,
+        total_revenue: calculateTotal(),
+      };
       if (isEditing && editingOrderId) {
-        await supabase.from('order_items').delete().eq('order_id', editingOrderId);
-        await supabase.from('orders').update({ 
-          customer_id: newOrder.mode === 'eceran' ? null : newOrder.customerId,
-          customer_name: newOrder.mode === 'eceran' ? newOrder.customerName.trim() : null, 
-          channel: ch,
-          order_date: newOrder.date,
-          total_revenue: calculateTotal() 
-        }).eq('id', editingOrderId);
+        const { error: ue } = await supabase.from('orders').update(header).eq('id', editingOrderId);
+        if (ue) throw ue;
+        // Ganti item + sesuaikan stok (selisih) kalau order sudah ke-potong (RPC atomik).
+        const { data: si, error: se } = await supabase.rpc('save_order_items', { p_order_id: editingOrderId, p_items: itemsToInsert });
+        if (se) throw se;
+        if (!si?.ok) throw new Error('Gagal simpan item.');
       } else {
-        const { data: ord } = await supabase.from('orders').insert([{ 
-          customer_id: newOrder.mode === 'eceran' ? null : newOrder.customerId,
-          customer_name: newOrder.mode === 'eceran' ? newOrder.customerName.trim() : null, 
-          channel: ch,
-          order_date: newOrder.date,
-          total_revenue: calculateTotal(), 
-          status: 'Draft' 
-        }]).select().single();
-        orderId = ord.id;
+        const { data: ord, error: oe } = await supabase.from('orders').insert([{ ...header, status: 'Draft' }]).select().single();
+        if (oe) throw oe;
+        const rows = itemsToInsert.map(item => ({ ...item, order_id: ord.id }));
+        const { error: ie } = await supabase.from('order_items').insert(rows);
+        if (ie) throw ie;
       }
-      
-      const rows = itemsToInsert.map(item => ({ ...item, order_id: orderId }));
-      await supabase.from('order_items').insert(rows);
-      
+
       setNewOrder({ customerId: '', customerName: '', mode: 'partner', date: new Date().toISOString().split('T')[0], items: {}, variants: {} });
+      setEditOriginalItems({});
       setCustomerSearch('');
       setIsEditing(false);
       setEditingOrderId(null);
