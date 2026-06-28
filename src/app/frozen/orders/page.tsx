@@ -162,7 +162,7 @@ export default function FrozenOrdersPage() {
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Produk</label>
                 <div className="flex gap-2 px-1 mb-1 text-[9px] font-black text-gray-300 uppercase tracking-widest">
-                  <span className="flex-1">Produk</span><span className="w-16 text-center">Qty</span><span className="w-24 text-center">Harga</span><span className="w-8" />
+                  <span className="flex-1">Produk</span><span className="w-24 text-center">Qty</span><span className="w-24 text-center">Harga</span><span className="w-8" />
                 </div>
                 <div className="space-y-2">
                   {lines.map((l, i) => (
@@ -171,8 +171,8 @@ export default function FrozenOrdersPage() {
                         <option value="">— Produk —</option>
                         {products.map((p) => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
                       </select>
-                      <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="0" className="w-16 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-cyan-400" />
-                      <input type="number" min="0" value={l.price} onChange={(e) => setLine(i, 'price', e.target.value)} placeholder="0" className="w-24 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm text-right outline-none focus:ring-2 focus:ring-cyan-400" />
+                      <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="0" className="w-24 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-cyan-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
+                      <input type="number" min="0" value={l.price} onChange={(e) => setLine(i, 'price', e.target.value)} placeholder="0" className="w-24 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm text-right outline-none focus:ring-2 focus:ring-cyan-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
                       <button onClick={() => removeLine(i)} className="p-2 text-gray-300 hover:text-red-500 shrink-0"><Trash2 size={16} /></button>
                     </div>
                   ))}
