@@ -50,7 +50,8 @@ export default function FrozenOrdersPage() {
   const setLine = (i: number, k: keyof Line, v: string) => setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, [k]: v } : l)));
   const selectProduct = (i: number, pid: string) => {
     const p = products.find((x) => x.id === pid);
-    setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, product_id: pid, price: p && p.price != null && !l.price ? String(p.price) : l.price } : l)));
+    // Ganti produk -> reset qty & set harga ke harga produk baru (masih bisa diubah manual).
+    setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, product_id: pid, qty: '', price: pid && p && p.price != null ? String(p.price) : '' } : l)));
   };
   const addLine = () => setLines((ls) => [...ls, { product_id: '', qty: '', price: '' }]);
   const removeLine = (i: number) => setLines((ls) => (ls.length === 1 ? ls : ls.filter((_, idx) => idx !== i)));
@@ -137,7 +138,7 @@ export default function FrozenOrdersPage() {
       {/* Create modal */}
       {open && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => !saving && setOpen(false)}>
-          <div className="bg-white w-full sm:max-w-2xl rounded-t-[2rem] sm:rounded-[2rem] max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white w-full sm:max-w-3xl rounded-t-[2rem] sm:rounded-[2rem] max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between z-10">
               <h2 className="font-black text-raden-green text-lg flex items-center gap-2"><Truck size={18} className="text-cyan-500" /> Buat Order Keluar</h2>
               <button onClick={() => setOpen(false)} className="p-2 text-gray-400 hover:text-gray-600"><X size={20} /></button>
@@ -161,7 +162,7 @@ export default function FrozenOrdersPage() {
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Produk</label>
                 <div className="flex gap-2 px-1 mb-1 text-[9px] font-black text-gray-300 uppercase tracking-widest">
-                  <span className="flex-1">Produk</span><span className="w-12 text-center">Qty</span><span className="w-[4.5rem] text-center">Harga</span><span className="w-7" />
+                  <span className="flex-1">Produk</span><span className="w-16 text-center">Qty</span><span className="w-24 text-center">Harga</span><span className="w-8" />
                 </div>
                 <div className="space-y-2">
                   {lines.map((l, i) => (
@@ -170,8 +171,8 @@ export default function FrozenOrdersPage() {
                         <option value="">— Produk —</option>
                         {products.map((p) => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
                       </select>
-                      <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="0" className="w-12 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-cyan-400" />
-                      <input type="number" min="0" value={l.price} onChange={(e) => setLine(i, 'price', e.target.value)} placeholder="0" className="w-[4.5rem] p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm text-right outline-none focus:ring-2 focus:ring-cyan-400" />
+                      <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="0" className="w-16 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-cyan-400" />
+                      <input type="number" min="0" value={l.price} onChange={(e) => setLine(i, 'price', e.target.value)} placeholder="0" className="w-24 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm text-right outline-none focus:ring-2 focus:ring-cyan-400" />
                       <button onClick={() => removeLine(i)} className="p-2 text-gray-300 hover:text-red-500 shrink-0"><Trash2 size={16} /></button>
                     </div>
                   ))}

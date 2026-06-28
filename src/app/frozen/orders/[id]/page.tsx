@@ -71,7 +71,8 @@ export default function FrozenOrderDetail() {
   const setLine = (i: number, k: keyof Line, v: string) => setEditLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, [k]: v } : l)));
   const selectProduct = (i: number, pid: string) => {
     const p = products.find((x) => x.id === pid);
-    setEditLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, product_id: pid, price: p && p.price != null && !l.price ? String(p.price) : l.price } : l)));
+    // Ganti produk -> reset qty & set harga ke harga produk baru (masih bisa diubah manual).
+    setEditLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, product_id: pid, qty: '', price: pid && p && p.price != null ? String(p.price) : '' } : l)));
   };
   const addLine = () => setEditLines((ls) => [...ls, { product_id: '', qty: '', price: '' }]);
   const removeLine = (i: number) => setEditLines((ls) => (ls.length === 1 ? ls : ls.filter((_, idx) => idx !== i)));
@@ -197,7 +198,7 @@ export default function FrozenOrderDetail() {
               <span className="text-xs font-black text-raden-green">Total: <span className="text-cyan-600">{nt(draftTotal)}</span></span>
             </div>
             <div className="flex gap-2 px-1 text-[9px] font-black text-gray-300 uppercase tracking-widest">
-              <span className="flex-1">Produk</span><span className="w-12 text-center">Qty</span><span className="w-[4.5rem] text-center">Harga</span><span className="w-7" />
+              <span className="flex-1">Produk</span><span className="w-16 text-center">Qty</span><span className="w-24 text-center">Harga</span><span className="w-8" />
             </div>
             <div className="space-y-2">
               {editLines.map((l, i) => (
@@ -206,8 +207,8 @@ export default function FrozenOrderDetail() {
                     <option value="">— Produk —</option>
                     {products.map((p) => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
                   </select>
-                  <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="0" className="w-12 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-cyan-400" />
-                  <input type="number" min="0" value={l.price} onChange={(e) => setLine(i, 'price', e.target.value)} placeholder="0" className="w-[4.5rem] p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm text-right outline-none focus:ring-2 focus:ring-cyan-400" />
+                  <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="0" className="w-16 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-cyan-400" />
+                  <input type="number" min="0" value={l.price} onChange={(e) => setLine(i, 'price', e.target.value)} placeholder="0" className="w-24 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm text-right outline-none focus:ring-2 focus:ring-cyan-400" />
                   <button onClick={() => removeLine(i)} className="p-2 text-gray-300 hover:text-red-500 shrink-0"><Trash2 size={16} /></button>
                 </div>
               ))}
