@@ -20,6 +20,7 @@ export default function KasirPage() {
   const [lines, setLines] = useState<Line[]>([]);
   const [payment, setPayment] = useState<typeof PAYMENTS[number]>('Cash');
   const [buyer, setBuyer] = useState('');
+  const [cashReceived, setCashReceived] = useState('');
   const [picker, setPicker] = useState<Product | null>(null); // product awaiting isian choice
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -44,6 +45,7 @@ export default function KasirPage() {
 
   const total = lines.reduce((s, l) => s + l.qty * l.price, 0);
   const count = lines.reduce((s, l) => s + l.qty, 0);
+  const change = (Number(cashReceived) || 0) - total;
 
   const addLine = (p: Product, variant: string | null) => {
     const key = p.id + '|' + (variant || '');
@@ -86,7 +88,7 @@ export default function KasirPage() {
         lines.map((l) => ({ order_id: ord.id, product_id: l.product_id, qty: l.qty, variant: l.variant })),
       );
       if (itErr) throw itErr;
-      setLines([]); setBuyer(''); setPayment('Cash');
+      setLines([]); setBuyer(''); setPayment('Cash'); setCashReceived('');
       setToast(`Transaksi ${nf(total)} tersimpan ✓`);
       setTimeout(() => setToast(null), 2500);
     } catch (e: any) {
@@ -191,14 +193,36 @@ export default function KasirPage() {
                 </button>
               ))}
             </div>
-            {payment !== 'Cash' && (
-              <input value={buyer} onChange={(e) => setBuyer(e.target.value)} placeholder="Nama pembeli (opsional)…"
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:border-raden-gold/40" />
-            )}
             <div className="flex items-center justify-between px-1">
               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total {count > 0 ? `· ${count} item` : ''}</span>
               <span className="text-2xl font-black text-raden-green tabular-nums">{nf(total)}</span>
             </div>
+
+            {payment === 'Cash' ? (
+              <div className="space-y-2">
+                <div className="flex gap-1.5">
+                  <input type="number" inputMode="numeric" value={cashReceived} onChange={(e) => setCashReceived(e.target.value)} placeholder="Uang diterima…"
+                    className="flex-1 min-w-0 px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-black text-raden-green outline-none focus:border-raden-gold/40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
+                  <button type="button" onClick={() => setCashReceived(String(total))} className="px-3 rounded-xl bg-gray-100 text-gray-500 font-black text-[10px] uppercase tracking-widest shrink-0">Pas</button>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[100, 500, 1000].map((n) => (
+                    <button key={n} type="button" onClick={() => setCashReceived(String((Number(cashReceived) || 0) + n))}
+                      className="py-2 rounded-lg bg-gray-50 border border-gray-100 text-gray-500 font-black text-[10px] tabular-nums hover:bg-gray-100 transition-colors">+{n.toLocaleString('zh-TW')}</button>
+                  ))}
+                </div>
+                {cashReceived !== '' && (
+                  <div className={`flex items-center justify-between px-1 ${change < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                    <span className="text-[10px] font-black uppercase tracking-widest">{change < 0 ? 'Kurang' : 'Kembalian'}</span>
+                    <span className="text-xl font-black tabular-nums">{nf(Math.abs(change))}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <input value={buyer} onChange={(e) => setBuyer(e.target.value)} placeholder="Nama pembeli (opsional)…"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:border-raden-gold/40" />
+            )}
+
             <button onClick={checkout} disabled={lines.length === 0 || saving}
               className="w-full py-4 rounded-2xl bg-raden-gold text-white font-black uppercase tracking-[0.2em] text-sm shadow-xl active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2">
               {saving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} Bayar
