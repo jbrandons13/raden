@@ -40,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       title: 'Penjualan',
       items: [
         { name: 'Pesanan', href: '/admin/orders', icon: ShoppingCart },
-        { name: 'Branch & Agen', href: '/admin/customers', icon: Users },
+        { name: 'Pelanggan', href: '/admin/customers', icon: Users },
       ]
     },
     {

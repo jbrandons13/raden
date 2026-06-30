@@ -63,7 +63,7 @@ export interface StaffShift {
   created_at?: string;
 }
 
-export type CustomerType = 'branch' | 'agent';
+export type CustomerType = 'branch' | 'agent' | 'individual';
 
 export interface Customer {
   id: string;

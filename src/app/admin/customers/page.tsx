@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Store, Search, Plus, Edit3, Trash2, Loader2, X, Phone, MapPin, AlertCircle, Save, KeyRound } from 'lucide-react';
+import { Building2, Store, User, Search, Plus, Edit3, Trash2, Loader2, X, Phone, MapPin, AlertCircle, Save, KeyRound } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Customer, CustomerType } from '@/types/raden';
 import ExportExcelButton from '@/components/ExportExcelButton';
@@ -15,6 +15,7 @@ const EMPTY_FORM: FormState = { name: '', type: 'branch', phone: '', address: ''
 const TYPE_META: Record<CustomerType, { label: string; icon: typeof Building2; cls: string }> = {
   branch: { label: 'Branch', icon: Building2, cls: 'bg-raden-green/10 text-raden-green' },
   agent: { label: 'Agen', icon: Store, cls: 'bg-raden-gold/10 text-raden-gold' },
+  individual: { label: 'Individual', icon: User, cls: 'bg-blue-500/10 text-blue-600' },
 };
 
 export default function BranchAgentPage() {
@@ -53,7 +54,7 @@ export default function BranchAgentPage() {
     return () => { supabase.removeChannel(ch); };
   }, [fetchData]);
 
-  const getType = (c: Customer): CustomerType => (c.type === 'agent' ? 'agent' : 'branch');
+  const getType = (c: Customer): CustomerType => (c.type === 'agent' ? 'agent' : c.type === 'individual' ? 'individual' : 'branch');
 
   const filtered = useMemo(
     () => customers.filter((c) =>
@@ -67,6 +68,7 @@ export default function BranchAgentPage() {
     all: customers.length,
     branch: customers.filter((c) => getType(c) === 'branch').length,
     agent: customers.filter((c) => getType(c) === 'agent').length,
+    individual: customers.filter((c) => getType(c) === 'individual').length,
   }), [customers]);
 
   const openAdd = () => { setForm(EMPTY_FORM); setError(''); setShowForm(true); };
@@ -164,8 +166,8 @@ export default function BranchAgentPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase">Branch & Agen</h1>
-          <p className="text-gray-400 text-xs sm:text-sm font-medium">Kelola data cabang & agen distribusi.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase">Pelanggan</h1>
+          <p className="text-gray-400 text-xs sm:text-sm font-medium">Kelola branch, agen, & pelanggan individual.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <ExportExcelButton
@@ -189,6 +191,7 @@ export default function BranchAgentPage() {
             { id: 'all', label: 'Semua' },
             { id: 'branch', label: 'Branch' },
             { id: 'agent', label: 'Agen' },
+            { id: 'individual', label: 'Individual' },
           ] as const).map((t) => (
             <button
               key={t.id}
@@ -304,7 +307,7 @@ export default function BranchAgentPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowForm(false)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-black text-raden-green tracking-tight">{form.id ? 'Edit Data' : 'Tambah Branch / Agen'}</h3>
+                <h3 className="text-xl font-black text-raden-green tracking-tight">{form.id ? 'Edit Pelanggan' : 'Tambah Pelanggan'}</h3>
                 <button onClick={() => setShowForm(false)} className="p-2 bg-gray-50 rounded-full text-gray-400"><X size={20} /></button>
               </div>
 
@@ -312,8 +315,8 @@ export default function BranchAgentPage() {
                 {/* Type toggle */}
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Tipe</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['branch', 'agent'] as CustomerType[]).map((t) => {
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['branch', 'agent', 'individual'] as CustomerType[]).map((t) => {
                       const meta = TYPE_META[t];
                       const Icon = meta.icon;
                       const active = form.type === t;

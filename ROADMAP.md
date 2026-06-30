@@ -13,13 +13,12 @@ _Status:_ ☐ belum · 🔄 jalan · ✅ selesai _· Sumber: meeting supervisor 
 - ✅ **(2)** Edit di Riwayat → stok **auto-sesuaikan selisih** (`save_order_items`) · Hapus → **balikin stok** (`delete_order`). Semua dicatat.
 - 💡 _Inti: **buku besar `stock_movements`** + flag `orders.stock_deducted` + 4 RPC atomik. Migration `20260622000000_toko_stock_engine.sql` live._ _(verified E2E: potong/edit±/hapus → ledger net 0)_
 
-## B. Data Pelanggan
-- ☐ **(3)** Eceran bisa **simpan pelanggan individual**: input **nama + alamat + no telp** (jika baru); jika sudah ada → **dropdown** (tampil nama/telp/alamat). + **halaman baru** kelola data customer.
-  - ✅ _Keputusan: individual = **tipe baru di `customers`** (Branch/Agen/**Individual**). (user ACC "ikut caramu")_
-- ☐ **(5)** Di form buat order (branch/agen/eceran) **tampilkan alamat + no telp**. Branch/agen di-set di page Branch & Agen; eceran dari data (3).
+## B. Data Pelanggan ✅
+- ✅ **(3)** Tipe **`individual`** (Branch/Agen/Individual) di page **Pelanggan**. Form order eceran: ketik nama → **autocomplete individual yang ada** (pilih) atau **isi telp+alamat → tersimpan** otomatis. _(verified E2E)_
+- ✅ **(5)** Form order: **alamat + telp customer tampil** (branch/agen/individual) saat dipilih. _(verified E2E)_
 
-## C. POS Kasir
-- ☐ **(6)** Tambah **box input uang pembeli** → otomatis tampil **kembalian**. _(quick win)_
+## C. POS Kasir ✅
+- ✅ **(6)** Kasir Cash: **box uang diterima** + tombol Pas & +100/+500/+1000 → **kembalian otomatis**. _(verified)_
 
 ## D. Template Pesanan 🆕
 - ☐ **(7)** Template order **ala "Susunan Order"** (set kolom + isi sendiri) → saat buat order baru ada **dropdown "Pakai Template"** untuk auto-isi.

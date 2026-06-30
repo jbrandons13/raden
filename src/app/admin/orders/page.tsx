@@ -38,6 +38,8 @@ export default function OrdersPage() {
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<{id: string, name: string} | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
+  const [indivPhone, setIndivPhone] = useState('');
+  const [indivAddress, setIndivAddress] = useState('');
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [orderToComplete, setOrderToComplete] = useState<string | null>(null);
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
@@ -179,6 +181,7 @@ export default function OrdersPage() {
         }
       });
       setEditOriginalItems(itemsMap);
+      setIndivPhone(''); setIndivAddress('');
       setNewOrder({
         customerId: order.customer_id || '',
         customerName: order.customer_name || '',
@@ -269,9 +272,23 @@ export default function OrdersPage() {
 
     setLoading(true);
     try {
+      // Resolve customer: eceran bisa pilih individual yang ada atau buat baru (tersimpan).
+      let custId: string | null = newOrder.mode === 'eceran' ? null : newOrder.customerId;
+      if (newOrder.mode === 'eceran') {
+        if (newOrder.customerId) {
+          custId = newOrder.customerId; // individual yang dipilih
+        } else if (newOrder.customerName.trim()) {
+          const { data: nc, error: ce } = await supabase.from('customers').insert({
+            name: newOrder.customerName.trim(), type: 'individual',
+            phone: indivPhone.trim() || null, address: indivAddress.trim() || null,
+          }).select('id').single();
+          if (ce) throw ce;
+          custId = nc.id;
+        }
+      }
       const header = {
-        customer_id: newOrder.mode === 'eceran' ? null : newOrder.customerId,
-        customer_name: newOrder.mode === 'eceran' ? newOrder.customerName.trim() : null,
+        customer_id: custId,
+        customer_name: null,
         channel: ch,
         order_date: newOrder.date,
         total_revenue: calculateTotal(),
@@ -293,6 +310,7 @@ export default function OrdersPage() {
 
       setNewOrder({ customerId: '', customerName: '', mode: 'partner', date: new Date().toISOString().split('T')[0], items: {}, variants: {} });
       setEditOriginalItems({});
+      setIndivPhone(''); setIndivAddress('');
       setCustomerSearch('');
       setIsEditing(false);
       setEditingOrderId(null);
@@ -313,10 +331,17 @@ export default function OrdersPage() {
     } catch (e: any) { alert("Tidak bisa menghapus: " + e.message); }
   };
 
-  const filteredCustomers = customers.filter(c => 
-    c.name.toLowerCase().includes(customerSearch.toLowerCase()) || 
-    (c.phone && c.phone.includes(customerSearch))
+  // Partner dropdown = branch/agen saja (individual dipilih di mode eceran).
+  const filteredCustomers = customers.filter(c =>
+    (c.type === 'branch' || c.type === 'agent') &&
+    (c.name.toLowerCase().includes(customerSearch.toLowerCase()) || (c.phone && c.phone.includes(customerSearch)))
   );
+  // Autocomplete individual (mode eceran) berdasarkan nama yang diketik.
+  const individualMatches = customers.filter(c =>
+    c.type === 'individual' && newOrder.customerName.trim() !== '' &&
+    c.name.toLowerCase().includes(newOrder.customerName.trim().toLowerCase())
+  ).slice(0, 6);
+  const selectedCustomer = customers.find(c => c.id === newOrder.customerId);
 
   // Pesanan = distribution only (branch/agen). Retail/kasir (eceran/online) lives in /admin/kasir.
   const filteredOrders = orders.filter(o =>
@@ -608,18 +633,45 @@ export default function OrdersPage() {
                     <div className="flex flex-wrap items-center gap-2 mb-2">
                       <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
                         <button type="button" onClick={() => setNewOrder({ ...newOrder, mode: 'partner', customerName: '' })} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${newOrder.mode !== 'eceran' ? 'bg-white text-raden-green shadow-sm' : 'text-gray-400'}`}>Branch / Agen</button>
-                        <button type="button" onClick={() => setNewOrder({ ...newOrder, mode: 'eceran', customerId: '' })} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${newOrder.mode === 'eceran' ? 'bg-white text-raden-green shadow-sm' : 'text-gray-400'}`}>Eceran</button>
+                        <button type="button" onClick={() => { setNewOrder({ ...newOrder, mode: 'eceran', customerId: '' }); setIndivPhone(''); setIndivAddress(''); }} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${newOrder.mode === 'eceran' ? 'bg-white text-raden-green shadow-sm' : 'text-gray-400'}`}>Eceran</button>
                       </div>
-                      <p className="text-[8px] text-gray-400 font-bold normal-case">Pelanggan baru ditambah di halaman Branch &amp; Agen.</p>
+                      <p className="text-[8px] text-gray-400 font-bold normal-case">Branch/Agen dikelola di menu Pelanggan. Eceran: ketik nama → pilih yang ada / isi telp+alamat (tersimpan).</p>
                     </div>
                     {newOrder.mode === 'eceran' ? (
-                      <input
-                        type="text"
-                        value={newOrder.customerName}
-                        onChange={e => setNewOrder({ ...newOrder, customerName: e.target.value })}
-                        placeholder="Nama pembeli (eceran)..."
-                        className="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl font-black text-xs text-raden-green outline-none focus:border-raden-gold"
-                      />
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={newOrder.customerName}
+                            onChange={e => setNewOrder({ ...newOrder, customerName: e.target.value, customerId: '' })}
+                            placeholder="Nama pembeli (eceran)..."
+                            className="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl font-black text-xs text-raden-green outline-none focus:border-raden-gold"
+                          />
+                          {!newOrder.customerId && individualMatches.length > 0 && (
+                            <div className="absolute z-[70] left-0 right-0 mt-1 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.12)] overflow-hidden max-h-44 overflow-y-auto">
+                              {individualMatches.map(c => (
+                                <button key={c.id} type="button"
+                                  onClick={() => { setNewOrder({ ...newOrder, customerId: c.id, customerName: c.name }); setIndivPhone(''); setIndivAddress(''); }}
+                                  className="w-full text-left px-4 py-2.5 hover:bg-raden-green/5 border-b border-gray-50 last:border-0">
+                                  <p className="font-black text-raden-green text-xs">{c.name}</p>
+                                  <p className="text-[9px] text-gray-400 font-bold">{c.phone || 'tanpa telp'}{c.address ? ` · ${c.address}` : ''}</p>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {newOrder.customerId ? (
+                          <button type="button" onClick={() => setNewOrder({ ...newOrder, customerId: '' })}
+                            className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">✓ Pelanggan tersimpan · ganti</button>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2">
+                            <input value={indivPhone} onChange={e => setIndivPhone(e.target.value)} placeholder="No. telepon (opsional)"
+                              className="w-full px-3 py-2.5 border border-gray-100 rounded-xl font-bold text-[11px] text-raden-green outline-none focus:border-raden-gold bg-gray-50" />
+                            <input value={indivAddress} onChange={e => setIndivAddress(e.target.value)} placeholder="Alamat (opsional)"
+                              className="w-full px-3 py-2.5 border border-gray-100 rounded-xl font-bold text-[11px] text-raden-green outline-none focus:border-raden-gold bg-gray-50" />
+                          </div>
+                        )}
+                      </div>
                     ) : (
                     <div className="flex gap-3 relative">
                       <div className="flex-1 relative">
@@ -694,6 +746,12 @@ export default function OrdersPage() {
                         </button>
                       )}
                     </div>
+                    )}
+                    {newOrder.customerId && selectedCustomer && (selectedCustomer.phone || selectedCustomer.address) && (
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 px-1 text-[10px] font-bold text-gray-500">
+                        {selectedCustomer.phone && <span>📞 {selectedCustomer.phone}</span>}
+                        {selectedCustomer.address && <span>📍 {selectedCustomer.address}</span>}
+                      </div>
                     )}
                   </div>
                   <div>
