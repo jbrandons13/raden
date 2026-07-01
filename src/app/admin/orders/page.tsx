@@ -40,6 +40,7 @@ export default function OrdersPage() {
   const [customerSearch, setCustomerSearch] = useState('');
   const [indivPhone, setIndivPhone] = useState('');
   const [indivAddress, setIndivAddress] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0); // trigger refresh box Penjualan Toko
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [orderToComplete, setOrderToComplete] = useState<string | null>(null);
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
@@ -97,6 +98,7 @@ export default function OrdersPage() {
       if (e.message.includes("Timeout")) alert(e.message);
     } finally {
       setLoading(false);
+      setRefreshKey((k) => k + 1);
     }
   };
 
@@ -301,7 +303,7 @@ export default function OrdersPage() {
         if (se) throw se;
         if (!si?.ok) throw new Error('Gagal simpan item.');
       } else {
-        const { data: ord, error: oe } = await supabase.from('orders').insert([{ ...header, status: 'Draft' }]).select().single();
+        const { data: ord, error: oe } = await supabase.from('orders').insert([{ ...header, status: 'Draft', source: 'admin' }]).select().single();
         if (oe) throw oe;
         const rows = itemsToInsert.map(item => ({ ...item, order_id: ord.id }));
         const { error: ie } = await supabase.from('order_items').insert(rows);
@@ -343,9 +345,10 @@ export default function OrdersPage() {
   ).slice(0, 6);
   const selectedCustomer = customers.find(c => c.id === newOrder.customerId);
 
-  // Pesanan = distribution only (branch/agen). Retail/kasir (eceran/online) lives in /admin/kasir.
+  // List utama = semua order KECUALI penjualan kasir POS (source='kasir').
+  // Order eceran yang dibuat di /admin (source='admin') ikut di sini, seperti branch/agen.
   const filteredOrders = orders.filter(o =>
-    o.channel !== 'eceran' && o.channel !== 'online' &&
+    o.source !== 'kasir' &&
     (activeTab === 'active' ? o.status !== 'Selesai' : o.status === 'Selesai'));
 
   // Group the visible orders by date (newest first) for the history view.
@@ -491,7 +494,14 @@ export default function OrdersPage() {
         <button onClick={() => setActiveTab('history')} className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'history' ? 'bg-raden-green text-white shadow-md' : 'text-gray-400'}`}>Riwayat</button>
       </div>
 
-      {activeTab === 'history' && <PenjualanTokoBox />}
+      {activeTab === 'history' && (
+        <PenjualanTokoBox
+          onEdit={handleEditClick}
+          onDelete={(o: any) => setOrderToDelete(o.id)}
+          onPrint={handleDispatchPreview}
+          refreshKey={refreshKey}
+        />
+      )}
 
       <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-sm border border-gray-100 relative min-h-[400px]">
         {loading && (
@@ -662,7 +672,7 @@ export default function OrdersPage() {
                         </div>
                         {newOrder.customerId ? (
                           <button type="button" onClick={() => setNewOrder({ ...newOrder, customerId: '' })}
-                            className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">✓ Pelanggan tersimpan · ganti</button>
+                            className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">✓ Pakai pelanggan tersimpan · klik untuk ganti</button>
                         ) : (
                           <div className="grid grid-cols-2 gap-2">
                             <input value={indivPhone} onChange={e => setIndivPhone(e.target.value)} placeholder="No. telepon (opsional)"

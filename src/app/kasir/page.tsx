@@ -89,6 +89,7 @@ export default function KasirPage() {
         status: 'Selesai',
         total_revenue: total,
         payment_method: payment,
+        source: 'kasir',
       }).select('id').single();
       if (error) throw error;
       const { error: itErr } = await supabase.from('order_items').insert(

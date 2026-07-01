@@ -3,16 +3,22 @@
 // Collapsible "Penjualan Toko (Kasir)" box — retail (eceran/online) sales grouped
 // per day. Lives inside the Pesanan → Riwayat tab (not a separate page).
 import React, { useState, useEffect, useMemo } from 'react';
-import { Store, Loader2, ChevronDown, Clock } from 'lucide-react';
+import { Store, Loader2, ChevronDown, Clock, Edit3, Trash2, Printer } from 'lucide-react';
 import { fetchAllRows } from '@/lib/fetchAll';
 import ExportExcelButton from '@/components/ExportExcelButton';
 import { exportWorkbook, CURRENCY_FMT, todayStamp } from '@/lib/exportExcel';
 
-type Item = { qty: number | null; products: { name: string | null } | null };
+type Item = { qty: number | null; variant?: string | null; product_id?: string; products: { name: string | null; sort_order?: number; price?: number } | null };
 type Order = {
-  id: string; channel: string | null; customer_name: string | null; customers: { name: string | null } | null;
-  order_date: string | null; created_at: string | null; total_revenue: number | null; payment_method: string | null;
+  id: string; channel: string | null; customer_id?: string | null; customer_name: string | null; customers: { name: string | null } | null;
+  order_date: string | null; created_at: string | null; total_revenue: number | null; payment_method: string | null; status?: string | null; source?: string | null;
   order_items: Item[] | null;
+};
+type Props = {
+  onEdit?: (order: Order) => void;
+  onDelete?: (order: Order) => void;
+  onPrint?: (order: Order) => void;
+  refreshKey?: number;
 };
 
 const nf = (n: number) => 'NT$ ' + Math.round(n).toLocaleString('zh-TW');
@@ -36,7 +42,7 @@ function rangeFor(preset: string) {
   return { start: fmt(s), end: fmt(today) };
 }
 
-export default function PenjualanTokoBox() {
+export default function PenjualanTokoBox({ onEdit, onDelete, onPrint, refreshKey }: Props) {
   const [open, setOpen] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,15 +56,15 @@ export default function PenjualanTokoBox() {
       try {
         const data = await fetchAllRows<Order>(
           'orders',
-          'id, channel, customer_name, customers(name), order_date, created_at, total_revenue, payment_method, order_items(qty, products(name))',
-          (q) => q.in('channel', ['eceran', 'online']).gte('order_date', start).lte('order_date', end).order('created_at', { ascending: false }),
+          'id, channel, customer_id, customer_name, customers(name), order_date, created_at, total_revenue, payment_method, status, source, order_items(qty, variant, product_id, products(name, sort_order, price, price_agent, price_branch))',
+          (q) => q.eq('source', 'kasir').gte('order_date', start).lte('order_date', end).order('created_at', { ascending: false }),
         );
         if (!cancelled) setOrders(data);
       } catch (e) { console.error(e); if (!cancelled) setOrders([]); }
       finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [start, end]);
+  }, [start, end, refreshKey]);
 
   const { days, totalOmzet, totalTrx } = useMemo(() => {
     const map = new Map<string, { date: string; orders: Order[]; total: number }>();
@@ -153,6 +159,13 @@ export default function PenjualanTokoBox() {
                           {itemsSummary(o) && <p className="text-[10px] text-gray-400 truncate">{itemsSummary(o)}</p>}
                         </div>
                         <p className="font-black text-raden-green text-sm shrink-0 tabular-nums">{nf(Number(o.total_revenue || 0))}</p>
+                        {(onEdit || onDelete || onPrint) && (
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            {onPrint && <button onClick={() => onPrint(o)} title="Print" className="p-1.5 text-gray-300 hover:text-raden-green rounded-lg transition-colors"><Printer size={13} /></button>}
+                            {onEdit && <button onClick={() => onEdit(o)} title="Edit" className="p-1.5 text-gray-300 hover:text-raden-gold rounded-lg transition-colors"><Edit3 size={13} /></button>}
+                            {onDelete && <button onClick={() => onDelete(o)} title="Hapus" className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={13} /></button>}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
