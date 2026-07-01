@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, ClipboardList, Calendar, Users, ShoppingCart, Plus, Search, Edit3, Trash2, Printer, Check, X, Loader2, Receipt, ArrowRight, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Package, ClipboardList, Calendar, Users, ShoppingCart, Plus, Search, Edit3, Trash2, Printer, Check, X, Loader2, Receipt, ArrowRight, CheckCircle2, ChevronDown, LayoutList } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import PenjualanTokoBox from '@/components/PenjualanTokoBox';
+import OrderTemplateManager from './_components/OrderTemplateManager';
 import ExportExcelButton from '@/components/ExportExcelButton';
 import { exportWorkbook, CURRENCY_FMT, todayStamp } from '@/lib/exportExcel';
 import { fetchAllRows } from '@/lib/fetchAll';
@@ -46,6 +47,32 @@ export default function OrdersPage() {
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
   const [isFetchingItems, setIsFetchingItems] = useState(false);
   const [expandedOrderItem, setExpandedOrderItem] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [showTemplateManager, setShowTemplateManager] = useState(false);
+
+  const fetchTemplates = async () => {
+    const { data } = await supabase.from('order_templates').select('id, name, order_template_items(product_id, qty, variant)').order('name');
+    setTemplates(data || []);
+  };
+
+  // Pakai Template — tumpuk (accumulate) produk+jumlah template ke order yang lagi dibuat.
+  const applyTemplate = (tid: string) => {
+    const t = templates.find((x) => x.id === tid);
+    if (!t) return;
+    setNewOrder((prev) => {
+      const items = { ...prev.items };
+      const variants = { ...prev.variants };
+      (t.order_template_items || []).forEach((it: any) => {
+        const q = Number(it.qty) || 0;
+        if (q <= 0 || !it.product_id) return;
+        items[it.product_id] = (items[it.product_id] || 0) + q;
+        if (it.variant) {
+          variants[it.product_id] = { ...(variants[it.product_id] || {}), [it.variant]: (variants[it.product_id]?.[it.variant] || 0) + q };
+        }
+      });
+      return { ...prev, items, variants };
+    });
+  };
 
   const fetchData = async () => {
     try {
@@ -104,6 +131,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchData();
+    fetchTemplates();
     const channel = supabase.channel('orders-sync-v11')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pos_sections' }, () => fetchData())
@@ -483,6 +511,9 @@ export default function OrdersPage() {
             label="Export Excel"
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-raden-green/20 text-raden-green px-5 py-3.5 sm:py-3 rounded-2xl font-black shadow-sm active:scale-95 transition-all text-[11px] sm:text-xs uppercase tracking-widest disabled:opacity-50"
           />
+          <button onClick={() => setShowTemplateManager(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-raden-green/20 text-raden-green px-5 py-3.5 sm:py-3 rounded-2xl font-black shadow-sm active:scale-95 transition-all text-[11px] sm:text-xs uppercase tracking-widest">
+            <LayoutList size={18} /> Template
+          </button>
           <button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-gold text-white px-5 py-3.5 sm:py-3 rounded-2xl font-black shadow-lg active:scale-95 transition-all text-[11px] sm:text-xs uppercase tracking-widest">
             <Plus size={18} /> Tambah Pesanan
           </button>
@@ -633,7 +664,20 @@ export default function OrdersPage() {
                   <div className="h-4 w-[1px] bg-gray-200 hidden sm:block" />
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] hidden sm:block">POS Dashboard</p>
                 </div>
-                <button onClick={() => { setShowAddModal(false); setIsEditing(false); setEditingOrderId(null); setNewOrder({customerId: '', customerName: '', mode: 'partner', date: new Date().toISOString().split('T')[0], items: {}, variants: {}}); setCustomerSearch(''); }} className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-400"><X /></button>
+                <div className="flex items-center gap-2">
+                  {!isEditing && templates.length > 0 && (
+                    <div className="relative">
+                      <LayoutList size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-raden-gold pointer-events-none" />
+                      <select value="" onChange={(e) => { if (e.target.value) applyTemplate(e.target.value); e.target.value = ''; }}
+                        className="appearance-none pl-8 pr-8 py-2.5 bg-raden-gold/10 border border-raden-gold/30 rounded-xl font-black text-[10px] uppercase tracking-widest text-raden-green outline-none cursor-pointer focus:ring-2 focus:ring-raden-gold/30">
+                        <option value="">Pakai Template…</option>
+                        {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                      <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-raden-gold pointer-events-none" />
+                    </div>
+                  )}
+                  <button onClick={() => { setShowAddModal(false); setIsEditing(false); setEditingOrderId(null); setNewOrder({customerId: '', customerName: '', mode: 'partner', date: new Date().toISOString().split('T')[0], items: {}, variants: {}}); setCustomerSearch(''); }} className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-400"><X /></button>
+                </div>
               </div>
 
               {/* Compact Selection Bar */}
@@ -1100,6 +1144,13 @@ export default function OrdersPage() {
           </div>
         )}
       </AnimatePresence>
+
+      <OrderTemplateManager
+        show={showTemplateManager}
+        onClose={() => setShowTemplateManager(false)}
+        products={products}
+        onChanged={fetchTemplates}
+      />
     </div>
   );
 }
