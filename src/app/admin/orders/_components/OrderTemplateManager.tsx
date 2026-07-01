@@ -1,140 +1,290 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { LayoutList, Plus, X, Trash2, Edit3, Check, Loader2, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
+import { Plus, X, Trash2, Edit3, Search, LayoutList, Check, AlertCircle, GripVertical } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types/raden';
 
-type TItem = { id: string; product_id: string; qty: number };
-type Template = { id: string; name: string; order_template_items: TItem[] };
-type EditState = { id?: string; name: string; lines: { product_id: string; qty: string }[] };
+type TItem = { id: string; template_id: string; product_id: string; qty: number; sort_order: number };
+type Template = { id: string; name: string; items: TItem[] };
 type Props = { show: boolean; onClose: () => void; products: Product[]; onChanged?: () => void };
+
+// One draggable product row inside a template column. Own drag controls so the
+// qty input stays typeable — only the grip handle starts a drag.
+function TemplateItemRow({ item, product, onQtySave, onRemove }: {
+  item: TItem; product?: Product; onQtySave: (id: string, qty: number) => void; onRemove: (id: string) => void;
+}) {
+  const controls = useDragControls();
+  const [qtyStr, setQtyStr] = useState(String(item.qty));
+  useEffect(() => { setQtyStr(String(item.qty)); }, [item.qty]);
+
+  const commit = () => {
+    const n = Math.max(1, Math.floor(Number(qtyStr) || 1));
+    setQtyStr(String(n));
+    if (n !== item.qty) onQtySave(item.id, n);
+  };
+
+  return (
+    <Reorder.Item
+      value={item}
+      dragListener={false}
+      dragControls={controls}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      whileDrag={{ scale: 1.04, boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', zIndex: 50 }}
+      transition={{ duration: 0.2, type: 'spring', stiffness: 300, damping: 30 }}
+      className="group flex items-center gap-2 p-2.5 bg-white border border-gray-100 rounded-xl hover:border-raden-gold/30 hover:shadow-sm transition-shadow list-none"
+    >
+      <button onPointerDown={(e) => controls.start(e)} className="cursor-grab active:cursor-grabbing text-gray-300 group-hover:text-raden-gold transition-colors shrink-0 touch-none">
+        <GripVertical size={14} />
+      </button>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-black text-raden-green truncate">{product?.name || '—'}</p>
+        <p className="text-[9px] text-gray-400 font-bold uppercase truncate">{product?.category}</p>
+      </div>
+      <input
+        type="number" min="1" value={qtyStr}
+        onChange={(e) => setQtyStr(e.target.value)}
+        onFocus={(e) => e.target.select()}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        className="w-14 py-1.5 text-center rounded-lg bg-gray-50 border border-gray-200 font-black text-xs text-raden-green outline-none focus:border-raden-gold focus:bg-white transition-colors shrink-0"
+      />
+      <button onClick={() => onRemove(item.id)} className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all shrink-0">
+        <X size={14} />
+      </button>
+    </Reorder.Item>
+  );
+}
 
 export default function OrderTemplateManager({ show, onClose, products, onChanged }: Props) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<EditState | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [toDelete, setToDelete] = useState<Template | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [showProductPicker, setShowProductPicker] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [editTitle, setEditTitle] = useState<{ id: string; name: string } | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [pendingSync, setPendingSync] = useState<{ templateId: string; items: TItem[] } | null>(null);
 
-  const fetchTemplates = useCallback(async () => {
+  useEffect(() => { if (show) fetchTemplates(); }, [show]);
+
+  // Debounced reorder sync (mirrors the Susunan Order board).
+  useEffect(() => {
+    if (!pendingSync) return;
+    const timer = setTimeout(async () => {
+      const rows = pendingSync.items.map((it, index) => ({
+        id: it.id, template_id: pendingSync.templateId, product_id: it.product_id, qty: it.qty, sort_order: index,
+      }));
+      await supabase.from('order_template_items').upsert(rows);
+      setPendingSync(null);
+      onChanged?.();
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [pendingSync]);
+
+  const fetchTemplates = async () => {
     setLoading(true);
-    const { data } = await supabase.from('order_templates').select('id, name, order_template_items(id, product_id, qty)').order('name');
-    setTemplates((data as any) || []);
-    setLoading(false);
-  }, []);
-  useEffect(() => { if (show) { fetchTemplates(); setEditing(null); } }, [show, fetchTemplates]);
-
-  const pName = (id: string) => products.find((p) => p.id === id)?.name || 'Produk';
-
-  const openNew = () => setEditing({ name: '', lines: [{ product_id: '', qty: '' }] });
-  const openEdit = (t: Template) => setEditing({ id: t.id, name: t.name, lines: t.order_template_items.length ? t.order_template_items.map((i) => ({ product_id: i.product_id, qty: String(i.qty) })) : [{ product_id: '', qty: '' }] });
-
-  const setLine = (i: number, k: 'product_id' | 'qty', v: string) => setEditing((e) => (e ? { ...e, lines: e.lines.map((l, idx) => (idx === i ? { ...l, [k]: v } : l)) } : e));
-  const addLine = () => setEditing((e) => (e ? { ...e, lines: [...e.lines, { product_id: '', qty: '' }] } : e));
-  const rmLine = (i: number) => setEditing((e) => (e ? { ...e, lines: e.lines.length === 1 ? e.lines : e.lines.filter((_, idx) => idx !== i) } : e));
-
-  const save = async () => {
-    if (!editing) return;
-    if (!editing.name.trim()) return alert('Isi nama template.');
-    const items = editing.lines.map((l) => ({ product_id: l.product_id, qty: Math.floor(Number(l.qty) || 0) })).filter((l) => l.product_id && l.qty > 0);
-    if (items.length === 0) return alert('Tambah minimal 1 produk dengan jumlah > 0.');
-    setSaving(true);
     try {
-      let tid = editing.id;
-      if (tid) {
-        await supabase.from('order_templates').update({ name: editing.name.trim() }).eq('id', tid);
-        await supabase.from('order_template_items').delete().eq('template_id', tid);
-      } else {
-        const { data, error } = await supabase.from('order_templates').insert({ name: editing.name.trim() }).select('id').single();
-        if (error) throw error; tid = data.id;
-      }
-      const { error: ie } = await supabase.from('order_template_items').insert(items.map((i) => ({ template_id: tid, product_id: i.product_id, qty: i.qty })));
-      if (ie) throw ie;
-      setEditing(null); await fetchTemplates(); onChanged?.();
-    } catch (e: any) { alert(e.message); } finally { setSaving(false); }
+      const { data } = await supabase.from('order_templates').select('id, name, items:order_template_items(id, template_id, product_id, qty, sort_order)').order('created_at');
+      setTemplates((data || []).map((t: any) => ({
+        ...t, items: (t.items || []).slice().sort((a: TItem, b: TItem) => (a.sort_order || 0) - (b.sort_order || 0)),
+      })));
+    } catch (e: any) { alert('Gagal memuat template: ' + e.message); }
+    finally { setLoading(false); }
+  };
+  const refresh = async () => { await fetchTemplates(); onChanged?.(); };
+
+  const addTemplate = async () => {
+    if (!newName.trim()) return;
+    const { error } = await supabase.from('order_templates').insert({ name: newName.trim() });
+    if (error) return alert('Gagal tambah template: ' + error.message);
+    setNewName(''); setIsAdding(false); refresh();
   };
 
-  const del = async () => {
-    if (!toDelete) return;
-    await supabase.from('order_templates').delete().eq('id', toDelete.id);
-    setToDelete(null); await fetchTemplates(); onChanged?.();
+  const deleteTemplate = async (id: string) => {
+    setLoading(true);
+    const { error } = await supabase.from('order_templates').delete().eq('id', id); // items cascade
+    setConfirmDelete(null);
+    if (error) { alert('Gagal hapus template: ' + error.message); setLoading(false); return; }
+    refresh();
+  };
+
+  const updateTitle = async () => {
+    if (!editTitle || !editTitle.name.trim()) return;
+    await supabase.from('order_templates').update({ name: editTitle.name.trim() }).eq('id', editTitle.id);
+    setEditTitle(null); refresh();
+  };
+
+  const addProduct = async (productId: string, templateId: string) => {
+    const t = templates.find((x) => x.id === templateId);
+    if (t?.items.some((it) => it.product_id === productId)) { alert('Produk ini sudah ada di template ini.'); return; }
+    await supabase.from('order_template_items').insert({ template_id: templateId, product_id: productId, qty: 1, sort_order: t?.items.length || 0 });
+    setShowProductPicker(null); setSearchTerm(''); refresh();
+  };
+
+  const removeItem = async (itemId: string) => {
+    await supabase.from('order_template_items').delete().eq('id', itemId);
+    refresh();
+  };
+
+  const saveQty = async (itemId: string, qty: number) => {
+    setTemplates((prev) => prev.map((t) => ({ ...t, items: t.items.map((it) => (it.id === itemId ? { ...it, qty } : it)) })));
+    await supabase.from('order_template_items').update({ qty }).eq('id', itemId);
+    onChanged?.();
+  };
+
+  const reorder = (templateId: string, newItems: TItem[]) => {
+    setTemplates((prev) => prev.map((t) => (t.id === templateId ? { ...t, items: newItems } : t)));
+    setPendingSync({ templateId, items: newItems });
   };
 
   if (!show) return null;
-  const inputCls = 'w-full p-3.5 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-raden-gold text-sm';
+
+  const picker = templates.find((t) => t.id === showProductPicker);
+  const filteredProducts = products.filter((p) => {
+    const inThis = picker?.items.some((it) => it.product_id === p.id);
+    const match = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || (p.category || '').toLowerCase().includes(searchTerm.toLowerCase());
+    return match && !inThis;
+  });
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-      <div onClick={onClose} className="absolute inset-0 bg-raden-green/70 backdrop-blur-md" />
-      <div className="relative bg-white rounded-[2.5rem] w-full max-w-2xl max-h-[88vh] shadow-2xl flex flex-col overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          <h2 className="text-xl font-black text-raden-green uppercase tracking-tight flex items-center gap-2"><LayoutList className="text-raden-gold" size={22} /> Template Pesanan</h2>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600"><X size={22} /></button>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-raden-green/80 backdrop-blur-md" />
+
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white rounded-[3rem] w-full max-w-[95vw] h-[90vh] shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="p-8 border-b flex justify-between items-center bg-gray-50/50">
+          <div>
+            <h2 className="text-3xl font-black text-raden-green tracking-tighter uppercase flex items-center gap-3">
+              <LayoutList className="text-raden-gold" size={32} /> Template Pesanan
+            </h2>
+            <p className="text-gray-400 text-sm font-bold uppercase tracking-widest mt-1">Preset produk + jumlah buat auto-isi pesanan baru.</p>
+          </div>
+          <div className="flex gap-4 items-center">
+            {isAdding ? (
+              <div className="flex gap-2 items-center bg-white border border-gray-200 p-1.5 rounded-2xl shadow-inner">
+                <input autoFocus placeholder="Nama Template..." value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTemplate()} className="pl-4 pr-2 py-1.5 bg-transparent font-bold text-xs outline-none w-44" />
+                <button onClick={addTemplate} className="p-2 bg-raden-green text-white rounded-xl shadow-md hover:scale-105 transition-all"><Check size={16} /></button>
+                <button onClick={() => { setIsAdding(false); setNewName(''); }} className="p-2 text-gray-400 hover:text-red-500 transition-all"><X size={16} /></button>
+              </div>
+            ) : (
+              <button onClick={() => setIsAdding(true)} className="flex items-center gap-2 bg-raden-green text-white px-6 py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:scale-105 transition-all">
+                <Plus size={18} /> Tambah Template
+              </button>
+            )}
+            <button onClick={onClose} className="p-3 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:bg-gray-100 transition-all"><X size={24} /></button>
+          </div>
         </div>
 
-        {editing ? (
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            <button onClick={() => setEditing(null)} className="text-gray-400 hover:text-raden-green text-xs font-black uppercase tracking-widest flex items-center gap-1.5"><ArrowLeft size={14} /> Daftar template</button>
-            <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama Template</label>
-              <input value={editing.name} autoFocus onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="cth. Pesanan Rutin Branch A" className={inputCls} />
-            </div>
-            <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Produk & Jumlah</label>
-              <div className="space-y-2">
-                {editing.lines.map((l, i) => (
-                  <div key={i} className="flex gap-2">
-                    <select value={l.product_id} onChange={(e) => setLine(i, 'product_id', e.target.value)} className="flex-1 min-w-0 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm outline-none focus:ring-2 focus:ring-raden-gold appearance-none">
-                      <option value="">— Produk —</option>
-                      {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                    <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="qty" className="w-20 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-raden-gold" />
-                    <button onClick={() => rmLine(i)} className="p-2 text-gray-300 hover:text-red-500 shrink-0"><Trash2 size={16} /></button>
-                  </div>
-                ))}
-              </div>
-              <button onClick={addLine} className="mt-2 text-raden-gold font-black text-[11px] uppercase tracking-widest flex items-center gap-1"><Plus size={14} /> Tambah Produk</button>
-            </div>
-            <button onClick={save} disabled={saving} className="w-full py-4 bg-raden-green text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl flex items-center justify-center gap-2 disabled:opacity-50">
-              {saving ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />} Simpan Template
-            </button>
-          </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto p-6 space-y-3">
-            <button onClick={openNew} className="w-full py-3.5 bg-raden-gold text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow flex items-center justify-center gap-2"><Plus size={16} /> Tambah Template</button>
-            {loading ? (
-              <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-raden-gold" /></div>
-            ) : templates.length === 0 ? (
-              <p className="text-center text-gray-300 text-xs py-12 font-bold italic">Belum ada template. Klik "Tambah Template" untuk mulai.</p>
-            ) : templates.map((t) => (
-              <div key={t.id} className="flex items-center gap-3 p-4 bg-gray-50/70 rounded-2xl border border-gray-100">
-                <div className="min-w-0 flex-1">
-                  <p className="font-black text-raden-green text-sm truncate">{t.name}</p>
-                  <p className="text-[10px] text-gray-400 font-bold truncate">{t.order_template_items.length} produk · {t.order_template_items.map((i) => `${pName(i.product_id)}${i.qty > 1 ? ` ×${i.qty}` : ''}`).join(', ')}</p>
+        {/* Columns */}
+        <div className="flex-1 overflow-x-auto p-8 bg-gray-50/30">
+          <div className="flex items-start gap-6 h-full min-w-max">
+            {templates.map((t) => (
+              <div key={t.id} className="w-80 flex flex-col bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden h-full">
+                {/* Column header */}
+                <div className="p-5 border-b bg-gray-50 flex justify-between items-center">
+                  {editTitle?.id === t.id ? (
+                    <div className="flex gap-2 w-full">
+                      <input autoFocus value={editTitle.name} onChange={(e) => setEditTitle({ ...editTitle, name: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && updateTitle()} className="flex-1 p-2 bg-white border rounded-xl font-black text-xs outline-none" />
+                      <button onClick={updateTitle} className="p-2 bg-raden-green text-white rounded-xl"><Check size={14} /></button>
+                    </div>
+                  ) : (
+                    <>
+                      <h3 className="font-black text-raden-green uppercase tracking-tight truncate flex-1 pr-2">{t.name}</h3>
+                      <div className="flex gap-1">
+                        <button onClick={() => setEditTitle({ id: t.id, name: t.name })} className="p-1.5 text-gray-300 hover:text-raden-gold hover:bg-white rounded-lg transition-all"><Edit3 size={14} /></button>
+                        <button onClick={() => setConfirmDelete(t.id)} className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-white rounded-lg transition-all"><Trash2 size={14} /></button>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <button onClick={() => openEdit(t)} className="p-2 text-gray-400 hover:text-raden-gold rounded-lg shrink-0"><Edit3 size={16} /></button>
-                <button onClick={() => setToDelete(t)} className="p-2 text-gray-400 hover:text-red-500 rounded-lg shrink-0"><Trash2 size={16} /></button>
+
+                {/* Items */}
+                <div className="flex-1 overflow-y-auto p-4 no-scrollbar bg-gray-50/20">
+                  <Reorder.Group axis="y" values={t.items} onReorder={(ni) => reorder(t.id, ni)} className="space-y-2">
+                    {t.items.map((item) => (
+                      <TemplateItemRow key={item.id} item={item} product={products.find((p) => p.id === item.product_id)} onQtySave={saveQty} onRemove={removeItem} />
+                    ))}
+                  </Reorder.Group>
+                  {t.items.length === 0 && <div className="py-10 text-center text-gray-300 italic text-xs">Kosong.</div>}
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 bg-gray-50/80 border-t border-gray-100">
+                  <button onClick={() => setShowProductPicker(t.id)} className="w-full py-4 bg-raden-gold text-raden-green border border-raden-gold/30 rounded-2xl font-black text-[11px] uppercase tracking-[0.1em] shadow-sm hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 group">
+                    <div className="bg-white rounded-lg p-1 shadow-sm group-hover:rotate-90 transition-transform"><Plus size={14} className="text-raden-gold" /></div>
+                    Isi Produk Ke {t.name}
+                  </button>
+                </div>
               </div>
             ))}
-          </div>
-        )}
-      </div>
 
-      {toDelete && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
-          <div onClick={() => setToDelete(null)} className="absolute inset-0 bg-red-900/20 backdrop-blur-sm" />
-          <div className="relative bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl text-center">
-            <div className="w-14 h-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 size={26} /></div>
-            <h4 className="text-lg font-black text-raden-green mb-1">Hapus template ini?</h4>
-            <p className="text-sm text-gray-400 font-medium mb-6"><b className="text-raden-green">{toDelete.name}</b> akan dihapus.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setToDelete(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest text-[10px]">Batal</button>
-              <button onClick={del} className="flex-1 py-3.5 bg-red-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px]">Hapus</button>
-            </div>
+            {templates.length === 0 && !loading && (
+              <div className="flex-1 flex flex-col items-center justify-center text-gray-300 h-full min-w-[60vw]">
+                <AlertCircle size={48} className="mb-4 opacity-20" />
+                <p className="font-black uppercase tracking-tighter text-xl">Belum ada template.</p>
+                <p className="text-xs font-bold mt-2">Klik "Tambah Template" untuk mulai bikin preset pesanan.</p>
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </motion.div>
+
+      {/* Product picker */}
+      <AnimatePresence>
+        {showProductPicker && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowProductPicker(null)} className="absolute inset-0 bg-raden-gold/10 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white rounded-[2.5rem] p-8 w-full max-w-lg shadow-2xl h-[70vh] flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h4 className="text-xl font-black text-raden-green uppercase tracking-tighter">Pilih Produk</h4>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">ke: {picker?.name}</p>
+                </div>
+                <button onClick={() => setShowProductPicker(null)} className="p-2 text-gray-400"><X /></button>
+              </div>
+              <div className="relative mb-6">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                <input autoFocus placeholder="Cari produk..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-raden-gold/10" />
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                {filteredProducts.map((p) => (
+                  <button key={p.id} onClick={() => addProduct(p.id, showProductPicker)} className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-raden-gold/5 border border-transparent hover:border-raden-gold/20 rounded-2xl transition-all group">
+                    <div className="text-left">
+                      <p className="font-black text-raden-green group-hover:text-raden-gold transition-colors">{p.name}</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{p.category}</p>
+                    </div>
+                    <Check className="text-raden-gold opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                ))}
+                {filteredProducts.length === 0 && <div className="text-center py-10 text-gray-300 italic text-sm">Tidak ada produk tersedia.</div>}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete confirm */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setConfirmDelete(null)} className="absolute inset-0 bg-red-900/20 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl text-center">
+              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 size={32} className="text-red-500" /></div>
+              <h4 className="text-xl font-black text-raden-green uppercase mb-2">Hapus Template Ini?</h4>
+              <p className="text-gray-400 text-sm font-bold mb-8">Template beserta daftar produknya akan dihapus. Data produk asli tidak terpengaruh.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmDelete(null)} className="flex-1 py-4 bg-gray-100 text-gray-400 rounded-2xl font-black uppercase text-xs tracking-widest">Batal</button>
+                <button onClick={() => deleteTemplate(confirmDelete)} disabled={loading} className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-red-200 disabled:opacity-50">{loading ? 'Menghapus...' : 'Ya, Hapus'}</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
