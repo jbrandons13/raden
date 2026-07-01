@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Search, Plus, Minus, Trash2, X, LogOut, ShoppingBag, Check } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { homeFor } from '@/lib/auth';
 
 type Product = { id: string; name: string; price: number | null; options: string[] | null; category: string | null };
 type Line = { key: string; product_id: string; name: string; price: number; variant: string | null; qty: number };
@@ -13,7 +15,12 @@ const nf = (n: number) => 'NT$ ' + Math.round(n).toLocaleString('zh-TW');
 const today = () => new Date().toLocaleDateString('en-CA');
 
 export default function KasirPage() {
-  const { isAuthenticated, isInitialLoading, username, logout } = useAuth();
+  const { isAuthenticated, isInitialLoading, role, username, logout } = useAuth();
+  const router = useRouter();
+  const allowed = role === 'kasir' || role === 'admin';
+  useEffect(() => {
+    if (!isInitialLoading && isAuthenticated && role && !allowed) router.replace(homeFor(role));
+  }, [isInitialLoading, isAuthenticated, role, allowed, router]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -98,7 +105,7 @@ export default function KasirPage() {
     }
   };
 
-  if (isInitialLoading || !isAuthenticated) {
+  if (isInitialLoading || !isAuthenticated || !allowed) {
     return (
       <div className="min-h-screen bg-raden-green flex items-center justify-center text-raden-gold">
         <Loader2 className="w-10 h-10 animate-spin" />

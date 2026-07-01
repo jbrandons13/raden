@@ -19,6 +19,7 @@ _Status:_ ☐ belum · 🔄 jalan · ✅ selesai _· Sumber: meeting supervisor 
 
 ## C. POS Kasir ✅
 - ✅ **(6)** Kasir Cash: **box uang diterima** + tombol Pas & +100/+500/+1000 → **kembalian otomatis**. _(verified)_
+- ✅ **Flow kasir:** role **`kasir`** khusus (login akun kasir → langsung `/kasir`, role-based redirect) + RLS minimal (baca produk + insert order eceran). Akun 'kasir' di-convert dari staff. Staff/admin lain di-gate dari /kasir. Migration `20260624000000_kasir_role.sql` live. _(verified E2E)_
 
 ## D. Template Pesanan 🆕
 - ☐ **(7)** Template order **ala "Susunan Order"** (set kolom + isi sendiri) → saat buat order baru ada **dropdown "Pakai Template"** untuk auto-isi.
