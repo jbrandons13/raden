@@ -51,26 +51,24 @@ export default function OrdersPage() {
   const [showTemplateManager, setShowTemplateManager] = useState(false);
 
   const fetchTemplates = async () => {
-    const { data } = await supabase.from('order_templates').select('id, name, order_template_items(product_id, qty, variant)').order('name');
+    const { data } = await supabase.from('order_templates').select('id, name, sections:order_template_sections(items:order_template_items(product_id, qty))').order('created_at');
     setTemplates(data || []);
   };
 
-  // Pakai Template — tumpuk (accumulate) produk+jumlah template ke order yang lagi dibuat.
+  // Pakai Template — ratakan semua kolom template, tumpuk (accumulate) produk+jumlah
+  // ke order yang lagi dibuat.
   const applyTemplate = (tid: string) => {
     const t = templates.find((x) => x.id === tid);
     if (!t) return;
+    const allItems = (t.sections || []).flatMap((s: any) => s.items || []);
     setNewOrder((prev) => {
       const items = { ...prev.items };
-      const variants = { ...prev.variants };
-      (t.order_template_items || []).forEach((it: any) => {
+      allItems.forEach((it: any) => {
         const q = Number(it.qty) || 0;
         if (q <= 0 || !it.product_id) return;
         items[it.product_id] = (items[it.product_id] || 0) + q;
-        if (it.variant) {
-          variants[it.product_id] = { ...(variants[it.product_id] || {}), [it.variant]: (variants[it.product_id]?.[it.variant] || 0) + q };
-        }
       });
-      return { ...prev, items, variants };
+      return { ...prev, items };
     });
   };
 
