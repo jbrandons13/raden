@@ -49,28 +49,16 @@ export default function OrdersPage() {
   const [expandedOrderItem, setExpandedOrderItem] = useState<string | null>(null);
   const [templates, setTemplates] = useState<any[]>([]);
   const [showTemplateManager, setShowTemplateManager] = useState(false);
+  // Pakai Template = filter kolom yang tampil di Buat Pesanan (bukan isi qty).
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
 
   const fetchTemplates = async () => {
     const { data } = await supabase.from('order_templates').select('id, name, pos_section_ids').order('created_at');
     setTemplates(data || []);
   };
 
-  // Pakai Template — masukin semua produk dari kolom (pos_section) yang dipilih
-  // template ke order (default qty 1, jumlah diedit manual). Produk ikut Susunan Order.
-  const applyTemplate = (tid: string) => {
-    const t = templates.find((x) => x.id === tid);
-    if (!t) return;
-    const pids = new Set<string>();
-    ((t.pos_section_ids as string[]) || []).forEach((sid) => {
-      const sec = posSections.find((s: any) => s.id === sid);
-      (sec?.items || []).forEach((it: any) => { if (it.product_id) pids.add(it.product_id); });
-    });
-    setNewOrder((prev) => {
-      const items = { ...prev.items };
-      pids.forEach((pid) => { if (!(items[pid] > 0)) items[pid] = 1; });
-      return { ...prev, items };
-    });
-  };
+  // Reset filter template tiap modal Buat Pesanan ditutup (biar buka lagi = semua kolom).
+  useEffect(() => { if (!showAddModal) setActiveTemplateId(null); }, [showAddModal]);
 
   const fetchData = async () => {
     try {
@@ -495,6 +483,22 @@ export default function OrdersPage() {
     ]);
   };
 
+  // Buat Pesanan — kolom yang tampil di grid. Kalau ada template aktif, cuma
+  // tampilkan kolom yang dipilih template itu; kalau nggak, tampilkan semua.
+  const activeTemplate = templates.find((t) => t.id === activeTemplateId);
+  const visibleSections = activeTemplate
+    ? posSections.filter((s: any) => ((activeTemplate.pos_section_ids as string[]) || []).includes(s.id))
+    : posSections;
+  // Item sedikit → kolom lebih lebar + kartu lebih besar.
+  const templateBig = !!activeTemplate && visibleSections.length > 0 && visibleSections.length <= 2;
+  const gridColsClass = !activeTemplate
+    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+    : visibleSections.length <= 1 ? 'grid-cols-1'
+    : visibleSections.length === 2 ? 'grid-cols-1 sm:grid-cols-2'
+    : visibleSections.length === 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+    : visibleSections.length === 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5';
+
   return (
     <div className="relative min-h-screen">
       <div className="space-y-6 print:hidden">
@@ -665,13 +669,13 @@ export default function OrdersPage() {
                 <div className="flex items-center gap-2">
                   {!isEditing && templates.length > 0 && (
                     <div className="relative">
-                      <LayoutList size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-raden-gold pointer-events-none" />
-                      <select value="" onChange={(e) => { if (e.target.value) applyTemplate(e.target.value); e.target.value = ''; }}
-                        className="appearance-none pl-8 pr-8 py-2.5 bg-raden-gold/10 border border-raden-gold/30 rounded-xl font-black text-[10px] uppercase tracking-widest text-raden-green outline-none cursor-pointer focus:ring-2 focus:ring-raden-gold/30">
-                        <option value="">Pakai Template…</option>
+                      <LayoutList size={13} className={`absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${activeTemplateId ? 'text-white' : 'text-raden-gold'}`} />
+                      <select value={activeTemplateId || ''} onChange={(e) => setActiveTemplateId(e.target.value || null)}
+                        className={`appearance-none pl-8 pr-8 py-2.5 border rounded-xl font-black text-[10px] uppercase tracking-widest outline-none cursor-pointer focus:ring-2 focus:ring-raden-gold/30 ${activeTemplateId ? 'bg-raden-gold border-raden-gold text-white' : 'bg-raden-gold/10 border-raden-gold/30 text-raden-green'}`}>
+                        <option value="">Semua Kolom</option>
                         {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                       </select>
-                      <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-raden-gold pointer-events-none" />
+                      <ChevronDown size={13} className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${activeTemplateId ? 'text-white' : 'text-raden-gold'}`} />
                     </div>
                   )}
                   <button onClick={() => { setShowAddModal(false); setIsEditing(false); setEditingOrderId(null); setNewOrder({customerId: '', customerName: '', mode: 'partner', date: new Date().toISOString().split('T')[0], items: {}, variants: {}}); setCustomerSearch(''); }} className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-400"><X /></button>
@@ -816,14 +820,21 @@ export default function OrdersPage() {
               {/* Product Grid Area */}
               <div className="flex-1 overflow-y-auto no-scrollbar pb-4">
                 {posSections.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                    {posSections.map(sec => (
+                  activeTemplate && visibleSections.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-gray-300 py-20">
+                      <ClipboardList size={44} className="mb-3 opacity-20" />
+                      <p className="font-black uppercase tracking-tight text-sm">Template ini belum punya kolom.</p>
+                      <p className="text-[11px] font-bold mt-1">Pilih "Semua Kolom" atau atur kolomnya di menu Template.</p>
+                    </div>
+                  ) : (
+                  <div className={`grid ${gridColsClass} gap-4`}>
+                    {visibleSections.map(sec => (
                       <div key={sec.id} className="flex flex-col bg-gray-50/30 rounded-2xl border border-gray-100 overflow-hidden">
                         <div className="px-4 py-3 bg-white border-b border-gray-100 flex justify-between items-center">
-                          <h3 className="text-[9px] font-black text-raden-green uppercase tracking-[0.2em]">{sec.title}</h3>
+                          <h3 className={`font-black text-raden-green uppercase tracking-[0.2em] ${templateBig ? 'text-xs' : 'text-[9px]'}`}>{sec.title}</h3>
                           <p className="text-[8px] font-bold text-gray-300">{(sec.items || []).length} Item</p>
                         </div>
-                        <div className="p-2 space-y-1.5 flex-1 min-h-[100px]">
+                        <div className={`flex-1 min-h-[100px] ${templateBig ? 'p-3 space-y-2' : 'p-2 space-y-1.5'}`}>
                           {sec.items?.map((item: any) => {
                             const p = item.products;
                             if (!p) return null;
@@ -838,13 +849,13 @@ export default function OrdersPage() {
                             const expanded = expandedOrderItem === p.id;
                             return (
                               <div key={item.id} className={`rounded-xl border transition-all ${over ? 'border-red-300 bg-red-50/40' : isSelected ? 'bg-raden-gold/10 border-raden-gold/30' : 'bg-white border-gray-50'}`}>
-                                <div className="flex items-center justify-between p-2">
+                                <div className={`flex items-center justify-between ${templateBig ? 'p-3' : 'p-2'}`}>
                                   <div className="min-w-0 flex-1 mr-2">
-                                    <p className={`text-[10px] font-black truncate ${isSelected ? 'text-raden-green' : 'text-gray-600'}`}>{p.name}</p>
+                                    <p className={`font-black truncate ${templateBig ? 'text-sm' : 'text-[10px]'} ${isSelected ? 'text-raden-green' : 'text-gray-600'}`}>{p.name}</p>
                                     {p.tracks_stock === false ? (
-                                      <p className="text-[8px] font-bold uppercase text-orange-500">Fresh · sesuai pesanan</p>
+                                      <p className={`font-bold uppercase text-orange-500 ${templateBig ? 'text-[11px]' : 'text-[8px]'}`}>Fresh · sesuai pesanan</p>
                                     ) : (
-                                      <p className={`text-[8px] font-bold uppercase ${readyStock <= 0 ? 'text-red-400' : 'text-green-500/70'}`}>R: {readyStock}</p>
+                                      <p className={`font-bold uppercase ${templateBig ? 'text-[11px]' : 'text-[8px]'} ${readyStock <= 0 ? 'text-red-400' : 'text-green-500/70'}`}>R: {readyStock}</p>
                                     )}
                                   </div>
                                   <div className="flex items-center gap-1 shrink-0">
@@ -853,7 +864,7 @@ export default function OrdersPage() {
                                         <ChevronDown size={14} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
                                       </button>
                                     )}
-                                    <input type="number" min="0" value={newOrder.items[p.id] || ''} onFocus={(e) => e.target.select()} onChange={(e) => setNewOrder({...newOrder, items: { ...newOrder.items, [p.id]: parseInt(e.target.value) || 0 }})} className={`w-10 py-1 text-center rounded-lg font-black text-[10px] outline-none border ${isSelected ? 'bg-white border-raden-gold' : 'bg-gray-50 border-transparent text-gray-400'}`} />
+                                    <input type="number" min="0" value={newOrder.items[p.id] || ''} onFocus={(e) => e.target.select()} onChange={(e) => setNewOrder({...newOrder, items: { ...newOrder.items, [p.id]: parseInt(e.target.value) || 0 }})} className={`text-center rounded-lg font-black outline-none border ${templateBig ? 'w-16 py-2 text-sm' : 'w-10 py-1 text-[10px]'} ${isSelected ? 'bg-white border-raden-gold' : 'bg-gray-50 border-transparent text-gray-400'}`} />
                                   </div>
                                 </div>
                                 {opts.length > 0 && isSelected && expanded && (
@@ -880,6 +891,7 @@ export default function OrdersPage() {
                       </div>
                     ))}
                   </div>
+                  )
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
                     {products.map(p => {
