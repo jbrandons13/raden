@@ -17,7 +17,7 @@ type FSettings = {
   company_name: string | null; contact_name: string | null; vendor_no: string | null; address: string | null; phone: string | null;
   salesperson: string | null; sales_title: string | null; delivery_method: string | null; delivery_terms: string | null; payment_terms: string | null;
 };
-type Item = { id: string; product_id: string; qty: number; price: number; frozen_products: { name: string; unit: string | null; code: string | null } | null };
+type Item = { id: string; product_id: string; qty: number; price: number; frozen_products: { name: string; unit: string | null; code: string | null; barcode: string | null } | null };
 type Alloc = { id: string; product_id: string; exp_date: string | null; qty: number; frozen_products: { name: string; unit: string | null } | null };
 type Product = { id: string; name: string; unit: string | null; code: string | null; price: number | null };
 type Line = { product_id: string; qty: string; price: string };
@@ -47,7 +47,7 @@ export default function FrozenOrderDetail() {
   const fetchAll = useCallback(async () => {
     const [o, it, al, pr, st] = await Promise.all([
       supabase.from('frozen_orders').select('id, status, order_date, is_backorder, notes, locked_at, customer_id, frozen_customers(name, phone, address, code)').eq('id', id).single(),
-      supabase.from('frozen_order_items').select('id, product_id, qty, price, frozen_products(name, unit, code)').eq('order_id', id),
+      supabase.from('frozen_order_items').select('id, product_id, qty, price, frozen_products(name, unit, code, barcode)').eq('order_id', id),
       supabase.from('frozen_allocations').select('id, product_id, exp_date, qty, frozen_products(name, unit)').eq('order_id', id),
       supabase.from('frozen_products').select('id, name, unit, code, price').order('name'),
       supabase.from('frozen_settings').select('*').limit(1).maybeSingle(),
@@ -339,6 +339,7 @@ export default function FrozenOrderDetail() {
               <thead>
                 <tr className="bg-gray-100">
                   <th className="border border-black py-1 px-1 text-center w-12">數量</th>
+                  <th className="border border-black py-1 px-1 text-left">貨號 SKU</th>
                   <th className="border border-black py-1 px-1 text-left">條碼</th>
                   <th className="border border-black py-1 px-1 text-center w-10">單位</th>
                   <th className="border border-black py-1 px-1 text-left">商品 / Produk</th>
@@ -351,6 +352,7 @@ export default function FrozenOrderDetail() {
                   <tr key={it.id}>
                     <td className="border border-black py-1 px-1 text-center">{it.qty}</td>
                     <td className="border border-black py-1 px-1">{it.frozen_products?.code || ''}</td>
+                    <td className="border border-black py-1 px-1">{it.frozen_products?.barcode || ''}</td>
                     <td className="border border-black py-1 px-1 text-center">{it.frozen_products?.unit || ''}</td>
                     <td className="border border-black py-1 px-1">{it.frozen_products?.name || pName(it.product_id)}</td>
                     <td className="border border-black py-1 px-1 text-right">{nt(it.price)}</td>

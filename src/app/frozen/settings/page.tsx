@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Loader2, Check, Building2, Truck } from 'lucide-react';
+import { Settings, Loader2, Check, Building2, Truck, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 type S = {
   id?: string;
   company_name: string; contact_name: string; vendor_no: string; address: string; phone: string;
   salesperson: string; sales_title: string; delivery_method: string; delivery_terms: string; payment_terms: string;
+  enforce_unique_code: boolean;
 };
-const EMPTY: S = { company_name: '', contact_name: '', vendor_no: '', address: '', phone: '', salesperson: '', sales_title: '', delivery_method: '', delivery_terms: '', payment_terms: '' };
+const EMPTY: S = { company_name: '', contact_name: '', vendor_no: '', address: '', phone: '', salesperson: '', sales_title: '', delivery_method: '', delivery_terms: '', payment_terms: '', enforce_unique_code: false };
 
 export default function FrozenSettingsPage() {
   const [s, setS] = useState<S>(EMPTY);
@@ -37,7 +38,8 @@ export default function FrozenSettingsPage() {
         vendor_no: clean(s.vendor_no), address: clean(s.address), phone: clean(s.phone),
         salesperson: clean(s.salesperson), sales_title: clean(s.sales_title),
         delivery_method: clean(s.delivery_method), delivery_terms: clean(s.delivery_terms),
-        payment_terms: clean(s.payment_terms), updated_at: new Date().toISOString(),
+        payment_terms: clean(s.payment_terms), enforce_unique_code: !!s.enforce_unique_code,
+        updated_at: new Date().toISOString(),
       };
       const { error: e } = s.id
         ? await supabase.from('frozen_settings').update(payload).eq('id', s.id)
@@ -83,6 +85,20 @@ export default function FrozenSettingsPage() {
           {field('Syarat Kirim', '交貨條件', 'delivery_terms')}
         </div>
         {field('Syarat Bayar', '付款條件', 'payment_terms')}
+      </div>
+
+      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 space-y-4">
+        <h3 className="text-xs font-black text-raden-green uppercase tracking-[0.2em] flex items-center gap-2"><ShieldCheck size={15} className="text-cyan-500" /> Validasi Produk</h3>
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="font-black text-raden-green text-sm">Kode / SKU tidak boleh dobel</p>
+            <p className="text-[11px] text-gray-400 font-medium mt-0.5">Kalau ada produk lain pakai Kode/SKU yang sama, produk nggak bisa disimpan.</p>
+          </div>
+          <button type="button" role="switch" aria-checked={s.enforce_unique_code} onClick={() => setS((p) => ({ ...p, enforce_unique_code: !p.enforce_unique_code }))}
+            className={`relative w-14 h-8 rounded-full transition-colors shrink-0 ${s.enforce_unique_code ? 'bg-raden-green' : 'bg-gray-200'}`}>
+            <span className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${s.enforce_unique_code ? 'translate-x-6' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {error && <p className="text-red-500 text-xs font-bold">{error}</p>}

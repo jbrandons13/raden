@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle } from 'lucide-react';
+import { Package, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle, Barcode } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-type FP = { id: string; name: string; code: string | null; unit: string | null; notes: string | null; price: number | null };
-type Form = { id?: string; name: string; code: string; unit: string; notes: string; price: string };
-const EMPTY: Form = { name: '', code: '', unit: '', notes: '', price: '' };
+type FP = { id: string; name: string; code: string | null; barcode: string | null; unit: string | null; notes: string | null; price: number | null };
+type Form = { id?: string; name: string; code: string; barcode: string; unit: string; notes: string; price: string };
+const EMPTY: Form = { name: '', code: '', barcode: '', unit: '', notes: '', price: '' };
 
 export default function FrozenProductsPage() {
   const [rows, setRows] = useState<FP[]>([]);
@@ -18,10 +18,15 @@ export default function FrozenProductsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [toDelete, setToDelete] = useState<FP | null>(null);
+  const [enforceUnique, setEnforceUnique] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const { data } = await supabase.from('frozen_products').select('*').order('name');
+    const [{ data }, { data: st }] = await Promise.all([
+      supabase.from('frozen_products').select('*').order('name'),
+      supabase.from('frozen_settings').select('enforce_unique_code').limit(1).maybeSingle(),
+    ]);
     if (data) setRows(data as FP[]);
+    setEnforceUnique(!!st?.enforce_unique_code);
     setLoading(false);
   }, []);
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -29,13 +34,22 @@ export default function FrozenProductsPage() {
   const filtered = rows.filter((r) => `${r.name} ${r.code || ''}`.toLowerCase().includes(search.toLowerCase()));
 
   const openAdd = () => { setForm(EMPTY); setError(''); setShowForm(true); };
-  const openEdit = (r: FP) => { setForm({ id: r.id, name: r.name, code: r.code || '', unit: r.unit || '', notes: r.notes || '', price: r.price != null ? String(r.price) : '' }); setError(''); setShowForm(true); };
+  const openEdit = (r: FP) => { setForm({ id: r.id, name: r.name, code: r.code || '', barcode: r.barcode || '', unit: r.unit || '', notes: r.notes || '', price: r.price != null ? String(r.price) : '' }); setError(''); setShowForm(true); };
 
   const save = async () => {
     if (!form.name.trim()) { setError('Nama wajib diisi.'); return; }
     setSaving(true); setError('');
     try {
-      const payload = { name: form.name.trim(), code: form.code.trim() || null, unit: form.unit.trim() || null, notes: form.notes.trim() || null, price: Math.max(0, Number(form.price) || 0) };
+      const code = form.code.trim();
+      // Validasi anti-dobel kode (kalau setting-nya ON) — cek sebelum simpan.
+      if (enforceUnique && code) {
+        let q = supabase.from('frozen_products').select('id').eq('code', code);
+        if (form.id) q = q.neq('id', form.id);
+        const { data: dup, error: de } = await q.limit(1);
+        if (de) throw de;
+        if (dup && dup.length) { setError(`Kode "${code}" sudah dipakai produk lain. Ganti kode atau matikan validasi di Pengaturan.`); setSaving(false); return; }
+      }
+      const payload = { name: form.name.trim(), code: code || null, barcode: form.barcode.trim() || null, unit: form.unit.trim() || null, notes: form.notes.trim() || null, price: Math.max(0, Number(form.price) || 0) };
       const { error: e } = form.id
         ? await supabase.from('frozen_products').update(payload).eq('id', form.id)
         : await supabase.from('frozen_products').insert([payload]);
@@ -80,6 +94,7 @@ export default function FrozenProductsPage() {
                   <h3 className="text-base font-black text-raden-green truncate leading-tight">{r.name}</h3>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {r.code && <span className="text-[9px] font-black uppercase tracking-widest text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded">{r.code}</span>}
+                    {r.barcode && <span className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded flex items-center gap-1"><Barcode size={10} /> {r.barcode}</span>}
                     {r.unit && <span className="text-[9px] font-bold text-gray-400">{r.unit}</span>}
                   </div>
                   <p className="text-sm font-black text-raden-green mt-1.5">NT$ {Number(r.price || 0).toLocaleString()}<span className="text-[10px] text-gray-400 font-bold">{r.unit ? ` / ${r.unit}` : ''}</span></p>
@@ -118,17 +133,23 @@ export default function FrozenProductsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kode / SKU</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kode / SKU <span className="text-gray-300 normal-case tracking-normal">· utama</span></label>
                     <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="opsional" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
                   </div>
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block flex items-center gap-1"><Barcode size={12} /> Barcode <span className="text-gray-300 normal-case tracking-normal">· tambahan</span></label>
+                    <input type="text" value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} placeholder="opsional" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Satuan</label>
                     <input type="text" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="pack / kg" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
                   </div>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Harga (NT$) — 単価</label>
-                  <input type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Harga (NT$) — 単価</label>
+                    <input type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+                  </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Catatan</label>
