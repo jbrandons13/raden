@@ -51,23 +51,23 @@ export default function OrdersPage() {
   const [showTemplateManager, setShowTemplateManager] = useState(false);
 
   const fetchTemplates = async () => {
-    const { data } = await supabase.from('order_templates').select('id, name, sections:order_template_sections(items:order_template_items(product_id, qty))').order('created_at');
+    const { data } = await supabase.from('order_templates').select('id, name, pos_section_ids').order('created_at');
     setTemplates(data || []);
   };
 
-  // Pakai Template — ratakan semua kolom template, tumpuk (accumulate) produk+jumlah
-  // ke order yang lagi dibuat.
+  // Pakai Template — masukin semua produk dari kolom (pos_section) yang dipilih
+  // template ke order (default qty 1, jumlah diedit manual). Produk ikut Susunan Order.
   const applyTemplate = (tid: string) => {
     const t = templates.find((x) => x.id === tid);
     if (!t) return;
-    const allItems = (t.sections || []).flatMap((s: any) => s.items || []);
+    const pids = new Set<string>();
+    ((t.pos_section_ids as string[]) || []).forEach((sid) => {
+      const sec = posSections.find((s: any) => s.id === sid);
+      (sec?.items || []).forEach((it: any) => { if (it.product_id) pids.add(it.product_id); });
+    });
     setNewOrder((prev) => {
       const items = { ...prev.items };
-      allItems.forEach((it: any) => {
-        const q = Number(it.qty) || 0;
-        if (q <= 0 || !it.product_id) return;
-        items[it.product_id] = (items[it.product_id] || 0) + q;
-      });
+      pids.forEach((pid) => { if (!(items[pid] > 0)) items[pid] = 1; });
       return { ...prev, items };
     });
   };
@@ -1146,7 +1146,7 @@ export default function OrdersPage() {
       <OrderTemplateManager
         show={showTemplateManager}
         onClose={() => setShowTemplateManager(false)}
-        products={products}
+        posSections={posSections}
         onChanged={fetchTemplates}
       />
     </div>
