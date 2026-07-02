@@ -38,6 +38,7 @@ export default function FrozenProductsPage() {
 
   const save = async () => {
     if (!form.name.trim()) { setError('Nama wajib diisi.'); return; }
+    if (!form.code.trim()) { setError('Kode / SKU wajib diisi.'); return; }
     setSaving(true); setError('');
     try {
       const code = form.code.trim();
@@ -133,8 +134,8 @@ export default function FrozenProductsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kode / SKU <span className="text-gray-300 normal-case tracking-normal">· utama</span></label>
-                    <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="opsional" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kode / SKU <span className="text-red-400">*</span> <span className="text-gray-300 normal-case tracking-normal">utama</span></label>
+                    <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="cth. FRZ-001" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block flex items-center gap-1"><Barcode size={12} /> Barcode <span className="text-gray-300 normal-case tracking-normal">· tambahan</span></label>
