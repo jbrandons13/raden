@@ -91,8 +91,8 @@ export default function FrozenSettingsPage() {
         <h3 className="text-xs font-black text-raden-green uppercase tracking-[0.2em] flex items-center gap-2"><ShieldCheck size={15} className="text-cyan-500" /> Validasi Produk</h3>
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="font-black text-raden-green text-sm">Kode / SKU tidak boleh dobel</p>
-            <p className="text-[11px] text-gray-400 font-medium mt-0.5">Kalau ada produk lain pakai Kode/SKU yang sama, produk nggak bisa disimpan.</p>
+            <p className="font-black text-raden-green text-sm">Kode/SKU & Barcode tidak boleh dobel</p>
+            <p className="text-[11px] text-gray-400 font-medium mt-0.5">Kalau ada produk lain pakai Kode/SKU atau Barcode yang sama, produk nggak bisa disimpan (muncul warning produk mana yang bentrok).</p>
           </div>
           <button type="button" role="switch" aria-checked={s.enforce_unique_code} onClick={() => setS((p) => ({ ...p, enforce_unique_code: !p.enforce_unique_code }))}
             className={`relative w-14 h-8 rounded-full transition-colors shrink-0 ${s.enforce_unique_code ? 'bg-raden-green' : 'bg-gray-200'}`}>

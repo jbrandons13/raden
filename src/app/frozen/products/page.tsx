@@ -42,15 +42,22 @@ export default function FrozenProductsPage() {
     setSaving(true); setError('');
     try {
       const code = form.code.trim();
-      // Validasi anti-dobel kode (kalau setting-nya ON) — cek sebelum simpan.
-      if (enforceUnique && code) {
-        let q = supabase.from('frozen_products').select('id').eq('code', code);
-        if (form.id) q = q.neq('id', form.id);
-        const { data: dup, error: de } = await q.limit(1);
-        if (de) throw de;
-        if (dup && dup.length) { setError(`Kode "${code}" sudah dipakai produk lain. Ganti kode atau matikan validasi di Pengaturan.`); setSaving(false); return; }
+      const barcode = form.barcode.trim();
+      // Validasi anti-dobel (kalau setting-nya ON) — cek Kode/SKU DAN Barcode.
+      if (enforceUnique) {
+        const dupBy = async (col: 'code' | 'barcode', val: string) => {
+          let q = supabase.from('frozen_products').select('id, name').eq(col, val);
+          if (form.id) q = q.neq('id', form.id);
+          const { data, error: de } = await q.limit(1);
+          if (de) throw de;
+          return data && data.length ? data[0] : null;
+        };
+        const dupCode = code ? await dupBy('code', code) : null;
+        if (dupCode) { setError(`Kode/SKU "${code}" sudah dipakai produk "${dupCode.name}". Ganti kode atau matikan validasi di Pengaturan.`); setSaving(false); return; }
+        const dupBc = barcode ? await dupBy('barcode', barcode) : null;
+        if (dupBc) { setError(`Barcode "${barcode}" sudah dipakai produk "${dupBc.name}". Ganti barcode atau matikan validasi di Pengaturan.`); setSaving(false); return; }
       }
-      const payload = { name: form.name.trim(), code: code || null, barcode: form.barcode.trim() || null, unit: form.unit.trim() || null, notes: form.notes.trim() || null, price: Math.max(0, Number(form.price) || 0) };
+      const payload = { name: form.name.trim(), code: code || null, barcode: barcode || null, unit: form.unit.trim() || null, notes: form.notes.trim() || null, price: Math.max(0, Number(form.price) || 0) };
       const { error: e } = form.id
         ? await supabase.from('frozen_products').update(payload).eq('id', form.id)
         : await supabase.from('frozen_products').insert([payload]);
