@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Truck, Loader2, Plus, X, Trash2, Check, ChevronRight, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
+import { Truck, Loader2, Plus, X, Trash2, Check, ChevronRight, AlertTriangle, UploadCloud } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 type Customer = { id: string; name: string };
@@ -101,7 +102,10 @@ export default function FrozenOrdersPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight flex items-center gap-2"><Truck className="text-cyan-500" /> Barang Keluar <span className="text-base text-gray-300 font-bold">出貨</span></h1>
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Buat order keluar ke customer → konfirmasi (alokasi FEFO otomatis).</p>
         </div>
-        <button onClick={() => { reset(); setOpen(true); }} className="px-5 py-3 bg-raden-green text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl flex items-center gap-2 shrink-0"><Plus size={16} /> Buat 出貨</button>
+        <div className="flex gap-2 shrink-0">
+          <Link href="/frozen/orders/upload" className="px-5 py-3 bg-white border border-cyan-200 text-cyan-700 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-sm flex items-center gap-2"><UploadCloud size={16} /> Upload Excel</Link>
+          <button onClick={() => { reset(); setOpen(true); }} className="px-5 py-3 bg-raden-green text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl flex items-center gap-2"><Plus size={16} /> Buat 出貨</button>
+        </div>
       </div>
 
       {loading ? (

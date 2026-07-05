@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle, Phone, MapPin } from 'lucide-react';
+import { Building2, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle, Phone, MapPin, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-type FC = { id: string; name: string; code: string | null; phone: string | null; address: string | null };
+type FC = { id: string; name: string; code: string | null; phone: string | null; address: string | null; needs_review: boolean };
 type Form = { id?: string; name: string; code: string; phone: string; address: string };
 const EMPTY: Form = { name: '', code: '', phone: '', address: '' };
 
@@ -35,7 +35,7 @@ export default function FrozenCustomersPage() {
     if (!form.name.trim()) { setError('Nama wajib diisi.'); return; }
     setSaving(true); setError('');
     try {
-      const payload = { name: form.name.trim(), code: form.code.trim() || null, phone: form.phone.trim() || null, address: form.address.trim() || null };
+      const payload = { name: form.name.trim(), code: form.code.trim() || null, phone: form.phone.trim() || null, address: form.address.trim() || null, needs_review: false };
       const { error: e } = form.id
         ? await supabase.from('frozen_customers').update(payload).eq('id', form.id)
         : await supabase.from('frozen_customers').insert([payload]);
@@ -78,7 +78,10 @@ export default function FrozenCustomersPage() {
                 <div className="w-11 h-11 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0"><Building2 size={20} /></div>
                 <div className="min-w-0">
                   <h3 className="text-base font-black text-raden-green truncate leading-tight">{r.name}</h3>
-                  {r.code && <span className="text-[9px] font-black uppercase tracking-widest text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded inline-block mt-1">{r.code}</span>}
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {r.needs_review && <span className="text-[9px] font-black uppercase tracking-widest text-amber-700 bg-amber-100 px-2 py-0.5 rounded flex items-center gap-1"><AlertTriangle size={10} /> perlu dicek</span>}
+                    {r.code && <span className="text-[9px] font-black uppercase tracking-widest text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded">{r.code}</span>}
+                  </div>
                 </div>
               </div>
               <div className="space-y-1.5 mb-3 min-h-[36px]">

@@ -49,7 +49,17 @@ Gudang terpisah, di luar admin/staff. **DB terpisah** (prefix `frozen_`), **role
 - ✅ **F3 — Stok:** tampilan **Total** + **Detail per-EXP** (urut EXP terdekat) _(verified)_
 - ✅ **F4 — 出貨 + FEFO:** draft → **確認** via RPC atomik `frozen_confirm_order` (alokasi FEFO + potong batch) → **撿貨單** + **invoice** (+ print) _(verified E2E live: 120 → 100 dari EXP-dekat + 20 dari EXP-jauh)_
 - ✅ **F5 — Revisi & Back Order:** `frozen_unlock_order` (balikin stok → Draft) · stok kurang → **Back Order** (shortage, tidak lock) _(verified E2E live: stok balik utuh; 999>150 → back-order, stok tak tersentuh)_
-- ☐ **F6 — Upload Excel buat bikin 出貨** → **BELUM dikerjakan.** Nunggu **contoh file Excel** dari user (buat nentuin kolom/format). Setelah itu: upload sheet → auto-bikin draft order (banyak baris sekaligus).
+- ✅ **F6 — Upload Excel buat bikin 出貨** → **SELESAI & verified E2E (15/15 lulus pakai file asli SPV).** Contoh file Excel udah dianalisis (`2026.7.2` template SPV). **Desain fix:**
+  - Baca sheet `總表` (grid produk × toko). Tiap produk 2 baris: **baris atas (hitam)** = stok referensi (diabaikan), **baris bawah (MERAH)** = qty barang keluar sebenarnya → ini yang dipakai.
+  - Preview dulu sebelum commit → user cek jumlah toko + isi tiap order → baru konfirmasi → sistem bikin **draft order utk semua toko sekaligus** (1 upload = banyak order).
+  - **折扣/運費** tetap diisi **manual** di sistem per order (SPV: belum ada rumus hitungnya).
+  - **Toko/produk baru (kode gak ketemu di DB)** → **tetap auto-dibikin** (customer/produk baru), TAPI dikasih **flag `needs_review`** (badge "⚠ baru dari upload, lengkapi data") sampai di-edit manual — bukan di-skip diam-diam.
+  - **Stok gak cukup** → order tetap dibuat, masuk logic **Back Order** yang udah ada (F5), bukan diblok.
+  - Sheet `運送表` **gak dipakai buat parsing order** — cuma jadi sumber data master toko (alamat/telp), dipakai buat seed awal.
+  - ✅ **Master toko (`frozen_customers`) sudah di-seed** — 20 toko dari `運送表` (18 lengkap alamat+telp; **IHL 花蓮 & IMG 馬公 alamat/telp masih kosong**, gak ada datanya di sheet, perlu dilengkapi manual).
+  - ✅ **DIBANGUN (5 Jul):** parser `src/lib/frozenExcel.ts` (baca `總表`, baris-kirim = baris setelah baris produk yg col A kosong; posisi dikonfirmasi warna merah) · halaman **`/frozen/orders/upload`** (dropzone → preview per-toko + ringkasan: toko/baris/toko baru/produk baru/stok kurang → "Buat N Draft Order") · tombol **Upload Excel** di halaman 出貨 · badge **"perlu dicek"** di menu Produk & Customer (auto-create dari upload → `needs_review=true`, hilang pas di-edit&simpan) · matching produk lewat **code ATAU barcode**.
+  - _Parser terverifikasi vs file asli: 20 toko + 19 produk, total per toko **persis** = baris 合計 總表 (grand total 1610), cocok invoice._
+  - ✅ **Migration `20260705000000_frozen_needs_review.sql` live** (kolom `needs_review`). **E2E 15/15** (5 Jul): parse 20 toko → resolve (20 toko cocok, 19 produk auto-create) → commit (19 produk `needs_review`, 20 draft order, item+qty benar, TCM=130) → cleanup bersih. Dobel-upload hari sama = diabaikan (per keputusan Brandon).
 - ☐ **F6b — Polish** (nice-to-have, menyusul).
 - ☐ **F7 — Auto-generate SKU** (+ tetap bisa diedit manual). Nunggu fitur **kategori/jenis produk** dulu (generate per-jenis). _Per indahrebecca: sementara SKU manual; auto-gen diintegrasikan nanti pas ada konsep jenis. Kalau ada "main system" → data langsung masuk & bisa generate._
 - ☐ **F8 — Filter tanggal di History** 進貨 (barang masuk) & 出貨 (barang keluar) → bisa filter per rentang tanggal.

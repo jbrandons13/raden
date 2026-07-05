@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle, Barcode } from 'lucide-react';
+import { Package, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle, Barcode, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-type FP = { id: string; name: string; code: string | null; barcode: string | null; unit: string | null; notes: string | null; price: number | null };
+type FP = { id: string; name: string; code: string | null; barcode: string | null; unit: string | null; notes: string | null; price: number | null; needs_review: boolean };
 type Form = { id?: string; name: string; code: string; barcode: string; unit: string; notes: string; price: string };
 const EMPTY: Form = { name: '', code: '', barcode: '', unit: '', notes: '', price: '' };
 
@@ -57,7 +57,7 @@ export default function FrozenProductsPage() {
         const dupBc = barcode ? await dupBy('barcode', barcode) : null;
         if (dupBc) { setError(`Barcode "${barcode}" sudah dipakai produk "${dupBc.name}". Ganti barcode atau matikan validasi di Pengaturan.`); setSaving(false); return; }
       }
-      const payload = { name: form.name.trim(), code: code || null, barcode: barcode || null, unit: form.unit.trim() || null, notes: form.notes.trim() || null, price: Math.max(0, Number(form.price) || 0) };
+      const payload = { name: form.name.trim(), code: code || null, barcode: barcode || null, unit: form.unit.trim() || null, notes: form.notes.trim() || null, price: Math.max(0, Number(form.price) || 0), needs_review: false };
       const { error: e } = form.id
         ? await supabase.from('frozen_products').update(payload).eq('id', form.id)
         : await supabase.from('frozen_products').insert([payload]);
@@ -101,6 +101,7 @@ export default function FrozenProductsPage() {
                 <div className="min-w-0">
                   <h3 className="text-base font-black text-raden-green truncate leading-tight">{r.name}</h3>
                   <div className="flex flex-wrap gap-1.5 mt-1">
+                    {r.needs_review && <span className="text-[9px] font-black uppercase tracking-widest text-amber-700 bg-amber-100 px-2 py-0.5 rounded flex items-center gap-1"><AlertTriangle size={10} /> perlu dicek</span>}
                     {r.code && <span className="text-[9px] font-black uppercase tracking-widest text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded">{r.code}</span>}
                     {r.barcode && <span className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded flex items-center gap-1"><Barcode size={10} /> {r.barcode}</span>}
                     {r.unit && <span className="text-[9px] font-bold text-gray-400">{r.unit}</span>}
