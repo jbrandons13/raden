@@ -5,12 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   Truck, Loader2, ArrowLeft, Check, Trash2, Plus, X, AlertTriangle, Lock, Unlock,
-  ClipboardList, Receipt, Printer, Phone, MapPin,
+  ClipboardList, Receipt, Printer, Phone, MapPin, Percent,
 } from 'lucide-react';
+import { InvoiceDoc, PickingDoc, orderTotals } from '../../_components/frozenPrints';
 
 type Order = {
   id: string; status: string; order_date: string | null; is_backorder: boolean; notes: string | null;
-  locked_at: string | null; customer_id: string;
+  locked_at: string | null; customer_id: string; discount: number | null; delivery_fee: number | null;
   frozen_customers: { name: string; phone: string | null; address: string | null; code: string | null } | null;
 };
 type FSettings = {
@@ -26,7 +27,6 @@ type Shortage = { product_id: string; requested: number; available: number };
 // "Data kita" — fallback kalau /frozen/settings belum diisi.
 const DEFAULT_SETTINGS: FSettings = { company_name: '樂奕有限公司', contact_name: '', vendor_no: '', address: '', phone: '', salesperson: '', sales_title: '', delivery_method: '', delivery_terms: '', payment_terms: '' };
 const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
-const fmtSlash = (d: string | null) => { if (!d) return ''; const x = new Date(d); return `${x.getFullYear()}/${x.getMonth() + 1}/${x.getDate()}`; }; // 2026/6/28 (ala template)
 const nt = (n: number) => 'NT$ ' + Math.round(n || 0).toLocaleString();
 
 export default function FrozenOrderDetail() {
@@ -43,10 +43,13 @@ export default function FrozenOrderDetail() {
   const [editLines, setEditLines] = useState<Line[]>([]);
   const [settings, setSettings] = useState<FSettings>(DEFAULT_SETTINGS);
   const [printMode, setPrintMode] = useState<'picking' | 'invoice' | null>(null);
+  const [discount, setDiscount] = useState('');
+  const [deliveryFee, setDeliveryFee] = useState('');
+  const [savingDF, setSavingDF] = useState(false);
 
   const fetchAll = useCallback(async () => {
     const [o, it, al, pr, st] = await Promise.all([
-      supabase.from('frozen_orders').select('id, status, order_date, is_backorder, notes, locked_at, customer_id, frozen_customers(name, phone, address, code)').eq('id', id).single(),
+      supabase.from('frozen_orders').select('id, status, order_date, is_backorder, notes, locked_at, customer_id, discount, delivery_fee, frozen_customers(name, phone, address, code)').eq('id', id).single(),
       supabase.from('frozen_order_items').select('id, product_id, qty, price, frozen_products(name, unit, code, barcode)').eq('order_id', id),
       supabase.from('frozen_allocations').select('id, product_id, exp_date, qty, frozen_products(name, unit)').eq('order_id', id),
       supabase.from('frozen_products').select('id, name, unit, code, price').order('name'),
@@ -55,6 +58,8 @@ export default function FrozenOrderDetail() {
     if (st.data) setSettings({ ...DEFAULT_SETTINGS, ...st.data });
     if (o.data) {
       setOrder(o.data as any);
+      setDiscount((o.data as any).discount ? String((o.data as any).discount) : '');
+      setDeliveryFee((o.data as any).delivery_fee ? String((o.data as any).delivery_fee) : '');
       const its = (it.data || []) as unknown as Item[];
       setItems(its);
       if ((o.data as any).status === 'Draft') setEditLines(its.length ? its.map((i) => ({ product_id: i.product_id, qty: String(i.qty), price: i.price != null ? String(i.price) : '' })) : [{ product_id: '', qty: '', price: '' }]);
@@ -132,6 +137,19 @@ export default function FrozenOrderDetail() {
 
   const doPrint = (mode: 'picking' | 'invoice') => { setPrintMode(mode); setTimeout(() => { window.print(); setPrintMode(null); }, 100); };
 
+  // Simpan 折扣 / 運費 (auto-save on blur). Angka >= 0.
+  const saveDF = async () => {
+    const d = Math.max(0, Number(discount) || 0);
+    const f = Math.max(0, Number(deliveryFee) || 0);
+    if (order && Number(order.discount) === d && Number(order.delivery_fee) === f) return;
+    setSavingDF(true);
+    try {
+      const { error: e } = await supabase.from('frozen_orders').update({ discount: d, delivery_fee: f }).eq('id', id);
+      if (e) throw e;
+      setOrder((o) => (o ? { ...o, discount: d, delivery_fee: f } : o));
+    } catch (e: any) { setError(e.message); } finally { setSavingDF(false); }
+  };
+
   // picking grouped by product
   const picking = useMemo(() => {
     const map = new Map<string, { name: string; unit: string | null; rows: { exp: string | null; qty: number }[] }>();
@@ -149,7 +167,9 @@ export default function FrozenOrderDetail() {
 
   const isDraft = order.status === 'Draft';
   const cust = order.frozen_customers;
-  const grandTotal = items.reduce((sum, it) => sum + it.qty * (Number(it.price) || 0), 0);
+  // total invoice pakai diskon/ongkir yang lagi diketik (biar live), fallback ke tersimpan
+  const totals = orderTotals(items, { order_date: order.order_date, discount: Number(discount) || 0, delivery_fee: Number(deliveryFee) || 0 });
+  const grandTotal = totals.total;
   const draftTotal = editLines.reduce((sum, l) => sum + Math.floor(Number(l.qty) || 0) * (Number(l.price) || 0), 0);
   const s = settings;
 
@@ -267,9 +287,27 @@ export default function FrozenOrderDetail() {
                   </div>
                 ))}
               </div>
-              <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">總計 · Total</span>
-                <span className="font-black text-raden-green text-lg tabular-nums">{nt(grandTotal)}</span>
+              {/* 折扣 / 運費 (manual per order) */}
+              <div className="px-5 py-4 bg-gray-50/60 border-t border-gray-100 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1"><Percent size={10} /> 折扣 Diskon</label>
+                    <input type="number" min="0" value={discount} onChange={(e) => setDiscount(e.target.value)} onBlur={saveDF} placeholder="0" className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-black text-raden-green text-sm text-right outline-none focus:ring-2 focus:ring-cyan-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1"><Truck size={10} /> 運費 Ongkir</label>
+                    <input type="number" min="0" value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} onBlur={saveDF} placeholder="0" className="w-full p-2.5 bg-white border border-gray-200 rounded-xl font-black text-raden-green text-sm text-right outline-none focus:ring-2 focus:ring-cyan-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                  </div>
+                </div>
+                <div className="space-y-1 text-xs pt-1">
+                  <div className="flex justify-between text-gray-400 font-medium"><span>小計 Subtotal</span><span className="tabular-nums">{nt(totals.subtotal)}</span></div>
+                  {totals.discount > 0 && <div className="flex justify-between text-gray-400 font-medium"><span>折扣 Diskon</span><span className="tabular-nums text-red-500">− {nt(totals.discount)}</span></div>}
+                  {totals.deliveryFee > 0 && <div className="flex justify-between text-gray-400 font-medium"><span>運費 Ongkir</span><span className="tabular-nums">+ {nt(totals.deliveryFee)}</span></div>}
+                  <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">總計 · Total {savingDF && <Loader2 size={11} className="animate-spin text-cyan-500" />}</span>
+                    <span className="font-black text-raden-green text-lg tabular-nums">{nt(grandTotal)}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -283,95 +321,9 @@ export default function FrozenOrderDetail() {
       {/* ============ PRINT ============ */}
       <div className="hidden print:block text-black p-2">
         {printMode === 'picking' ? (
-          <div>
-            <h1 className="text-xl font-black">撿貨單 · Daftar Ambil</h1>
-            <p className="text-sm mb-1">Customer: <b>{cust?.name}</b> · {fmtDate(order.order_date)}</p>
-            <table className="w-full text-sm border-collapse mt-3">
-              <thead><tr className="border-b-2 border-black text-left"><th className="py-1.5">Produk</th><th className="py-1.5">EXP (batch)</th><th className="py-1.5 text-right">Qty</th></tr></thead>
-              <tbody>
-                {picking.flatMap((p) => p.rows.map((r, j) => (
-                  <tr key={p.name + j} className="border-b border-gray-300"><td className="py-1.5">{j === 0 ? p.name : ''}</td><td className="py-1.5">{fmtDate(r.exp)}</td><td className="py-1.5 text-right font-bold">{r.qty}{p.unit ? ` ${p.unit}` : ''}</td></tr>
-                )))}
-              </tbody>
-            </table>
-          </div>
+          <PickingDoc order={order} cust={cust} allocs={allocs} />
         ) : printMode === 'invoice' ? (
-          <div className="text-[11px] leading-tight">
-            {/* ===== Header grid (mirip template) ===== */}
-            <div className="border-2 border-black">
-              <div className="text-center text-2xl font-black py-1.5 border-b-2 border-black">{s.company_name}</div>
-              <div className="flex border-b-2 border-black">
-                <div className="w-1/2 p-2 border-r-2 border-black">
-                  <div className="grid grid-cols-[5.5rem_1fr] gap-x-1 gap-y-1">
-                    <span className="font-bold">日期 :</span><span className="text-red-600">{fmtSlash(order.order_date)}</span>
-                    <span className="font-bold">發票號碼 :</span><span />
-                    <span className="font-bold">客戶編號 :</span><span className="font-bold">{cust?.code || ''}</span>
-                  </div>
-                  <div className="grid grid-cols-[5.5rem_1fr] gap-x-1 gap-y-1 mt-2.5">
-                    <span className="font-bold">收件者 :</span><span>{cust?.name || ''}</span>
-                    <span className="font-bold">地址 :</span><span>{cust?.address || ''}</span>
-                    <span className="font-bold">電話 :</span><span>{cust?.phone || ''}</span>
-                    <span className="font-bold">手機 :</span><span>{cust?.phone || ''}</span>
-                  </div>
-                </div>
-                <div className="w-1/2 p-2">
-                  <div className="grid grid-cols-[5.5rem_5rem_1fr] gap-x-1 gap-y-1">
-                    <span className="font-bold">送貨地址 :</span><span>[姓名]</span><span>{s.contact_name || ''}</span>
-                    <span /><span>[公司名稱]</span><span>{s.company_name || ''}</span>
-                    <span /><span>[廠商編號]</span><span>{s.vendor_no || '-'}</span>
-                    <span /><span>[街道地址]</span><span>{s.address || ''}</span>
-                    <span /><span>[電話]</span><span>{s.phone || ''}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-7 text-center text-[10px]">
-                {['銷售人員', '職稱', '交貨方式', '交貨條件', '交貨日期', '付款條件', '到期日'].map((h, i) => (
-                  <div key={i} className={`font-bold py-0.5 border-black border-b ${i < 6 ? 'border-r' : ''}`}>{h}</div>
-                ))}
-                {[s.salesperson, s.sales_title, s.delivery_method, s.delivery_terms, fmtSlash(order.order_date), s.payment_terms, ''].map((v, i) => (
-                  <div key={i} className={`py-0.5 border-black ${i < 6 ? 'border-r' : ''}`}>{v || ''}</div>
-                ))}
-              </div>
-            </div>
-
-            {/* ===== Tabel barang ===== */}
-            <table className="w-full text-[11px] border-collapse border-2 border-t-0 border-black">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border border-black py-1 px-1 text-center w-12">數量</th>
-                  <th className="border border-black py-1 px-1 text-left">貨號 SKU</th>
-                  <th className="border border-black py-1 px-1 text-left">條碼</th>
-                  <th className="border border-black py-1 px-1 text-center w-10">單位</th>
-                  <th className="border border-black py-1 px-1 text-left">商品 / Produk</th>
-                  <th className="border border-black py-1 px-1 text-right">單價</th>
-                  <th className="border border-black py-1 px-1 text-right">項目合計</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((it) => (
-                  <tr key={it.id}>
-                    <td className="border border-black py-1 px-1 text-center">{it.qty}</td>
-                    <td className="border border-black py-1 px-1">{it.frozen_products?.code || ''}</td>
-                    <td className="border border-black py-1 px-1">{it.frozen_products?.barcode || ''}</td>
-                    <td className="border border-black py-1 px-1 text-center">{it.frozen_products?.unit || ''}</td>
-                    <td className="border border-black py-1 px-1">{it.frozen_products?.name || pName(it.product_id)}</td>
-                    <td className="border border-black py-1 px-1 text-right">{nt(it.price)}</td>
-                    <td className="border border-black py-1 px-1 text-right font-bold">{nt(it.qty * it.price)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* ===== Total ===== */}
-            <div className="flex justify-end">
-              <table className="border-collapse border-2 border-t-0 border-black text-[12px]">
-                <tbody>
-                  <tr><td className="border border-black px-3 py-0.5 text-right">小計 Subtotal</td><td className="border border-black px-3 py-0.5 text-right font-bold w-28">{nt(grandTotal)}</td></tr>
-                  <tr><td className="border border-black px-3 py-1 text-right font-black">總計 Total</td><td className="border border-black px-3 py-1 text-right font-black text-[14px]">{nt(grandTotal)}</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <InvoiceDoc order={{ order_date: order.order_date, discount: Number(discount) || 0, delivery_fee: Number(deliveryFee) || 0 }} cust={cust} items={items} settings={s} />
         ) : null}
       </div>
     </>

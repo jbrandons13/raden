@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { PackagePlus, Loader2, Check, CalendarDays, Clock } from 'lucide-react';
+import { PackagePlus, Loader2, Check, CalendarDays, Clock, Search, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 type Product = { id: string; name: string; unit: string | null };
@@ -21,11 +21,15 @@ export default function FrozenReceivePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
+  // filter history
+  const [histSearch, setHistSearch] = useState('');
+  const [histFrom, setHistFrom] = useState('');
+  const [histTo, setHistTo] = useState('');
 
   const fetchData = useCallback(async () => {
     const [p, r] = await Promise.all([
       supabase.from('frozen_products').select('id, name, unit').order('name'),
-      supabase.from('frozen_purchases').select('id, qty, exp_date, received_date, created_at, frozen_products(name, unit)').order('created_at', { ascending: false }).limit(15),
+      supabase.from('frozen_purchases').select('id, qty, exp_date, received_date, created_at, frozen_products(name, unit)').order('received_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
     ]);
     if (p.data) setProducts(p.data as Product[]);
     if (r.data) setRecent(r.data as any);
@@ -72,6 +76,14 @@ export default function FrozenReceivePage() {
     } catch (e: any) { setError(e.message); } finally { setSaving(false); }
   };
 
+  // filter riwayat (nama produk + rentang tanggal masuk)
+  const filteredRecent = recent.filter((r) => {
+    if (histSearch && !(r.frozen_products?.name || '').toLowerCase().includes(histSearch.toLowerCase())) return false;
+    if (histFrom && (!r.received_date || r.received_date < histFrom)) return false;
+    if (histTo && (!r.received_date || r.received_date > histTo)) return false;
+    return true;
+  });
+
   return (
     <div className="space-y-6 pb-12">
       <div>
@@ -114,12 +126,30 @@ export default function FrozenReceivePage() {
           </button>
         </div>
 
-        {/* Recent */}
+        {/* Recent + filter */}
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
-          <h3 className="text-xs font-black text-raden-green uppercase tracking-[0.2em] mb-4 flex items-center gap-2"><Clock size={14} className="text-cyan-500" /> Riwayat Masuk Terbaru</h3>
+          <h3 className="text-xs font-black text-raden-green uppercase tracking-[0.2em] mb-4 flex items-center gap-2"><Clock size={14} className="text-cyan-500" /> Riwayat Barang Masuk</h3>
+          <div className="space-y-2.5 mb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={15} />
+              <input value={histSearch} onChange={(e) => setHistSearch(e.target.value)} placeholder="Cari nama produk..." className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1"><CalendarDays size={10} /> Dari</label>
+                <input type="date" value={histFrom} onChange={(e) => setHistFrom(e.target.value)} className="w-full p-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+              </div>
+              <div className="flex-1">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Sampai</label>
+                <input type="date" value={histTo} onChange={(e) => setHistTo(e.target.value)} className="w-full p-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+              </div>
+              {(histSearch || histFrom || histTo) && <button onClick={() => { setHistSearch(''); setHistFrom(''); setHistTo(''); }} className="mt-4 p-2 text-gray-400 hover:text-red-500" title="Reset filter"><X size={16} /></button>}
+            </div>
+          </div>
           <div className="space-y-2 max-h-[420px] overflow-y-auto">
             {recent.length === 0 && <p className="text-center text-gray-300 text-xs py-10 font-bold italic">Belum ada barang masuk.</p>}
-            {recent.map((r) => (
+            {recent.length > 0 && filteredRecent.length === 0 && <p className="text-center text-gray-300 text-xs py-10 font-bold italic">Tidak ada yang cocok filter.</p>}
+            {filteredRecent.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-gray-50/60 rounded-2xl">
                 <div className="min-w-0">
                   <p className="font-bold text-raden-green text-[13px] truncate">{r.frozen_products?.name || 'Produk'}</p>

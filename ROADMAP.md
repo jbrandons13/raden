@@ -63,7 +63,11 @@ Gudang terpisah, di luar admin/staff. **DB terpisah** (prefix `frozen_`), **role
 - ✅ **F6b — Edit Stock (盤點/adjustment)** (5 Jul): di halaman **Stok**, tiap batch (per-EXP) bisa **✏️ sesuaikan qty** atau **🗑 hapus batch** (set 0) → selisih **tercatat di buku besar** (`frozen_stock_movements`, reason `adjustment`, ref_type `adjustment`), konsisten sama engine F1–F5. _(verified E2E 7/7: adjust 100→70 delta -30, hapus →0, audit net -100, view auto-hide batch 0)._
   - 🌱 **Seed katalog (5 Jul):** 20 toko (`frozen_customers`, dari 運送表) + **20 produk** (`frozen_products`, dari sheet 出貨單: `商品編號`=SKU code+barcode, satuan, harga NT$43–175). Produk test lama (F001/F002) dihapus. Data transaksi frozen di-reset (0 purchase/batch/movement/order) → fresh start.
 - ☐ **F7 — Auto-generate SKU** (+ tetap bisa diedit manual). Nunggu fitur **kategori/jenis produk** dulu (generate per-jenis). _Per indahrebecca: sementara SKU manual; auto-gen diintegrasikan nanti pas ada konsep jenis. Kalau ada "main system" → data langsung masuk & bisa generate._
-- ☐ **F8 — Filter tanggal di History** 進貨 (barang masuk) & 出貨 (barang keluar) → bisa filter per rentang tanggal.
+- ✅ **F8 — Filter tanggal + search di History** (5 Jul): **Barang Masuk** — search nama produk + rentang tanggal masuk · **Barang Keluar** (list order) — search nama customer + rentang tanggal order.
+- ✅ **F9 — 折扣/運費 + Print massal** (5 Jul):
+  - **折扣 (diskon) + 運費 (ongkir)** per order 出貨 → box input di kartu invoice (auto-save on blur), **總計 = 小計 − 折扣 + 運費**, ikut ke invoice print. Migration `20260705010000_frozen_order_discount_fee.sql`.
+  - **Print massal dari list** (`/frozen/orders/print?type=invoice|picking&from&to`): tombol **Invoice (N)** & **撿貨單 (N)** di halaman 出貨 → render SEMUA order Confirmed (hormati filter tanggal), 1 order/halaman, auto buka dialog print → gak perlu masuk order satu-satu.
+  - Komponen print di-extract ke `_components/frozenPrints.tsx` (dipakai detail + print massal, 1 sumber format invoice).
 
 > ✅ **FROZEN core (F1–F5) SELESAI & fully verified E2E** (14/14 cek lulus: FEFO, atomic confirm, revisi, back-order, buku besar). 2 migration sudah live di Supabase.
 > 🔑 **Akun:** 2 fixed `admin_frozen` — **`gudang1`** & **`gudang2`** (PIN awal `123456`) + fitur **Ganti Password** sendiri di sidebar /frozen _(verified E2E)_.

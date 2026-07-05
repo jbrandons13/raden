@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Truck, Loader2, Plus, X, Trash2, Check, ChevronRight, AlertTriangle, UploadCloud } from 'lucide-react';
+import { Truck, Loader2, Plus, X, Trash2, Check, ChevronRight, AlertTriangle, UploadCloud, Search, Receipt, ClipboardList, CalendarDays } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 type Customer = { id: string; name: string };
@@ -28,6 +28,10 @@ export default function FrozenOrdersPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState('');
+  // filter history
+  const [searchCust, setSearchCust] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const [customerId, setCustomerId] = useState('');
   const [orderDate, setOrderDate] = useState(todayStr());
@@ -95,6 +99,22 @@ export default function FrozenOrdersPage() {
     } catch (e: any) { alert('Gagal hapus: ' + e.message); } finally { setBusyId(''); }
   };
 
+  // filter list (customer + rentang tanggal order_date)
+  const filteredOrders = orders.filter((o) => {
+    if (searchCust && !(o.frozen_customers?.name || '').toLowerCase().includes(searchCust.toLowerCase())) return false;
+    if (dateFrom && (!o.order_date || o.order_date < dateFrom)) return false;
+    if (dateTo && (!o.order_date || o.order_date > dateTo)) return false;
+    return true;
+  });
+  const confirmedCount = filteredOrders.filter((o) => o.status === 'Confirmed').length;
+  const printHref = (type: 'invoice' | 'picking') => {
+    const q = new URLSearchParams({ type });
+    if (dateFrom) q.set('from', dateFrom);
+    if (dateTo) q.set('to', dateTo);
+    return `/frozen/orders/print?${q.toString()}`;
+  };
+  const hasFilter = searchCust || dateFrom || dateTo;
+
   return (
     <div className="space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -108,6 +128,30 @@ export default function FrozenOrdersPage() {
         </div>
       </div>
 
+      {/* Filter + Print massal */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col lg:flex-row lg:items-end gap-3">
+        <div className="flex-1 min-w-0">
+          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Cari Customer</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+            <input value={searchCust} onChange={(e) => setSearchCust(e.target.value)} placeholder="nama toko / customer..." className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+          </div>
+        </div>
+        <div>
+          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1"><CalendarDays size={11} /> Dari</label>
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+        </div>
+        <div>
+          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Sampai</label>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+        </div>
+        {hasFilter && <button onClick={() => { setSearchCust(''); setDateFrom(''); setDateTo(''); }} className="px-3 py-2.5 text-gray-400 hover:text-red-500 font-black uppercase tracking-widest text-[10px] flex items-center gap-1"><X size={13} /> Reset</button>}
+        <div className="flex gap-2 lg:ml-auto">
+          <Link href={printHref('invoice')} className={`px-4 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-1.5 shrink-0 ${confirmedCount ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-gray-50 text-gray-300 pointer-events-none'}`}><Receipt size={14} /> Invoice ({confirmedCount})</Link>
+          <Link href={printHref('picking')} className={`px-4 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-1.5 shrink-0 ${confirmedCount ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-gray-50 text-gray-300 pointer-events-none'}`}><ClipboardList size={14} /> 撿貨單 ({confirmedCount})</Link>
+        </div>
+      </div>
+
       {loading ? (
         <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-cyan-500" /></div>
       ) : orders.length === 0 ? (
@@ -116,9 +160,15 @@ export default function FrozenOrdersPage() {
           <p className="font-black text-raden-green">Belum ada order keluar</p>
           <p className="text-gray-400 text-xs mt-1">Klik "Buat 出貨" untuk mulai.</p>
         </div>
+      ) : filteredOrders.length === 0 ? (
+        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm py-16 text-center">
+          <Search className="w-8 h-8 text-gray-200 mx-auto mb-3" />
+          <p className="font-black text-raden-green">Tidak ada order cocok filter</p>
+          <p className="text-gray-400 text-xs mt-1">Ubah pencarian / rentang tanggal.</p>
+        </div>
       ) : (
         <div className="space-y-2.5">
-          {orders.map((o) => (
+          {filteredOrders.map((o) => (
             <div key={o.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center hover:border-cyan-200 transition-all">
               <button onClick={() => router.push(`/frozen/orders/${o.id}`)} className="flex-1 min-w-0 p-4 flex items-center justify-between gap-3 text-left">
                 <div className="min-w-0">
