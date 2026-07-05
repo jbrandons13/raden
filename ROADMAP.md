@@ -66,7 +66,8 @@ Gudang terpisah, di luar admin/staff. **DB terpisah** (prefix `frozen_`), **role
 - ✅ **F8 — Filter tanggal + search di History** (5 Jul): **Barang Masuk** — search nama produk + rentang tanggal masuk · **Barang Keluar** (list order) — search nama customer + rentang tanggal order.
 - ✅ **F9 — 折扣/運費 + Print massal** (5 Jul):
   - **折扣 (diskon) + 運費 (ongkir)** per order 出貨 → box input di kartu invoice (auto-save on blur), **總計 = 小計 − 折扣 + 運費**, ikut ke invoice print. Migration `20260705010000_frozen_order_discount_fee.sql`.
-  - **Print massal dari list** (`/frozen/orders/print?type=invoice|picking&from&to`): tombol **Invoice (N)** & **撿貨單 (N)** di halaman 出貨 → render SEMUA order Confirmed (hormati filter tanggal), 1 order/halaman, auto buka dialog print → gak perlu masuk order satu-satu.
+  - **Print per-order dari list**: tombol **Invoice** & **撿貨單** di tiap box order Confirmed → langsung buka dialog print (render inline via hidden print block, TANPA pindah halaman).
+  - **Print massal** (`/frozen/orders/print?type=invoice|picking&from&to`): tombol Invoice (N)/撿貨單 (N) di filter bar → render SEMUA order Confirmed (hormati filter tanggal), 1 order/halaman, klik Print manual (auto-print dimatiin — dulu bug kebuka sendiri).
   - Komponen print di-extract ke `_components/frozenPrints.tsx` (dipakai detail + print massal, 1 sumber format invoice).
 
 > ✅ **FROZEN core (F1–F5) SELESAI & fully verified E2E** (14/14 cek lulus: FEFO, atomic confirm, revisi, back-order, buku besar). 2 migration sudah live di Supabase.

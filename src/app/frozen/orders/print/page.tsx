@@ -53,9 +53,6 @@ function PrintBatch() {
     })();
   }, [type, from, to]);
 
-  // auto buka dialog print begitu data siap
-  useEffect(() => { if (!loading && rows.length) { const t = setTimeout(() => window.print(), 400); return () => clearTimeout(t); } }, [loading, rows.length]);
-
   const label = type === 'invoice' ? 'Invoice' : '撿貨單 (Picklist)';
   const rangeText = from || to ? `${from ? fmtDate(from) : '…'} – ${to ? fmtDate(to) : '…'}` : 'semua Confirmed';
 

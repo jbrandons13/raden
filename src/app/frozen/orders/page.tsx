@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Truck, Loader2, Plus, X, Trash2, Check, ChevronRight, AlertTriangle, UploadCloud, Search, Receipt, ClipboardList, CalendarDays } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { InvoiceDoc, PickingDoc, DEFAULT_SETTINGS, type PrintSettings, type PrintItem, type PrintAlloc, type PrintCustomer } from '../_components/frozenPrints';
 
 type Customer = { id: string; name: string };
 type Product = { id: string; name: string; unit: string | null; price: number | null };
@@ -32,6 +33,9 @@ export default function FrozenOrdersPage() {
   const [searchCust, setSearchCust] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  // print per-order (inline, tanpa pindah halaman)
+  const [printBusy, setPrintBusy] = useState('');
+  const [printDoc, setPrintDoc] = useState<{ type: 'invoice' | 'picking'; order: { order_date: string | null; discount: number | null; delivery_fee: number | null }; cust: PrintCustomer; items: PrintItem[]; allocs: PrintAlloc[]; settings: PrintSettings } | null>(null);
 
   const [customerId, setCustomerId] = useState('');
   const [orderDate, setOrderDate] = useState(todayStr());
@@ -99,6 +103,32 @@ export default function FrozenOrdersPage() {
     } catch (e: any) { alert('Gagal hapus: ' + e.message); } finally { setBusyId(''); }
   };
 
+  // Print 1 order langsung dari list (tanpa masuk detail): ambil data → render hidden → window.print()
+  const printOne = async (o: Order, type: 'invoice' | 'picking') => {
+    setPrintBusy(o.id + type);
+    try {
+      const [ord, st] = await Promise.all([
+        supabase.from('frozen_orders').select('order_date, discount, delivery_fee, frozen_customers(name, phone, address, code)').eq('id', o.id).single(),
+        supabase.from('frozen_settings').select('*').limit(1).maybeSingle(),
+      ]);
+      let items: PrintItem[] = []; let allocs: PrintAlloc[] = [];
+      if (type === 'invoice') {
+        const { data } = await supabase.from('frozen_order_items').select('id, qty, price, frozen_products(name, unit, code, barcode)').eq('order_id', o.id);
+        items = (data || []) as any;
+      } else {
+        const { data } = await supabase.from('frozen_allocations').select('id, product_id, exp_date, qty, frozen_products(name, unit)').eq('order_id', o.id);
+        allocs = (data || []) as any;
+      }
+      const od: any = ord.data;
+      setPrintDoc({
+        type, settings: { ...DEFAULT_SETTINGS, ...(st.data || {}) },
+        order: { order_date: od?.order_date ?? null, discount: od?.discount ?? 0, delivery_fee: od?.delivery_fee ?? 0 },
+        cust: od?.frozen_customers ?? null, items, allocs,
+      });
+      setTimeout(() => { window.print(); setPrintDoc(null); }, 150);
+    } catch (e: any) { alert('Gagal print: ' + e.message); } finally { setPrintBusy(''); }
+  };
+
   // filter list (customer + rentang tanggal order_date)
   const filteredOrders = orders.filter((o) => {
     if (searchCust && !(o.frozen_customers?.name || '').toLowerCase().includes(searchCust.toLowerCase())) return false;
@@ -116,7 +146,8 @@ export default function FrozenOrdersPage() {
   const hasFilter = searchCust || dateFrom || dateTo;
 
   return (
-    <div className="space-y-6 pb-12">
+    <>
+    <div className="space-y-6 pb-12 print:hidden">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight flex items-center gap-2"><Truck className="text-cyan-500" /> Barang Keluar <span className="text-base text-gray-300 font-bold">出貨</span></h1>
@@ -181,6 +212,17 @@ export default function FrozenOrdersPage() {
                   <ChevronRight size={18} className="text-gray-300" />
                 </div>
               </button>
+              {/* Print langsung (khusus Confirmed) — tanpa masuk order */}
+              {o.status === 'Confirmed' && (
+                <>
+                  <button onClick={() => printOne(o, 'invoice')} disabled={!!printBusy} className="p-2.5 ml-1 rounded-xl text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 shrink-0 disabled:opacity-40" title="Print Invoice">
+                    {printBusy === o.id + 'invoice' ? <Loader2 size={16} className="animate-spin" /> : <Receipt size={16} />}
+                  </button>
+                  <button onClick={() => printOne(o, 'picking')} disabled={!!printBusy} className="p-2.5 rounded-xl text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 shrink-0 disabled:opacity-40" title="Print 撿貨單 (Picklist)">
+                    {printBusy === o.id + 'picking' ? <Loader2 size={16} className="animate-spin" /> : <ClipboardList size={16} />}
+                  </button>
+                </>
+              )}
               <button onClick={() => deleteOrder(o)} disabled={busyId === o.id} className="p-3 mr-1.5 ml-1 text-gray-300 hover:text-red-500 shrink-0 disabled:opacity-50" title="Hapus order">
                 {busyId === o.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
               </button>
@@ -254,5 +296,13 @@ export default function FrozenOrdersPage() {
         </div>
       )}
     </div>
+
+    {/* ===== PRINT (1 order dari list) ===== */}
+    <div className="hidden print:block text-black p-2">
+      {printDoc && (printDoc.type === 'invoice'
+        ? <InvoiceDoc order={printDoc.order} cust={printDoc.cust} items={printDoc.items} settings={printDoc.settings} />
+        : <PickingDoc order={printDoc.order} cust={printDoc.cust} allocs={printDoc.allocs} />)}
+    </div>
+    </>
   );
 }
