@@ -19,6 +19,7 @@ export default function FrozenUploadPage() {
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState('');
   const [branches, setBranches] = useState<BranchResolved[] | null>(null);
+  const [sheetName, setSheetName] = useState('');
   const [orderDate, setOrderDate] = useState(todayStr());
   const [committing, setCommitting] = useState(false);
   const [done, setDone] = useState<{ orders: number; newCustomers: number; newProducts: number } | null>(null);
@@ -71,6 +72,7 @@ export default function FrozenUploadPage() {
       const result = await parseZongbiao(buf);
       if (result.branches.length === 0) { setError('Tidak ada toko dengan jumlah keluar (angka merah) di file ini.'); setParsing(false); return; }
       const resolved = await resolve(result.branches);
+      setSheetName(result.sheetName);
       setBranches(resolved);
     } catch (e: any) { setError(e.message || 'Gagal membaca file.'); }
     finally { setParsing(false); }
@@ -171,10 +173,11 @@ export default function FrozenUploadPage() {
             className="w-full bg-white rounded-[2rem] border-2 border-dashed border-gray-200 hover:border-cyan-300 shadow-sm py-16 flex flex-col items-center justify-center gap-3 transition-all disabled:opacity-60">
             {parsing ? <Loader2 className="w-10 h-10 animate-spin text-cyan-500" /> : <FileSpreadsheet className="w-12 h-12 text-cyan-400" />}
             <p className="font-black text-raden-green">{parsing ? 'Membaca file…' : 'Klik untuk pilih file Excel (.xlsx)'}</p>
-            <p className="text-gray-400 text-xs font-medium">{fileName || 'File分配表 dari SPV — sheet 總表 yang dibaca'}</p>
+            <p className="text-gray-400 text-xs font-medium">{fileName || 'File 分配表 (template SPV ATAU export mentah ERP) — sheet auto-deteksi'}</p>
           </button>
-          <div className="mt-4 bg-cyan-50/50 rounded-2xl p-4 text-[11px] text-gray-500 font-medium leading-relaxed">
-            <b className="text-raden-green">Cara kerja:</b> sistem baca <b>baris merah (jumlah keluar)</b> tiap produk per toko di sheet 總表 → tampilkan preview → kamu cek → konfirmasi. Diskon (折扣) & ongkir (運費) diisi manual belakangan per order.
+          <div className="mt-4 bg-cyan-50/50 rounded-2xl p-4 text-[11px] text-gray-500 font-medium leading-relaxed space-y-1.5">
+            <p><b className="text-raden-green">Cara kerja:</b> sistem cari sheet <b>分配表</b> (yang ada header 商品編號) otomatis → baca <b>baris merah (jumlah keluar)</b> tiap produk per toko → preview → kamu cek → konfirmasi. Diskon (折扣) & ongkir (運費) diisi manual belakangan per order.</p>
+            <p><b className="text-raden-green">Format:</b> harus <b>.xlsx</b>. Kalau file .xls atau dari Google Sheets → buka dulu, <b>Download / Save As → Excel (.xlsx)</b>, baru upload.</p>
           </div>
         </div>
       )}
@@ -182,6 +185,12 @@ export default function FrozenUploadPage() {
       {/* PREVIEW */}
       {branches && summary && (
         <div className="space-y-5">
+          <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400">
+            <FileSpreadsheet size={13} className="text-cyan-500 shrink-0" />
+            <span className="truncate">{fileName}</span>
+            <span className="text-gray-300">·</span>
+            <span className="text-cyan-600 whitespace-nowrap">sheet: {sheetName}</span>
+          </div>
           {/* ringkasan */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <StatCard icon={<Store size={16} />} label="Toko" value={summary.toko} tone="green" />

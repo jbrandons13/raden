@@ -1,7 +1,13 @@
 /**
- * Parser Excel 出貨 (F6) — baca sheet `總表` dari template SPV (冷凍 分配表).
+ * Parser Excel 出貨 (F6) — baca grid 分配表 (商品編號 × toko).
  *
- * Struktur `總表`:
+ * Bisa baca DUA bentuk file:
+ *   - Template SPV (3 sheet) → grid ada di sheet `總表`.
+ *   - Export mentah ERP (1 sheet, mis. `emisXls`) → strukturnya identik.
+ * Sheet-nya di-AUTO-DETECT (cari sheet yg punya header "商品編號"), jadi nama
+ * sheet apa pun ok.
+ *
+ * Struktur grid:
  *   - Baris header (col A = "商品編號"): kolom C.. berisi label toko, mis. "0102\nTCM 地下街".
  *   - Tiap produk makan 2 baris:
  *       • baris info  (col A = kode produk 商品編號, col B = nama, angka HITAM = stok referensi) → DIABAIKAN
@@ -15,7 +21,8 @@ export type ParsedLine = { productCode: string; productName: string; qty: number
 export type ParsedBranch = { branchCode: string; branchName: string; headerRaw: string; lines: ParsedLine[]; totalQty: number };
 export type ParseResult = { branches: ParsedBranch[]; productCount: number; lineCount: number; sheetName: string };
 
-const SHEET_NAME = '總表';
+const HEADER_KEY = '商品編號';
+const PREFERRED_SHEET = '總表';
 
 /* ---------- helper baca cell (exceljs value bisa number/string/richText/formula) ---------- */
 function cellText(cell: any): string {
@@ -56,24 +63,39 @@ function parseBranchHeader(raw: string): { code: string; name: string } | null {
   return { code, name: rest.join(' ') || code };
 }
 
+/** Cari baris header "商品編號" di sebuah sheet (rows 1..20). 0 = tidak ketemu. */
+function findHeaderRow(ws: any): number {
+  for (let r = 1; r <= Math.min(ws.rowCount, 20); r++) {
+    if (cellText(ws.getRow(r).getCell(1)).trim() === HEADER_KEY) return r;
+  }
+  return 0;
+}
+
 export async function parseZongbiao(buf: ArrayBuffer): Promise<ParseResult> {
   const mod = await import('exceljs');
   const ExcelJS = (mod as any).default ?? mod;
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(buf);
+  try {
+    await wb.xlsx.load(buf);
+  } catch {
+    throw new Error('File tidak bisa dibaca. Pastikan format .xlsx (kalau .xls / Google Sheets → download dulu sbagai Excel .xlsx).');
+  }
 
-  const ws = wb.getWorksheet(SHEET_NAME);
+  // 1) AUTO-DETECT sheet grid: utamakan `總表`, kalau tidak ada cari sheet mana pun
+  //    yang punya header "商品編號" (mis. export ERP bernama `emisXls`).
+  let ws: any = null, headerRow = 0;
+  const preferred = wb.getWorksheet(PREFERRED_SHEET);
+  if (preferred && (headerRow = findHeaderRow(preferred))) ws = preferred;
+  if (!ws) {
+    for (const w of wb.worksheets) {
+      const hr = findHeaderRow(w);
+      if (hr) { ws = w; headerRow = hr; break; }
+    }
+  }
   if (!ws) {
     const names = wb.worksheets.map((w: any) => w.name).join(', ');
-    throw new Error(`Sheet "${SHEET_NAME}" tidak ditemukan. Sheet yang ada: ${names || '(kosong)'}.`);
+    throw new Error(`Tidak ketemu sheet 分配表 (header "商品編號"). Sheet yang ada: ${names || '(kosong)'}.`);
   }
-
-  // 1) cari baris header (col A = "商品編號")
-  let headerRow = 0;
-  for (let r = 1; r <= Math.min(ws.rowCount, 20); r++) {
-    if (cellText(ws.getRow(r).getCell(1)).trim() === '商品編號') { headerRow = r; break; }
-  }
-  if (!headerRow) throw new Error('Baris header "商品編號" tidak ketemu di sheet 總表. Pastikan file benar.');
 
   // 2) petakan kolom toko dari baris header
   const branchCols: { col: number; code: string; name: string; raw: string }[] = [];
@@ -117,5 +139,5 @@ export async function parseZongbiao(buf: ArrayBuffer): Promise<ParseResult> {
 
   const branches = [...byBranch.values()].filter((b) => b.lines.length > 0);
   const lineCount = branches.reduce((s, b) => s + b.lines.length, 0);
-  return { branches, productCount: productCodes.size, lineCount, sheetName: SHEET_NAME };
+  return { branches, productCount: productCodes.size, lineCount, sheetName: ws.name };
 }
