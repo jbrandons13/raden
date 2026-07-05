@@ -42,7 +42,7 @@ export default function FrozenLayout({ children }: { children: React.ReactNode }
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden print:block print:h-auto print:overflow-visible">
       {menuOpen && <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setMenuOpen(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-raden-green text-white flex flex-col transition-transform duration-300 md:relative md:translate-x-0 print:hidden ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-white/10">
@@ -66,7 +66,7 @@ export default function FrozenLayout({ children }: { children: React.ReactNode }
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 print:block print:overflow-visible">
         <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 md:hidden print:hidden">
           <button onClick={() => setMenuOpen(true)} className="p-2 text-raden-green"><Menu size={22} /></button>
           <span className="font-black text-raden-green tracking-widest text-sm flex items-center gap-1.5"><Snowflake size={16} className="text-cyan-500" /> FROZEN</span>
