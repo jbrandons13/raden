@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Truck, Loader2, Plus, X, Trash2, Check, ChevronRight, AlertTriangle, UploadCloud, Search, Receipt, ClipboardList, CalendarDays } from 'lucide-react';
+import { Truck, Loader2, Plus, X, Trash2, Check, ChevronRight, AlertTriangle, UploadCloud, Search, CalendarDays } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { InvoiceDoc, PickingDoc, DEFAULT_SETTINGS, type PrintSettings, type PrintItem, type PrintAlloc, type PrintCustomer } from '../_components/frozenPrints';
 
@@ -178,8 +178,9 @@ export default function FrozenOrdersPage() {
         </div>
         {hasFilter && <button onClick={() => { setSearchCust(''); setDateFrom(''); setDateTo(''); }} className="px-3 py-2.5 text-gray-400 hover:text-red-500 font-black uppercase tracking-widest text-[10px] flex items-center gap-1"><X size={13} /> Reset</button>}
         <div className="flex gap-2 lg:ml-auto">
-          <Link href={printHref('invoice')} className={`px-4 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-1.5 shrink-0 ${confirmedCount ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-gray-50 text-gray-300 pointer-events-none'}`}><Receipt size={14} /> Invoice ({confirmedCount})</Link>
-          <Link href={printHref('picking')} className={`px-4 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-1.5 shrink-0 ${confirmedCount ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-gray-50 text-gray-300 pointer-events-none'}`}><ClipboardList size={14} /> 撿貨單 ({confirmedCount})</Link>
+          <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest self-center hidden lg:block">Print semua:</span>
+          <Link href={printHref('invoice')} className={`px-4 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] shrink-0 whitespace-nowrap ${confirmedCount ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-gray-50 text-gray-300 pointer-events-none'}`}>Invoice ({confirmedCount})</Link>
+          <Link href={printHref('picking')} className={`px-4 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] shrink-0 whitespace-nowrap ${confirmedCount ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-gray-50 text-gray-300 pointer-events-none'}`}>撿貨單 ({confirmedCount})</Link>
         </div>
       </div>
 
@@ -215,11 +216,11 @@ export default function FrozenOrdersPage() {
               {/* Print langsung (khusus Confirmed) — tanpa masuk order */}
               {o.status === 'Confirmed' && (
                 <>
-                  <button onClick={() => printOne(o, 'invoice')} disabled={!!printBusy} className="p-2.5 ml-1 rounded-xl text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 shrink-0 disabled:opacity-40" title="Print Invoice">
-                    {printBusy === o.id + 'invoice' ? <Loader2 size={16} className="animate-spin" /> : <Receipt size={16} />}
+                  <button onClick={() => printOne(o, 'invoice')} disabled={!!printBusy} className="px-2.5 py-1.5 ml-1 rounded-lg text-[10px] font-black uppercase tracking-widest text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 shrink-0 disabled:opacity-40 whitespace-nowrap" title="Print Invoice">
+                    {printBusy === o.id + 'invoice' ? '…' : 'Print Invoice'}
                   </button>
-                  <button onClick={() => printOne(o, 'picking')} disabled={!!printBusy} className="p-2.5 rounded-xl text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 shrink-0 disabled:opacity-40" title="Print 撿貨單 (Picklist)">
-                    {printBusy === o.id + 'picking' ? <Loader2 size={16} className="animate-spin" /> : <ClipboardList size={16} />}
+                  <button onClick={() => printOne(o, 'picking')} disabled={!!printBusy} className="px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 shrink-0 disabled:opacity-40 whitespace-nowrap" title="Print 撿貨單 (Picklist)">
+                    {printBusy === o.id + 'picking' ? '…' : 'Print 撿貨單'}
                   </button>
                 </>
               )}
