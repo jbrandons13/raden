@@ -18,6 +18,8 @@ function PrintBatch() {
   const type: 'invoice' | 'picking' = params.get('type') === 'picking' ? 'picking' : 'invoice';
   const from = params.get('from') || '';
   const to = params.get('to') || '';
+  const idsParam = (params.get('ids') || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const idsKey = idsParam.join(',');
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
   const [settings, setSettings] = useState<PrintSettings>(DEFAULT_SETTINGS);
@@ -27,8 +29,12 @@ function PrintBatch() {
       let q = supabase.from('frozen_orders')
         .select('id, order_date, discount, delivery_fee, frozen_customers(name, phone, address, code)')
         .eq('status', 'Confirmed').order('order_date');
-      if (from) q = q.gte('order_date', from);
-      if (to) q = q.lte('order_date', to);
+      // Prioritas: order yang DIPILIH (ids). Kalau tak ada, fallback rentang tanggal.
+      if (idsParam.length) q = q.in('id', idsParam);
+      else {
+        if (from) q = q.gte('order_date', from);
+        if (to) q = q.lte('order_date', to);
+      }
       const { data: ords } = await q;
       const ids = (ords || []).map((o: any) => o.id);
 
@@ -51,10 +57,10 @@ function PrintBatch() {
       setRows(merged);
       setLoading(false);
     })();
-  }, [type, from, to]);
+  }, [type, from, to, idsKey]);
 
   const label = type === 'invoice' ? 'Invoice' : '撿貨單 (Picklist)';
-  const rangeText = from || to ? `${from ? fmtDate(from) : '…'} – ${to ? fmtDate(to) : '…'}` : 'semua Confirmed';
+  const rangeText = idsParam.length ? `${idsParam.length} order dipilih` : from || to ? `${from ? fmtDate(from) : '…'} – ${to ? fmtDate(to) : '…'}` : 'semua Confirmed';
 
   return (
     <>

@@ -33,6 +33,8 @@ export default function FrozenOrdersPage() {
   const [searchCust, setSearchCust] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  // pilih order utk print (hanya Confirmed)
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   // print per-order (inline, tanpa pindah halaman)
   const [printBusy, setPrintBusy] = useState('');
   const [printDoc, setPrintDoc] = useState<{ type: 'invoice' | 'picking'; order: { order_date: string | null; discount: number | null; delivery_fee: number | null }; cust: PrintCustomer; items: PrintItem[]; allocs: PrintAlloc[]; settings: PrintSettings } | null>(null);
@@ -136,14 +138,20 @@ export default function FrozenOrdersPage() {
     if (dateTo && (!o.order_date || o.order_date > dateTo)) return false;
     return true;
   });
-  const confirmedCount = filteredOrders.filter((o) => o.status === 'Confirmed').length;
-  const printHref = (type: 'invoice' | 'picking') => {
-    const q = new URLSearchParams({ type });
-    if (dateFrom) q.set('from', dateFrom);
-    if (dateTo) q.set('to', dateTo);
-    return `/frozen/orders/print?${q.toString()}`;
-  };
+  const confirmedOrders = filteredOrders.filter((o) => o.status === 'Confirmed');
   const hasFilter = searchCust || dateFrom || dateTo;
+
+  // seleksi print
+  const selectedIds = filteredOrders.filter((o) => selected.has(o.id)).map((o) => o.id);
+  const allConfirmedSelected = confirmedOrders.length > 0 && confirmedOrders.every((o) => selected.has(o.id));
+  const toggleAll = () => setSelected((prev) => {
+    const n = new Set(prev);
+    if (allConfirmedSelected) confirmedOrders.forEach((o) => n.delete(o.id));
+    else confirmedOrders.forEach((o) => n.add(o.id));
+    return n;
+  });
+  const toggleOne = (oid: string) => setSelected((prev) => { const n = new Set(prev); n.has(oid) ? n.delete(oid) : n.add(oid); return n; });
+  const printSelectedHref = (type: 'invoice' | 'picking') => `/frozen/orders/print?type=${type}&ids=${selectedIds.join(',')}`;
 
   return (
     <>
@@ -159,7 +167,7 @@ export default function FrozenOrdersPage() {
         </div>
       </div>
 
-      {/* Filter + Print massal */}
+      {/* Filter */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col lg:flex-row lg:items-end gap-3">
         <div className="flex-1 min-w-0">
           <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Cari Customer</label>
@@ -176,13 +184,26 @@ export default function FrozenOrdersPage() {
           <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Sampai</label>
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
         </div>
-        {hasFilter && <button onClick={() => { setSearchCust(''); setDateFrom(''); setDateTo(''); }} className="px-3 py-2.5 text-gray-400 hover:text-red-500 font-black uppercase tracking-widest text-[10px] flex items-center gap-1"><X size={13} /> Reset</button>}
-        <div className="flex gap-2 lg:ml-auto">
-          <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest self-center hidden lg:block">Print semua:</span>
-          <Link href={printHref('invoice')} className={`px-4 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] shrink-0 whitespace-nowrap ${confirmedCount ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-gray-50 text-gray-300 pointer-events-none'}`}>Invoice ({confirmedCount})</Link>
-          <Link href={printHref('picking')} className={`px-4 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] shrink-0 whitespace-nowrap ${confirmedCount ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-gray-50 text-gray-300 pointer-events-none'}`}>撿貨單 ({confirmedCount})</Link>
-        </div>
+        {hasFilter && <button onClick={() => { setSearchCust(''); setDateFrom(''); setDateTo(''); }} className="px-3 py-2.5 text-gray-400 hover:text-red-500 font-black uppercase tracking-widest text-[10px] flex items-center gap-1 lg:ml-auto"><X size={13} /> Reset</button>}
       </div>
+
+      {/* Bar aksi: pilih semua + print yang dipilih */}
+      {!loading && confirmedOrders.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="flex items-center gap-2 cursor-pointer select-none px-1">
+            <input type="checkbox" checked={allConfirmedSelected} onChange={toggleAll} className="w-4 h-4 accent-raden-green" />
+            <span className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Pilih semua Confirmed ({confirmedOrders.length})</span>
+          </label>
+          {selectedIds.length > 0 && (
+            <div className="flex items-center gap-2 ml-auto bg-raden-green rounded-2xl pl-4 pr-2 py-2">
+              <span className="text-white font-black text-[11px] uppercase tracking-widest">{selectedIds.length} dipilih</span>
+              <Link href={printSelectedHref('invoice')} className="px-3 py-2 bg-white text-raden-green rounded-xl font-black uppercase tracking-widest text-[10px] whitespace-nowrap">Print Invoice</Link>
+              <Link href={printSelectedHref('picking')} className="px-3 py-2 bg-white text-raden-green rounded-xl font-black uppercase tracking-widest text-[10px] whitespace-nowrap">Print 撿貨單</Link>
+              <button onClick={() => setSelected(new Set())} className="px-2 py-2 text-white/70 hover:text-white font-black uppercase tracking-widest text-[10px]">Batal</button>
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-cyan-500" /></div>
@@ -201,7 +222,12 @@ export default function FrozenOrdersPage() {
       ) : (
         <div className="space-y-2.5">
           {filteredOrders.map((o) => (
-            <div key={o.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center hover:border-cyan-200 transition-all">
+            <div key={o.id} className={`bg-white rounded-2xl border shadow-sm flex items-center transition-all ${selected.has(o.id) ? 'border-raden-green ring-1 ring-raden-green/30' : 'border-gray-100 hover:border-cyan-200'}`}>
+              {o.status === 'Confirmed' && (
+                <label className="pl-4 pr-1 py-4 flex items-center cursor-pointer shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <input type="checkbox" checked={selected.has(o.id)} onChange={() => toggleOne(o.id)} className="w-4 h-4 accent-raden-green" />
+                </label>
+              )}
               <button onClick={() => router.push(`/frozen/orders/${o.id}`)} className="flex-1 min-w-0 p-4 flex items-center justify-between gap-3 text-left">
                 <div className="min-w-0">
                   <p className="font-black text-raden-green truncate">{o.frozen_customers?.name || '—'}</p>
