@@ -6,9 +6,10 @@ import Link from 'next/link';
 import { Truck, Loader2, Plus, X, Trash2, Check, ChevronRight, AlertTriangle, UploadCloud, Search, CalendarDays } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { InvoiceDoc, PickingDoc, DEFAULT_SETTINGS, type PrintSettings, type PrintItem, type PrintAlloc, type PrintCustomer } from '../_components/frozenPrints';
+import ProductCombobox from '../_components/ProductCombobox';
 
 type Customer = { id: string; name: string };
-type Product = { id: string; name: string; unit: string | null; price: number | null };
+type Product = { id: string; name: string; unit: string | null; price: number | null; code: string | null; barcode: string | null };
 type Order = {
   id: string; status: string; order_date: string | null; is_backorder: boolean; created_at: string;
   frozen_customers: { name: string } | null;
@@ -48,7 +49,7 @@ export default function FrozenOrdersPage() {
     const [o, c, p] = await Promise.all([
       supabase.from('frozen_orders').select('id, status, order_date, is_backorder, created_at, frozen_customers(name), frozen_order_items(count)').order('created_at', { ascending: false }),
       supabase.from('frozen_customers').select('id, name').order('name'),
-      supabase.from('frozen_products').select('id, name, unit, price').order('name'),
+      supabase.from('frozen_products').select('id, name, unit, price, code, barcode').order('name'),
     ]);
     if (o.data) setOrders(o.data as any);
     if (c.data) setCustomers(c.data as Customer[]);
@@ -290,10 +291,8 @@ export default function FrozenOrdersPage() {
                 <div className="space-y-2">
                   {lines.map((l, i) => (
                     <div key={i} className="flex gap-2">
-                      <select value={l.product_id} onChange={(e) => selectProduct(i, e.target.value)} className="flex-1 min-w-0 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm outline-none focus:ring-2 focus:ring-cyan-400 appearance-none">
-                        <option value="">— Produk —</option>
-                        {products.map((p) => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
-                      </select>
+                      <ProductCombobox value={l.product_id} onChange={(id) => selectProduct(i, id)} options={products} placeholder="— Produk —" className="flex-1 min-w-0"
+                        buttonClassName="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm outline-none focus:ring-2 focus:ring-cyan-400" />
                       <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="0" className="w-24 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-cyan-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
                       <input type="number" min="0" value={l.price} onChange={(e) => setLine(i, 'price', e.target.value)} placeholder="0" className="w-20 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-cyan-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
                       <button onClick={() => removeLine(i)} className="p-2 text-gray-300 hover:text-red-500 shrink-0"><Trash2 size={16} /></button>

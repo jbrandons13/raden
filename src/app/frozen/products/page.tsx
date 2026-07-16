@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle, Barcode, AlertTriangle } from 'lucide-react';
+import { Package, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle, Barcode, AlertTriangle, Lock, Unlock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 type FP = { id: string; name: string; code: string | null; barcode: string | null; unit: string | null; notes: string | null; price: number | null; needs_review: boolean };
@@ -19,6 +19,7 @@ export default function FrozenProductsPage() {
   const [error, setError] = useState('');
   const [toDelete, setToDelete] = useState<FP | null>(null);
   const [enforceUnique, setEnforceUnique] = useState(false);
+  const [codesLocked, setCodesLocked] = useState(false); // SKU/Barcode dikunci saat EDIT
 
   const fetchData = useCallback(async () => {
     const [{ data }, { data: st }] = await Promise.all([
@@ -33,8 +34,8 @@ export default function FrozenProductsPage() {
 
   const filtered = rows.filter((r) => `${r.name} ${r.code || ''}`.toLowerCase().includes(search.toLowerCase()));
 
-  const openAdd = () => { setForm(EMPTY); setError(''); setShowForm(true); };
-  const openEdit = (r: FP) => { setForm({ id: r.id, name: r.name, code: r.code || '', barcode: r.barcode || '', unit: r.unit || '', notes: r.notes || '', price: r.price != null ? String(r.price) : '' }); setError(''); setShowForm(true); };
+  const openAdd = () => { setForm(EMPTY); setError(''); setCodesLocked(false); setShowForm(true); };       // produk baru → SKU/barcode bebas diisi
+  const openEdit = (r: FP) => { setForm({ id: r.id, name: r.name, code: r.code || '', barcode: r.barcode || '', unit: r.unit || '', notes: r.notes || '', price: r.price != null ? String(r.price) : '' }); setError(''); setCodesLocked(true); setShowForm(true); }; // edit → SKU/barcode terkunci
 
   const save = async () => {
     if (!form.name.trim()) { setError('Nama wajib diisi.'); return; }
@@ -140,14 +141,26 @@ export default function FrozenProductsPage() {
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama</label>
                   <input type="text" autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="cth. Edamame Beku" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kode / SKU <span className="text-red-400">*</span> <span className="text-gray-300 normal-case tracking-normal">utama</span></label>
-                    <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="cth. FRZ-001" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block flex items-center gap-1"><Barcode size={12} /> Barcode <span className="text-gray-300 normal-case tracking-normal">· tambahan</span></label>
-                    <input type="text" value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} placeholder="opsional" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+                <div>
+                  {form.id && (
+                    <div className="flex items-center justify-between mb-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
+                      <span className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 text-gray-400">
+                        {codesLocked ? <><Lock size={12} /> SKU & Barcode terkunci</> : <><Unlock size={12} className="text-amber-500" /> <span className="text-amber-600">SKU & Barcode terbuka</span></>}
+                      </span>
+                      {codesLocked
+                        ? <button type="button" onClick={() => { if (confirm('Ubah SKU / Barcode?\n\nIni identitas penting produk — dipakai buat matching upload Excel, invoice, dll. Pastikan kamu yakin.')) setCodesLocked(false); }} className="text-[10px] font-black uppercase tracking-widest text-cyan-600 flex items-center gap-1"><Unlock size={12} /> Ubah</button>
+                        : <button type="button" onClick={() => setCodesLocked(true)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-1"><Lock size={12} /> Kunci lagi</button>}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kode / SKU <span className="text-red-400">*</span> <span className="text-gray-300 normal-case tracking-normal">utama</span></label>
+                      <input type="text" value={form.code} disabled={codesLocked} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="cth. FRZ-001" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block flex items-center gap-1"><Barcode size={12} /> Barcode <span className="text-gray-300 normal-case tracking-normal">· tambahan</span></label>
+                      <input type="text" value={form.barcode} disabled={codesLocked} onChange={(e) => setForm({ ...form, barcode: e.target.value })} placeholder="opsional" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">

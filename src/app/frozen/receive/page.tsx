@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { PackagePlus, Loader2, Check, CalendarDays, Clock, Search, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import ProductCombobox from '../_components/ProductCombobox';
 
-type Product = { id: string; name: string; unit: string | null };
+type Product = { id: string; name: string; unit: string | null; code: string | null; barcode: string | null };
 type Purchase = { id: string; qty: number; exp_date: string | null; received_date: string | null; created_at: string; frozen_products: { name: string; unit: string | null } | null };
 
 const todayStr = () => new Date().toLocaleDateString('en-CA');
@@ -28,7 +29,7 @@ export default function FrozenReceivePage() {
 
   const fetchData = useCallback(async () => {
     const [p, r] = await Promise.all([
-      supabase.from('frozen_products').select('id, name, unit').order('name'),
+      supabase.from('frozen_products').select('id, name, unit, code, barcode').order('name'),
       supabase.from('frozen_purchases').select('id, qty, exp_date, received_date, created_at, frozen_products(name, unit)').order('received_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
     ]);
     if (p.data) setProducts(p.data as Product[]);
@@ -96,10 +97,8 @@ export default function FrozenReceivePage() {
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-4 h-fit">
           <div>
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Produk</label>
-            <select value={productId} onChange={(e) => setProductId(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400 appearance-none">
-              <option value="">— Pilih produk —</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
-            </select>
+            <ProductCombobox value={productId} onChange={setProductId} options={products}
+              buttonClassName="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
             {products.length === 0 && <p className="text-[10px] text-amber-500 font-bold mt-1.5">Belum ada produk — tambah dulu di menu Produk.</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">

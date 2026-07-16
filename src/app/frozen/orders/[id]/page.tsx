@@ -8,6 +8,7 @@ import {
   ClipboardList, Receipt, Printer, Phone, MapPin, Percent,
 } from 'lucide-react';
 import { InvoiceDoc, PickingDoc, orderTotals } from '../../_components/frozenPrints';
+import ProductCombobox from '../../_components/ProductCombobox';
 
 type Order = {
   id: string; status: string; order_date: string | null; is_backorder: boolean; notes: string | null;
@@ -20,7 +21,7 @@ type FSettings = {
 };
 type Item = { id: string; product_id: string; qty: number; price: number; frozen_products: { name: string; unit: string | null; code: string | null; barcode: string | null } | null };
 type Alloc = { id: string; product_id: string; exp_date: string | null; qty: number; frozen_products: { name: string; unit: string | null } | null };
-type Product = { id: string; name: string; unit: string | null; code: string | null; price: number | null };
+type Product = { id: string; name: string; unit: string | null; code: string | null; barcode: string | null; price: number | null };
 type Line = { product_id: string; qty: string; price: string };
 type Shortage = { product_id: string; requested: number; available: number };
 
@@ -52,7 +53,7 @@ export default function FrozenOrderDetail() {
       supabase.from('frozen_orders').select('id, status, order_date, is_backorder, notes, locked_at, customer_id, discount, delivery_fee, frozen_customers(name, phone, address, code)').eq('id', id).single(),
       supabase.from('frozen_order_items').select('id, product_id, qty, price, frozen_products(name, unit, code, barcode)').eq('order_id', id),
       supabase.from('frozen_allocations').select('id, product_id, exp_date, qty, frozen_products(name, unit)').eq('order_id', id),
-      supabase.from('frozen_products').select('id, name, unit, code, price').order('name'),
+      supabase.from('frozen_products').select('id, name, unit, code, barcode, price').order('name'),
       supabase.from('frozen_settings').select('*').limit(1).maybeSingle(),
     ]);
     if (st.data) setSettings({ ...DEFAULT_SETTINGS, ...st.data });
@@ -223,10 +224,8 @@ export default function FrozenOrderDetail() {
             <div className="space-y-2">
               {editLines.map((l, i) => (
                 <div key={i} className="flex gap-2">
-                  <select value={l.product_id} onChange={(e) => selectProduct(i, e.target.value)} className="flex-1 min-w-0 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm outline-none focus:ring-2 focus:ring-cyan-400 appearance-none">
-                    <option value="">— Produk —</option>
-                    {products.map((p) => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
-                  </select>
+                  <ProductCombobox value={l.product_id} onChange={(id) => selectProduct(i, id)} options={products} placeholder="— Produk —" className="flex-1 min-w-0"
+                    buttonClassName="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm outline-none focus:ring-2 focus:ring-cyan-400" />
                   <input type="number" min="0" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} placeholder="0" className="w-24 p-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-cyan-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
                   <input type="number" min="0" value={l.price} onChange={(e) => setLine(i, 'price', e.target.value)} placeholder="0" className="w-20 p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-raden-green text-sm text-center outline-none focus:ring-2 focus:ring-cyan-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
                   <button onClick={() => removeLine(i)} className="p-2 text-gray-300 hover:text-red-500 shrink-0"><Trash2 size={16} /></button>
