@@ -1,13 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle, Barcode, AlertTriangle, Lock, Unlock } from 'lucide-react';
+import { Package, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle, Barcode, AlertTriangle, Lock, Unlock, ImagePlus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { compressImage } from '@/lib/image';
 
-type FP = { id: string; name: string; code: string | null; barcode: string | null; unit: string | null; notes: string | null; price: number | null; needs_review: boolean };
-type Form = { id?: string; name: string; code: string; barcode: string; unit: string; notes: string; price: string };
-const EMPTY: Form = { name: '', code: '', barcode: '', unit: '', notes: '', price: '' };
+const PHOTO_BUCKET = 'frozen-products';
+
+type FP = { id: string; name: string; code: string | null; barcode: string | null; unit: string | null; notes: string | null; price: number | null; needs_review: boolean; photo_url: string | null };
+type Form = { id?: string; name: string; code: string; barcode: string; unit: string; notes: string; price: string; photo_url: string };
+const EMPTY: Form = { name: '', code: '', barcode: '', unit: '', notes: '', price: '', photo_url: '' };
 
 export default function FrozenProductsPage() {
   const [rows, setRows] = useState<FP[]>([]);
@@ -20,6 +23,9 @@ export default function FrozenProductsPage() {
   const [toDelete, setToDelete] = useState<FP | null>(null);
   const [enforceUnique, setEnforceUnique] = useState(false);
   const [codesLocked, setCodesLocked] = useState(false); // SKU/Barcode dikunci saat EDIT
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null); // foto baru yg mau diupload
+  const [photoPreview, setPhotoPreview] = useState('');           // url tampil (existing / object-url baru)
+  const photoRef = useRef<HTMLInputElement>(null);
 
   const fetchData = useCallback(async () => {
     const [{ data }, { data: st }] = await Promise.all([
@@ -34,8 +40,19 @@ export default function FrozenProductsPage() {
 
   const filtered = rows.filter((r) => `${r.name} ${r.code || ''}`.toLowerCase().includes(search.toLowerCase()));
 
-  const openAdd = () => { setForm(EMPTY); setError(''); setCodesLocked(false); setShowForm(true); };       // produk baru → SKU/barcode bebas diisi
-  const openEdit = (r: FP) => { setForm({ id: r.id, name: r.name, code: r.code || '', barcode: r.barcode || '', unit: r.unit || '', notes: r.notes || '', price: r.price != null ? String(r.price) : '' }); setError(''); setCodesLocked(true); setShowForm(true); }; // edit → SKU/barcode terkunci
+  const openAdd = () => { setForm(EMPTY); setError(''); setCodesLocked(false); setPhotoBlob(null); setPhotoPreview(''); setShowForm(true); };       // produk baru → SKU/barcode bebas diisi
+  const openEdit = (r: FP) => { setForm({ id: r.id, name: r.name, code: r.code || '', barcode: r.barcode || '', unit: r.unit || '', notes: r.notes || '', price: r.price != null ? String(r.price) : '', photo_url: r.photo_url || '' }); setError(''); setCodesLocked(true); setPhotoBlob(null); setPhotoPreview(r.photo_url || ''); setShowForm(true); }; // edit → SKU/barcode terkunci
+
+  const pickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    try {
+      let blob: Blob; try { blob = await compressImage(file); } catch { blob = file; }
+      setPhotoBlob(blob);
+      setPhotoPreview(URL.createObjectURL(blob));
+    } catch (err: any) { setError('Gagal memproses foto: ' + err.message); }
+  };
+  const clearPhoto = () => { setPhotoBlob(null); setPhotoPreview(''); setForm((f) => ({ ...f, photo_url: '' })); };
 
   const save = async () => {
     if (!form.name.trim()) { setError('Nama wajib diisi.'); return; }
@@ -58,7 +75,15 @@ export default function FrozenProductsPage() {
         const dupBc = barcode ? await dupBy('barcode', barcode) : null;
         if (dupBc) { setError(`Barcode "${barcode}" sudah dipakai produk "${dupBc.name}". Ganti barcode atau matikan validasi di Pengaturan.`); setSaving(false); return; }
       }
-      const payload = { name: form.name.trim(), code: code || null, barcode: barcode || null, unit: form.unit.trim() || null, notes: form.notes.trim() || null, price: Math.max(0, Number(form.price) || 0), needs_review: false };
+      // Upload foto baru (kalau ada) → dapetin public URL
+      let photoUrl: string | null = form.photo_url.trim() || null;
+      if (photoBlob) {
+        const path = `${(code || 'p')}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`;
+        const { error: upErr } = await supabase.storage.from(PHOTO_BUCKET).upload(path, photoBlob, { contentType: photoBlob.type || 'image/jpeg', upsert: true });
+        if (upErr) throw new Error('Upload foto gagal: ' + upErr.message);
+        photoUrl = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+      }
+      const payload = { name: form.name.trim(), code: code || null, barcode: barcode || null, unit: form.unit.trim() || null, notes: form.notes.trim() || null, price: Math.max(0, Number(form.price) || 0), needs_review: false, photo_url: photoUrl };
       const { error: e } = form.id
         ? await supabase.from('frozen_products').update(payload).eq('id', form.id)
         : await supabase.from('frozen_products').insert([payload]);
@@ -98,7 +123,9 @@ export default function FrozenProductsPage() {
           {filtered.map((r) => (
             <motion.div key={r.id} layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 hover:shadow-lg transition-all">
               <div className="flex items-start gap-3 mb-3">
-                <div className="w-11 h-11 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0"><Package size={20} /></div>
+                <div className="w-11 h-11 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0 overflow-hidden">
+                  {r.photo_url ? <img src={r.photo_url} alt={r.name} className="w-full h-full object-cover" /> : <Package size={20} />}
+                </div>
                 <div className="min-w-0">
                   <h3 className="text-base font-black text-raden-green truncate leading-tight">{r.name}</h3>
                   <div className="flex flex-wrap gap-1.5 mt-1">
@@ -137,6 +164,19 @@ export default function FrozenProductsPage() {
                 <button onClick={() => setShowForm(false)} className="p-2 bg-gray-50 rounded-full text-gray-400"><X size={20} /></button>
               </div>
               <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Foto Produk <span className="text-gray-300 normal-case tracking-normal">· opsional</span></label>
+                  <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => photoRef.current?.click()} className="w-20 h-20 rounded-2xl bg-gray-50 border border-gray-100 border-dashed flex items-center justify-center overflow-hidden shrink-0 hover:border-cyan-300 transition-colors">
+                      {photoPreview ? <img src={photoPreview} alt="" className="w-full h-full object-cover" /> : <ImagePlus size={22} className="text-gray-300" />}
+                    </button>
+                    <div className="flex flex-col gap-1.5">
+                      <button type="button" onClick={() => photoRef.current?.click()} className="text-[10px] font-black uppercase tracking-widest text-cyan-600 flex items-center gap-1"><ImagePlus size={13} /> {photoPreview ? 'Ganti foto' : 'Pilih foto'}</button>
+                      {photoPreview && <button type="button" onClick={clearPhoto} className="text-[10px] font-black uppercase tracking-widest text-red-400 flex items-center gap-1"><Trash2 size={13} /> Hapus foto</button>}
+                    </div>
+                  </div>
+                </div>
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama</label>
                   <input type="text" autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="cth. Edamame Beku" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
