@@ -11,7 +11,7 @@ import { InvoiceDoc, PickingDoc, orderTotals } from '../../_components/frozenPri
 import ProductCombobox from '../../_components/ProductCombobox';
 
 type Order = {
-  id: string; status: string; order_date: string | null; is_backorder: boolean; notes: string | null;
+  id: string; code: string | null; status: string; order_date: string | null; is_backorder: boolean; notes: string | null;
   locked_at: string | null; customer_id: string; discount: number | null; delivery_fee: number | null;
   frozen_customers: { name: string; phone: string | null; address: string | null; code: string | null } | null;
 };
@@ -50,7 +50,7 @@ export default function FrozenOrderDetail() {
 
   const fetchAll = useCallback(async () => {
     const [o, it, al, pr, st] = await Promise.all([
-      supabase.from('frozen_orders').select('id, status, order_date, is_backorder, notes, locked_at, customer_id, discount, delivery_fee, frozen_customers(name, phone, address, code)').eq('id', id).single(),
+      supabase.from('frozen_orders').select('id, code, status, order_date, is_backorder, notes, locked_at, customer_id, discount, delivery_fee, frozen_customers(name, phone, address, code)').eq('id', id).single(),
       supabase.from('frozen_order_items').select('id, product_id, qty, price, frozen_products(name, unit, code, barcode)').eq('order_id', id),
       supabase.from('frozen_allocations').select('id, product_id, exp_date, qty, frozen_products(name, unit)').eq('order_id', id),
       supabase.from('frozen_products').select('id, name, unit, code, barcode, price').order('name'),
@@ -183,7 +183,7 @@ export default function FrozenOrderDetail() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight flex items-center gap-2"><Truck className="text-cyan-500" /> {cust?.name || '—'}</h1>
-            <p className="text-gray-400 text-xs sm:text-sm font-medium">{fmtDate(order.order_date)}{order.notes ? ` · ${order.notes}` : ''}</p>
+            <p className="text-gray-400 text-xs sm:text-sm font-medium">{order.code && <span className="font-black text-cyan-600">{order.code}</span>}{order.code ? ' · ' : ''}{fmtDate(order.order_date)}{order.notes ? ` · ${order.notes}` : ''}</p>
           </div>
           <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDraft ? 'bg-gray-100 text-gray-500' : 'bg-emerald-100 text-emerald-700'}`}>
             {isDraft ? <><Unlock size={12} /> Draft</> : <><Lock size={12} /> 確認 Terkonfirmasi</>}

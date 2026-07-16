@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import ProductCombobox from '../_components/ProductCombobox';
 
 type Product = { id: string; name: string; unit: string | null; code: string | null; barcode: string | null };
-type Purchase = { id: string; qty: number; exp_date: string | null; received_date: string | null; created_at: string; frozen_products: { name: string; unit: string | null } | null };
+type Purchase = { id: string; code: string | null; qty: number; exp_date: string | null; received_date: string | null; created_at: string; frozen_products: { name: string; unit: string | null } | null };
 
 const todayStr = () => new Date().toLocaleDateString('en-CA');
 const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
@@ -26,16 +26,22 @@ export default function FrozenReceivePage() {
   const [histSearch, setHistSearch] = useState('');
   const [histFrom, setHistFrom] = useState('');
   const [histTo, setHistTo] = useState('');
+  const [previewCode, setPreviewCode] = useState(''); // kode berikutnya (perkiraan)
+
+  const refreshPreview = useCallback(async () => {
+    const { data } = await supabase.rpc('frozen_peek_doc_code', { p_kind: 'IN' });
+    if (data) setPreviewCode(data as string);
+  }, []);
 
   const fetchData = useCallback(async () => {
     const [p, r] = await Promise.all([
       supabase.from('frozen_products').select('id, name, unit, code, barcode').order('name'),
-      supabase.from('frozen_purchases').select('id, qty, exp_date, received_date, created_at, frozen_products(name, unit)').order('received_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
+      supabase.from('frozen_purchases').select('id, code, qty, exp_date, received_date, created_at, frozen_products(name, unit)').order('received_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
     ]);
     if (p.data) setProducts(p.data as Product[]);
     if (r.data) setRecent(r.data as any);
   }, []);
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchData(); refreshPreview(); }, [fetchData, refreshPreview]);
 
   const submit = async () => {
     setError('');
@@ -48,9 +54,13 @@ export default function FrozenReceivePage() {
       const { data: u } = await supabase.auth.getUser();
       const uid = u.user?.id || null;
 
+      // 0) generate kode dokumen (atomik, anti-dobel)
+      const { data: code, error: ce } = await supabase.rpc('frozen_next_doc_code', { p_kind: 'IN' });
+      if (ce) throw ce;
+
       // 1) catat 進貨
       const { data: pur, error: pe } = await supabase.from('frozen_purchases')
-        .insert({ product_id: productId, qty: q, exp_date: exp, received_date: received || todayStr(), notes: notes.trim() || null, created_by: uid })
+        .insert({ product_id: productId, code, qty: q, exp_date: exp, received_date: received || todayStr(), notes: notes.trim() || null, created_by: uid })
         .select('id').single();
       if (pe) throw pe;
 
@@ -71,15 +81,15 @@ export default function FrozenReceivePage() {
       await supabase.from('frozen_stock_movements').insert({ product_id: productId, batch_id: batchId, exp_date: exp, change_qty: q, reason: 'purchase', ref_type: 'purchase', ref_id: pur.id, created_by: uid });
 
       setQty(''); setExp(''); setNotes('');
-      setToast('Barang masuk tercatat ✓ Stok bertambah.');
-      setTimeout(() => setToast(''), 2500);
-      fetchData();
+      setToast(`Tercatat ✓ ${code} — stok bertambah.`);
+      setTimeout(() => setToast(''), 2800);
+      fetchData(); refreshPreview();
     } catch (e: any) { setError(e.message); } finally { setSaving(false); }
   };
 
-  // filter riwayat (nama produk + rentang tanggal masuk)
+  // filter riwayat (nama produk / KODE + rentang tanggal masuk)
   const filteredRecent = recent.filter((r) => {
-    if (histSearch && !(r.frozen_products?.name || '').toLowerCase().includes(histSearch.toLowerCase())) return false;
+    if (histSearch && !(`${r.frozen_products?.name || ''} ${r.code || ''}`).toLowerCase().includes(histSearch.toLowerCase())) return false;
     if (histFrom && (!r.received_date || r.received_date < histFrom)) return false;
     if (histTo && (!r.received_date || r.received_date > histTo)) return false;
     return true;
@@ -95,6 +105,12 @@ export default function FrozenReceivePage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Form */}
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-4 h-fit">
+          {previewCode && (
+            <div className="flex items-center justify-between bg-cyan-50 border border-cyan-100 rounded-2xl px-4 py-2.5">
+              <span className="text-[9px] font-black text-cyan-500 uppercase tracking-widest">Kode 進貨 berikutnya</span>
+              <span className="font-black text-cyan-700 tabular-nums text-sm">{previewCode}</span>
+            </div>
+          )}
           <div>
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Produk</label>
             <ProductCombobox value={productId} onChange={setProductId} options={products}
@@ -131,7 +147,7 @@ export default function FrozenReceivePage() {
           <div className="space-y-2.5 mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={15} />
-              <input value={histSearch} onChange={(e) => setHistSearch(e.target.value)} placeholder="Cari nama produk..." className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+              <input value={histSearch} onChange={(e) => setHistSearch(e.target.value)} placeholder="Cari nama produk / kode..." className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
             </div>
             <div className="flex items-center gap-2">
               <div className="flex-1">
@@ -152,7 +168,7 @@ export default function FrozenReceivePage() {
               <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-gray-50/60 rounded-2xl">
                 <div className="min-w-0">
                   <p className="font-bold text-raden-green text-[13px] truncate">{r.frozen_products?.name || 'Produk'}</p>
-                  <p className="text-[10px] text-gray-400">EXP {fmtDate(r.exp_date)} · masuk {fmtDate(r.received_date)}</p>
+                  <p className="text-[10px] text-gray-400">{r.code && <span className="font-black text-cyan-600">{r.code}</span>}{r.code ? ' · ' : ''}EXP {fmtDate(r.exp_date)} · masuk {fmtDate(r.received_date)}</p>
                 </div>
                 <span className="font-black text-cyan-600 text-sm shrink-0">+{r.qty}{r.frozen_products?.unit ? ` ${r.frozen_products.unit}` : ''}</span>
               </div>

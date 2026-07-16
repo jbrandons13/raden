@@ -11,7 +11,7 @@ import ProductCombobox from '../_components/ProductCombobox';
 type Customer = { id: string; name: string };
 type Product = { id: string; name: string; unit: string | null; price: number | null; code: string | null; barcode: string | null };
 type Order = {
-  id: string; status: string; order_date: string | null; is_backorder: boolean; created_at: string;
+  id: string; code: string | null; status: string; order_date: string | null; is_backorder: boolean; created_at: string;
   frozen_customers: { name: string } | null;
   frozen_order_items: { count: number }[];
 };
@@ -44,10 +44,11 @@ export default function FrozenOrdersPage() {
   const [orderDate, setOrderDate] = useState(todayStr());
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<Line[]>([{ product_id: '', qty: '', price: '' }]);
+  const [previewCode, setPreviewCode] = useState(''); // kode 出貨 berikutnya (perkiraan)
 
   const fetchAll = useCallback(async () => {
     const [o, c, p] = await Promise.all([
-      supabase.from('frozen_orders').select('id, status, order_date, is_backorder, created_at, frozen_customers(name), frozen_order_items(count)').order('created_at', { ascending: false }),
+      supabase.from('frozen_orders').select('id, code, status, order_date, is_backorder, created_at, frozen_customers(name), frozen_order_items(count)').order('created_at', { ascending: false }),
       supabase.from('frozen_customers').select('id, name').order('name'),
       supabase.from('frozen_products').select('id, name, unit, price, code, barcode').order('name'),
     ]);
@@ -59,6 +60,7 @@ export default function FrozenOrdersPage() {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const reset = () => { setCustomerId(''); setOrderDate(todayStr()); setNotes(''); setLines([{ product_id: '', qty: '', price: '' }]); setError(''); };
+  const openCreate = async () => { reset(); setPreviewCode(''); setOpen(true); const { data } = await supabase.rpc('frozen_peek_doc_code', { p_kind: 'OUT' }); if (data) setPreviewCode(data as string); };
   const setLine = (i: number, k: keyof Line, v: string) => setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, [k]: v } : l)));
   const selectProduct = (i: number, pid: string) => {
     const p = products.find((x) => x.id === pid);
@@ -76,8 +78,10 @@ export default function FrozenOrdersPage() {
     setSaving(true);
     try {
       const { data: u } = await supabase.auth.getUser();
+      const { data: code, error: ce } = await supabase.rpc('frozen_next_doc_code', { p_kind: 'OUT' }); // kode atomik
+      if (ce) throw ce;
       const { data: ord, error: oe } = await supabase.from('frozen_orders')
-        .insert({ customer_id: customerId, order_date: orderDate || todayStr(), notes: notes.trim() || null, status: 'Draft', created_by: u.user?.id || null })
+        .insert({ customer_id: customerId, code, order_date: orderDate || todayStr(), notes: notes.trim() || null, status: 'Draft', created_by: u.user?.id || null })
         .select('id').single();
       if (oe) throw oe;
       const { error: ie } = await supabase.from('frozen_order_items').insert(valid.map((l) => ({ order_id: ord.id, product_id: l.product_id, qty: l.qty, price: l.price })));
@@ -134,7 +138,7 @@ export default function FrozenOrdersPage() {
 
   // filter list (customer + rentang tanggal order_date)
   const filteredOrders = orders.filter((o) => {
-    if (searchCust && !(o.frozen_customers?.name || '').toLowerCase().includes(searchCust.toLowerCase())) return false;
+    if (searchCust && !(`${o.frozen_customers?.name || ''} ${o.code || ''}`).toLowerCase().includes(searchCust.toLowerCase())) return false;
     if (dateFrom && (!o.order_date || o.order_date < dateFrom)) return false;
     if (dateTo && (!o.order_date || o.order_date > dateTo)) return false;
     return true;
@@ -164,7 +168,7 @@ export default function FrozenOrdersPage() {
         </div>
         <div className="flex gap-2 shrink-0">
           <Link href="/frozen/orders/upload" className="px-5 py-3 bg-white border border-cyan-200 text-cyan-700 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-sm flex items-center gap-2"><UploadCloud size={16} /> Upload Excel</Link>
-          <button onClick={() => { reset(); setOpen(true); }} className="px-5 py-3 bg-raden-green text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl flex items-center gap-2"><Plus size={16} /> Buat 出貨</button>
+          <button onClick={openCreate} className="px-5 py-3 bg-raden-green text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl flex items-center gap-2"><Plus size={16} /> Buat 出貨</button>
         </div>
       </div>
 
@@ -174,7 +178,7 @@ export default function FrozenOrdersPage() {
           <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Cari Customer</label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-            <input value={searchCust} onChange={(e) => setSearchCust(e.target.value)} placeholder="nama toko / customer..." className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
+            <input value={searchCust} onChange={(e) => setSearchCust(e.target.value)} placeholder="nama toko / kode..." className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-raden-green outline-none focus:ring-2 focus:ring-cyan-400" />
           </div>
         </div>
         <div>
@@ -232,7 +236,7 @@ export default function FrozenOrdersPage() {
               <button onClick={() => router.push(`/frozen/orders/${o.id}`)} className="flex-1 min-w-0 p-4 flex items-center justify-between gap-3 text-left">
                 <div className="min-w-0">
                   <p className="font-black text-raden-green truncate">{o.frozen_customers?.name || '—'}</p>
-                  <p className="text-[11px] text-gray-400 font-medium">{fmtDate(o.order_date)} · {o.frozen_order_items?.[0]?.count ?? 0} produk</p>
+                  <p className="text-[11px] text-gray-400 font-medium">{o.code && <span className="font-black text-cyan-600">{o.code}</span>}{o.code ? ' · ' : ''}{fmtDate(o.order_date)} · {o.frozen_order_items?.[0]?.count ?? 0} produk</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {o.is_backorder && o.status === 'Draft' && <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-widest flex items-center gap-1"><AlertTriangle size={10} /> Back Order</span>}
@@ -264,8 +268,11 @@ export default function FrozenOrdersPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => !saving && setOpen(false)}>
           <div className="bg-white w-full sm:max-w-5xl rounded-t-[2rem] sm:rounded-[2rem] max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between z-10">
-              <h2 className="font-black text-raden-green text-lg flex items-center gap-2"><Truck size={18} className="text-cyan-500" /> Buat Order Keluar</h2>
-              <button onClick={() => setOpen(false)} className="p-2 text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              <div className="flex items-center gap-3 min-w-0">
+                <h2 className="font-black text-raden-green text-lg flex items-center gap-2 shrink-0"><Truck size={18} className="text-cyan-500" /> Buat Order Keluar</h2>
+                {previewCode && <span className="text-[11px] font-black text-cyan-700 bg-cyan-50 border border-cyan-100 px-2.5 py-1 rounded-lg tabular-nums truncate">{previewCode}</span>}
+              </div>
+              <button onClick={() => setOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 shrink-0"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

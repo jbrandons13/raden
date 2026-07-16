@@ -111,8 +111,10 @@ export default function FrozenUploadPage() {
       for (const b of branches) {
         const customerId = b.customerId ?? custIdByCode.get(b.branchCode);
         if (!customerId) throw new Error(`Gagal resolusi toko ${b.branchCode}.`);
+        const { data: code, error: ce } = await supabase.rpc('frozen_next_doc_code', { p_kind: 'OUT' }); // kode atomik per order
+        if (ce) throw ce;
         const { data: ord, error: oe } = await supabase.from('frozen_orders')
-          .insert({ customer_id: customerId, order_date: orderDate || todayStr(), status: 'Draft', notes: `Import Excel ${orderDate}`, created_by: createdBy })
+          .insert({ customer_id: customerId, code, order_date: orderDate || todayStr(), status: 'Draft', notes: `Import Excel ${orderDate}`, created_by: createdBy })
           .select('id').single();
         if (oe) throw oe;
         const items = b.lines.map((l) => ({ order_id: ord.id, product_id: l.productId ?? prodIdByCode.get(l.productCode)!, qty: l.qty, price: l.price }));
