@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle, Barcode, AlertTriangle, Lock, Unlock, ImagePlus } from 'lucide-react';
+import { Package, Plus, Edit3, Trash2, Loader2, X, Search, Save, AlertCircle, Barcode, AlertTriangle, Lock, Unlock, ImagePlus, ListChecks, Download, Upload, ArrowRight, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { compressImage } from '@/lib/image';
+import { exportProductsForEdit, parseProductEdits, type EditableProduct } from '@/lib/frozenProductXlsx';
 
 const PHOTO_BUCKET = 'frozen-products';
 
@@ -26,6 +27,16 @@ export default function FrozenProductsPage() {
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null); // foto baru yg mau diupload
   const [photoPreview, setPhotoPreview] = useState('');           // url tampil (existing / object-url baru)
   const photoRef = useRef<HTMLInputElement>(null);
+  // batch edit via Excel
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchToast, setBatchToast] = useState('');
+  const [batch, setBatch] = useState<null | {
+    changes: { p: FP; fields: { key: string; label: string; old: string; neo: string }[] }[];
+    ignored: number; invalid: number;
+  }>(null);
 
   const fetchData = useCallback(async () => {
     const [{ data }, { data: st }] = await Promise.all([
@@ -102,6 +113,70 @@ export default function FrozenProductsPage() {
     } catch (e: any) { alert(e.message); } finally { setSaving(false); }
   };
 
+  // ---- Batch Edit via Excel ----
+  const toggleSelectMode = () => { setSelectMode((v) => !v); setSelected(new Set()); };
+  const toggleOne = (id: string) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const allFilteredSelected = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+  const toggleAll = () => setSelected((p) => { const n = new Set(p); if (allFilteredSelected) filtered.forEach((r) => n.delete(r.id)); else filtered.forEach((r) => n.add(r.id)); return n; });
+
+  const downloadSelected = async () => {
+    const chosen = rows.filter((r) => selected.has(r.id));
+    if (!chosen.length) return;
+    const data: EditableProduct[] = chosen.map((r) => ({ id: r.id, name: r.name, code: r.code || '', barcode: r.barcode || '', unit: r.unit || '', price: Number(r.price) || 0, notes: r.notes || '' }));
+    await exportProductsForEdit(data, `produk-frozen-${new Date().toISOString().slice(0, 10)}`);
+  };
+
+  const norm = (s: string | null | undefined) => (s || '').trim();
+  const onUploadEdit = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    setBatchBusy(true); setError('');
+    try {
+      const parsed = await parseProductEdits(await file.arrayBuffer());
+      const byId = new Map(rows.map((r) => [r.id, r] as const));
+      const changes: { p: FP; fields: { key: string; label: string; old: string; neo: string }[] }[] = [];
+      let ignored = 0, invalid = 0;
+      for (const row of parsed) {
+        const p = byId.get(row.id);
+        if (!p) { ignored++; continue; }
+        if (!row.name) { invalid++; continue; } // nama wajib
+        const fields: { key: string; label: string; old: string; neo: string }[] = [];
+        const cmp = (key: string, label: string, oldV: string, newV: string) => { if (oldV !== newV) fields.push({ key, label, old: oldV, neo: newV }); };
+        cmp('name', 'Nama', norm(p.name), row.name);
+        cmp('code', 'Kode/SKU', norm(p.code), row.code);
+        cmp('barcode', 'Barcode', norm(p.barcode), row.barcode);
+        cmp('unit', 'Satuan', norm(p.unit), row.unit);
+        if (row.price != null && Math.max(0, row.price) !== (Number(p.price) || 0)) fields.push({ key: 'price', label: 'Harga', old: String(Number(p.price) || 0), neo: String(Math.max(0, row.price)) });
+        cmp('notes', 'Catatan', norm(p.notes), row.notes);
+        if (fields.length) changes.push({ p, fields });
+      }
+      if (!changes.length && !ignored && !invalid) { setError('File tidak berisi perubahan.'); setBatchBusy(false); return; }
+      setBatch({ changes, ignored, invalid });
+    } catch (err: any) { setError(err.message || 'Gagal baca file.'); }
+    finally { setBatchBusy(false); }
+  };
+
+  const commitBatch = async () => {
+    if (!batch) return;
+    setBatchBusy(true);
+    try {
+      for (const { p, fields } of batch.changes) {
+        const payload: Record<string, unknown> = {};
+        for (const f of fields) {
+          if (f.key === 'price') payload.price = Number(f.neo) || 0;
+          else if (['code', 'barcode', 'unit', 'notes'].includes(f.key)) payload[f.key] = f.neo || null;
+          else payload[f.key] = f.neo;
+        }
+        const { error: e } = await supabase.from('frozen_products').update(payload).eq('id', p.id);
+        if (e) throw e;
+      }
+      const n = batch.changes.length;
+      setBatch(null); setSelectMode(false); setSelected(new Set());
+      setBatchToast(`${n} produk diupdate ✓`); setTimeout(() => setBatchToast(''), 2600);
+      fetchData();
+    } catch (e: any) { alert('Gagal update: ' + e.message); } finally { setBatchBusy(false); }
+  };
+
   return (
     <div className="space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -109,8 +184,25 @@ export default function FrozenProductsPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight flex items-center gap-2"><Package className="text-cyan-500" /> Produk FROZEN</h1>
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Master produk gudang.</p>
         </div>
-        <button onClick={openAdd} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-raden-green text-white px-8 py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all"><Plus size={18} /> Tambah Produk</button>
+        <div className="flex flex-wrap gap-2">
+          <input ref={uploadRef} type="file" accept=".xlsx" className="hidden" onChange={onUploadEdit} />
+          <button onClick={() => uploadRef.current?.click()} disabled={batchBusy} className="flex items-center justify-center gap-2 bg-white border border-cyan-200 text-cyan-700 px-4 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm disabled:opacity-50" title="Upload Excel hasil edit">{batchBusy && !batch ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Upload Hasil Edit</button>
+          <button onClick={toggleSelectMode} className={`flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest border ${selectMode ? 'bg-cyan-50 text-cyan-700 border-cyan-200' : 'bg-white text-gray-500 border-gray-200'}`}><ListChecks size={16} /> {selectMode ? 'Batal Pilih' : 'Pilih / Export'}</button>
+          <button onClick={openAdd} className="flex items-center justify-center gap-2 bg-raden-green text-white px-6 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all"><Plus size={18} /> Tambah Produk</button>
+        </div>
       </div>
+
+      {/* Bar seleksi (mode Pilih) */}
+      {selectMode && (
+        <div className="bg-cyan-50/70 border border-cyan-100 rounded-2xl p-3 flex items-center gap-3 flex-wrap">
+          <label className="flex items-center gap-2 cursor-pointer select-none px-1">
+            <input type="checkbox" checked={allFilteredSelected} onChange={toggleAll} className="w-4 h-4 accent-raden-green" />
+            <span className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Pilih semua {search ? '(hasil cari)' : ''} ({filtered.length})</span>
+          </label>
+          <span className="text-[11px] font-black text-cyan-700 ml-auto">{selected.size} dipilih</span>
+          <button onClick={downloadSelected} disabled={!selected.size} className="px-4 py-2.5 bg-raden-green text-white rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-1.5 disabled:opacity-40"><Download size={14} /> Download Excel ({selected.size})</button>
+        </div>
+      )}
 
       <div className="relative w-full sm:w-72">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
@@ -121,8 +213,13 @@ export default function FrozenProductsPage() {
         {loading && <div className="absolute inset-0 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-cyan-500" /></div>}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((r) => (
-            <motion.div key={r.id} layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 hover:shadow-lg transition-all">
+            <motion.div key={r.id} layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
+              onClick={selectMode ? () => toggleOne(r.id) : undefined}
+              className={`bg-white p-5 rounded-[2rem] shadow-sm border hover:shadow-lg transition-all ${selectMode ? 'cursor-pointer ' : ''}${selectMode && selected.has(r.id) ? 'border-raden-green ring-1 ring-raden-green/30' : 'border-gray-100'}`}>
               <div className="flex items-start gap-3 mb-3">
+                {selectMode && (
+                  <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleOne(r.id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 mt-3.5 accent-raden-green shrink-0" />
+                )}
                 <div className="w-11 h-11 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0 overflow-hidden">
                   {r.photo_url ? <img src={r.photo_url} alt={r.name} className="w-full h-full object-cover" /> : <Package size={20} />}
                 </div>
@@ -242,6 +339,57 @@ export default function FrozenProductsPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Preview Batch Edit */}
+      <AnimatePresence>
+        {batch && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !batchBusy && setBatch(null)} className="absolute inset-0 bg-raden-green/60 backdrop-blur-sm" />
+            <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} className="relative bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] w-full sm:max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-raden-green">Preview Perubahan</h3>
+                  <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                    <b className="text-raden-green">{batch.changes.length}</b> produk berubah
+                    {batch.ignored > 0 && <> · <span className="text-gray-400">{batch.ignored} diabaikan (ID gak cocok)</span></>}
+                    {batch.invalid > 0 && <> · <span className="text-red-400">{batch.invalid} dilewati (nama kosong)</span></>}
+                  </p>
+                </div>
+                <button onClick={() => setBatch(null)} className="p-2 bg-gray-50 rounded-full text-gray-400 shrink-0"><X size={18} /></button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                {batch.changes.length === 0 ? (
+                  <p className="text-center text-gray-300 italic font-bold text-sm py-8">Tidak ada produk yang berubah.</p>
+                ) : batch.changes.map(({ p, fields }) => (
+                  <div key={p.id} className="bg-gray-50/70 rounded-2xl p-4">
+                    <p className="font-black text-raden-green text-sm mb-2 truncate">{p.name}</p>
+                    <div className="space-y-1.5">
+                      {fields.map((f) => (
+                        <div key={f.key} className="flex items-center gap-2 text-xs">
+                          <span className="w-16 shrink-0 text-[9px] font-black uppercase tracking-widest text-gray-400">{f.label}</span>
+                          <span className="line-through text-gray-400 truncate max-w-[35%]">{f.old || '—'}</span>
+                          <ArrowRight size={12} className="text-cyan-400 shrink-0" />
+                          <span className="font-black text-raden-green truncate">{f.neo || '—'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-6 border-t border-gray-100 flex gap-3">
+                <button onClick={() => setBatch(null)} disabled={batchBusy} className="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest text-[11px] disabled:opacity-50">Batal</button>
+                <button onClick={commitBatch} disabled={batchBusy || batch.changes.length === 0} className="flex-1 py-3.5 bg-raden-green text-white rounded-2xl font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 disabled:opacity-50">
+                  {batchBusy ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />} Update {batch.changes.length} Produk
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {batchToast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-raden-green text-white px-6 py-3 rounded-2xl shadow-2xl font-black text-sm flex items-center gap-2"><Check size={18} className="text-cyan-300" /> {batchToast}</div>}
     </div>
   );
 }
