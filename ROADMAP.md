@@ -4,7 +4,7 @@
 `PROGRESS.md` + git history — jangan ditumpuk di sini.
 
 _Status:_ ☐ belum · 🔄 jalan · 🔒 keblokir (nunggu input luar) · ✅ selesai
-_Update: 17 Juli 2026_
+_Update: 17 Juli 2026 · F10 #1–#5 sudah diverifikasi di browser ✅_
 
 ---
 
@@ -24,16 +24,10 @@ _Update: 17 Juli 2026_
 
 ## 🔨 Yang perlu dikerjakan
 
-### 1. 🔍 Perlu dicek dulu (kode selesai, belum diverifikasi di browser)
-- ☐ **F10 #1–#5** — build & test logika lulus, tapi **belum pernah dibuka di browser**. Yang paling rawan:
-  - **Combobox produk di dalam modal "Buat 出貨"** — dropdown-nya `absolute` di dalam modal yang bisa scroll → mungkin ke-clip / perlu scroll. Kalau ganggu: bikin buka ke atas atau pakai portal.
-  - Upload foto produk (migration & bucket sudah live).
-  - Batch edit Excel (download → edit → upload → preview → commit).
-
-### 2. 📝 Data belum lengkap
+### 1. 📝 Data belum lengkap
 - ☐ **IHL 花蓮** & **IMG 馬公** — alamat & telepon masih kosong (tidak ada di sheet 運送表). Lengkapi manual di menu Customer.
 
-### 3. 🔒 Keblokir — nunggu input dari luar
+### 2. 🔒 Keblokir — nunggu input dari luar
 | Item | Nunggu apa |
 |---|---|
 | **F7 — Auto-generate SKU** (frozen) | Fitur **kategori/jenis produk** dulu — SKU di-generate per jenis. _Ini = item **1B** di rencana 3-modul di bawah._ |
@@ -41,7 +35,7 @@ _Update: 17 Juli 2026_
 | **發票** (invoice resmi) | **Ditunda** — kena regulasi pajak pemerintah Taiwan (統一發票/電子發票), harus ikut format resmi. Jangan dibangun dulu. |
 | **成本 / paketan produk** (2J) | Penjelasan SPV — maksudnya masih ambigu. |
 
-### 4. 🏗️ Rencana besar — restrukturisasi 3 modul (sistem TOKO)
+### 3. 🏗️ Rencana besar — restrukturisasi 3 modul (sistem TOKO)
 _Dari catatan tulisan tangan SPV. **Status: nunggu diskusi face-to-face** — jangan mulai coding sampai ada arahan._
 
 **Modul 1 — DATABASE** (data induk yang dibaca semua sistem)
@@ -72,7 +66,7 @@ _Dari catatan tulisan tangan SPV. **Status: nunggu diskusi face-to-face** — ja
 4. **Fase 4** — tabel branch (1L) → transfer (2G) → harga terjadwal (1F)
 5. **Fase 5** — promo (2H/2I) → cost (2J)
 
-### 5. ⚙️ Operasional (keputusan bisnis, bukan coding)
+### 4. ⚙️ Operasional (keputusan bisnis, bukan coding)
 - ☐ **Upgrade hosting ke berbayar** — free tier berisiko (server tidur + tidak ada backup otomatis):
   - Supabase Pro ± NT$800/bln (database + backup harian) — **paling kritikal**
   - Render Starter ± NT$230/bln (app selalu nyala)
