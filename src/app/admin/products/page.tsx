@@ -7,20 +7,17 @@ import { supabase } from '@/lib/supabase';
 import ProductCard from './_components/ProductCard';
 import ProductModals from './_components/ProductModals';
 import OrderLayoutManager from './_components/OrderLayoutManager';
-import { Product, ProductCategory, ProductionTask } from '@/types/raden';
+import { Product, ProductCategory } from '@/types/raden';
 import ExportExcelButton from '@/components/ExportExcelButton';
 import { exportWorkbook, CURRENCY_FMT, todayStamp } from '@/lib/exportExcel';
-import { fetchAllRows } from '@/lib/fetchAll';
 
 export default function ProductsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showLayoutManager, setShowLayoutManager] = useState(false);
-  const [activeTab, setActiveTab] = useState<'management' | 'history'>('management');
-  
+
   const [products, setProducts] = useState<Product[]>([]);
-  const [history, setHistory] = useState<ProductionTask[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,8 +28,9 @@ export default function ProductsPage() {
     price_agent: 0, price_branch: 0, yield_per_batch: 0, weekly_target: 0, tracks_stock: true, batch_unit: 'adonan', options: [] as string[]
   });
 
+  // Catatan: stok TIDAK diedit di sini — dikoreksi di halaman Stok (tercatat di buku besar).
   const [editForm, setEditForm] = useState({
-    id: '', name: '', category: '', price: 0, price_agent: 0, price_branch: 0, unit: 'Pcs', current_stock: 0,
+    id: '', name: '', category: '', price: 0, price_agent: 0, price_branch: 0, unit: 'Pcs',
     yield_per_batch: 0, weekly_target: 0, tracks_stock: true, batch_unit: 'adonan', options: [] as string[]
   });
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -43,14 +41,12 @@ export default function ProductsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [prodsRes, catsRes, historyRes] = await Promise.all([
+      const [prodsRes, catsRes] = await Promise.all([
         supabase.from('products').select('*').eq('is_hot_kitchen', false).order('sort_order', { ascending: true }),
         supabase.from('product_categories').select('*').order('name'),
-        supabase.from('tasks').select('*, products(name), staff(name)').eq('status', 'Completed').order('created_at', { ascending: false }).limit(50),
       ]);
       if (prodsRes.data) setProducts(prodsRes.data);
       if (catsRes.data) setCategories(catsRes.data);
-      if (historyRes.data) setHistory(historyRes.data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -89,9 +85,6 @@ export default function ProductsPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
         if (!isSorting) fetchData();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-        if (!isSorting) fetchData();
-      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [fetchData, isSorting]);
@@ -100,10 +93,6 @@ export default function ProductsPage() {
     const term = searchTerm.toLowerCase();
     return products.filter(p => p.name.toLowerCase().includes(term) || p.category?.toLowerCase().includes(term));
   }, [products, searchTerm]);
-
-  const historyFiltered = useMemo(() => {
-    return history.filter(h => !h.products?.is_hot_kitchen);
-  }, [history]);
 
   const handleSaveProduct = async () => {
     if (!newProduct.name) return alert("Nama produk wajib diisi!");
@@ -164,12 +153,13 @@ export default function ProductsPage() {
 
   const handleUpdateProduct = async () => {
     const freshU = editForm.tracks_stock === false;
+    // `current_stock` sengaja TIDAK ikut di-update di sini — koreksi stok lewat
+    // halaman Stok (RPC adjust_product_stock) supaya tercatat di buku besar.
     const { error } = await supabase.from('products').update({
       name: editForm.name, category: editForm.category,
       price: editForm.price, price_agent: editForm.price_agent, price_branch: editForm.price_branch,
       unit: editForm.unit, batch_unit: editForm.batch_unit, tracks_stock: editForm.tracks_stock,
       options: editForm.options || [],
-      current_stock: freshU ? 0 : editForm.current_stock,
       yield_per_batch: freshU ? 0 : editForm.yield_per_batch,
       weekly_target: freshU ? 0 : editForm.weekly_target
     }).eq('id', editForm.id);
@@ -198,36 +188,6 @@ export default function ProductsPage() {
   }, []);
 
   const handleExportExcel = async () => {
-    if (activeTab === 'history') {
-      const tasks = await fetchAllRows<any>(
-        'tasks',
-        '*, products(name, is_hot_kitchen), staff(name)',
-        (q) => q.eq('status', 'Completed').order('date', { ascending: false }).order('created_at', { ascending: false }),
-      );
-      const rows = tasks
-        .filter((t) => !t.products?.is_hot_kitchen)
-        .map((t) => ({
-          tanggal: t.date,
-          produk: t.products?.name || '-',
-          staff: t.staff?.name || 'Tugas Mandiri',
-          hasil: Number(t.actual_qty ?? 0),
-          target: Number(t.expected_qty ?? 0),
-        }));
-      if (rows.length === 0) { alert('Belum ada riwayat produksi untuk diexport.'); return; }
-      await exportWorkbook(`Raden_RiwayatProduksi_${todayStamp()}`, [{
-        name: 'Riwayat Produksi',
-        columns: [
-          { header: 'Tanggal', key: 'tanggal', width: 14 },
-          { header: 'Produk', key: 'produk', width: 30 },
-          { header: 'Staff', key: 'staff', width: 20 },
-          { header: 'Hasil Riil', key: 'hasil', width: 12 },
-          { header: 'Target', key: 'target', width: 12 },
-        ],
-        rows,
-      }]);
-      return;
-    }
-
     if (filteredProducts.length === 0) { alert('Tidak ada produk untuk diexport.'); return; }
     const rows = filteredProducts.map((p) => ({
       nama: p.name,
@@ -286,15 +246,10 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex bg-white p-1 rounded-2xl border border-gray-100 shadow-sm w-fit order-2 sm:order-1">
-          <button onClick={() => setActiveTab('management')} className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'management' ? 'bg-raden-green text-white shadow-md' : 'text-gray-400'}`}>Kelola Produk</button>
-          <button onClick={() => setActiveTab('history')} className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'history' ? 'bg-raden-green text-white shadow-md' : 'text-gray-400'}`}>Riwayat Produksi</button>
-        </div>
-
-        <div className="relative w-full sm:w-64 group order-1 sm:order-2">
+      <div className="flex justify-end">
+        <div className="relative w-full sm:w-64 group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-raden-green transition-colors" size={18} />
-          <input 
+          <input
             type="text" placeholder="Cari produk..." value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-raden-green/5 focus:border-raden-green/20 shadow-sm transition-all"
@@ -302,8 +257,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {activeTab === 'management' ? (
-        <>
+      <>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar w-full sm:w-auto flex-1">
               <button onClick={() => setSearchTerm('')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${!searchTerm ? 'bg-raden-green text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}>Semua</button>
@@ -354,42 +308,7 @@ export default function ProductsPage() {
               </div>
             )}
           </div>
-        </>
-      ) : (
-        <div className="bg-white rounded-[2rem] sm:rounded-[3rem] overflow-hidden shadow-sm border border-gray-100">
-           <div className="overflow-x-auto">
-             <table className="w-full text-left">
-               <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b">
-                 <tr>
-                   <th className="px-8 py-5">Tanggal</th><th className="px-8 py-5">Produk</th><th className="px-8 py-5">Staff</th><th className="px-8 py-5">Hasil Riil</th><th className="px-8 py-5">Status</th>
-                 </tr>
-               </thead>
-               <tbody className="divide-y divide-gray-100">
-                 {historyFiltered.length === 0 && <tr><td colSpan={5} className="px-8 py-20 text-center text-gray-300 italic text-sm font-bold">Belum ada riwayat produksi.</td></tr>}
-                 {historyFiltered.map((log) => (
-                   <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                     <td className="px-8 py-6">
-                       <p className="font-bold text-raden-green text-sm">{log.date ? new Date(log.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</p>
-                       <p className="text-[10px] text-gray-400 font-medium">{log.created_at ? new Date(log.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
-                     </td>
-                     <td className="px-8 py-6"><p className="font-black text-raden-green uppercase tracking-tight">{log.products?.name}</p></td>
-                     <td className="px-8 py-6"><p className="text-xs font-bold text-gray-600">{log.staff?.name || 'Tugas Mandiri'}</p></td>
-                     <td className="px-8 py-6">
-                        <div className="flex items-center gap-2">
-                           <span className="text-xl font-black text-raden-gold">{log.actual_qty}</span>
-                           <span className="text-[10px] text-gray-400 font-bold uppercase">/ {log.expected_qty} PCS</span>
-                        </div>
-                     </td>
-                     <td className="px-8 py-6">
-                        <span className="px-3 py-1 bg-green-100 text-green-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1 w-fit"><CheckCircle2 size={12}/> SELESAI</span>
-                     </td>
-                   </tr>
-                 ))}
-               </tbody>
-             </table>
-           </div>
-        </div>
-      )}
+      </>
 
       {/* Modals integrated to stay responsive but clean */}
       <ProductModals 

@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Users, Package, ClipboardCheck, Calendar, LogOut, Loader2, CheckSquare, Menu, X, Flame, Activity, Receipt, Briefcase, TrendingUp, KeyRound } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Users, Package, ClipboardCheck, Calendar, LogOut, Loader2, CheckSquare, Menu, X, Flame, Activity, Receipt, Briefcase, TrendingUp, KeyRound, Boxes } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -47,6 +47,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       title: 'Produksi',
       items: [
         { name: 'Produk', href: '/admin/products', icon: Package },
+        { name: 'Stok', href: '/admin/stock', icon: Boxes },
         { name: 'Hot Kitchen', href: '/admin/hot-kitchen', icon: Flame },
         { name: 'Bahan Baku', href: '/admin/materials', icon: ClipboardCheck },
       ]

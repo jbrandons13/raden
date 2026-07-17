@@ -309,12 +309,12 @@ export default function ProductModals(props: ProductModalsProps) {
               {editIsStocked && (
                 <>
                   <div className="pt-5 border-t border-gray-100">
-                    <SectionLabel title="Stok Saat Ini" />
-                    <div className="flex items-center gap-2 bg-gray-50 rounded-2xl p-1 border border-gray-100">
-                      <button onClick={() => setEditForm({ ...editForm, current_stock: Math.max(0, (editForm.current_stock || 0) - 1) })} className="w-11 h-11 bg-white rounded-xl font-black text-lg shadow-sm">−</button>
-                      <input type="number" value={editForm.current_stock} onFocus={(e) => e.target.select()} onChange={(e) => setEditForm({ ...editForm, current_stock: Number(e.target.value) })} className="flex-1 bg-transparent text-center font-black text-raden-green text-lg focus:outline-none" />
-                      <button onClick={() => setEditForm({ ...editForm, current_stock: (editForm.current_stock || 0) + 1 })} className="w-11 h-11 bg-white rounded-xl font-black text-lg shadow-sm">+</button>
+                    <SectionLabel title="Stok Saat Ini" sub="Stok tidak diubah dari sini" />
+                    <div className="flex items-center justify-between gap-3 bg-gray-50 rounded-2xl px-4 py-3 border border-gray-100">
+                      <span className="text-2xl font-black text-raden-green tabular-nums">{editForm.current_stock ?? 0}<span className="text-xs font-bold text-gray-400 ml-1">{editForm.unit}</span></span>
+                      <a href="/admin/stock" className="text-[10px] font-black uppercase tracking-widest text-raden-gold hover:underline shrink-0">Sesuaikan di halaman Stok →</a>
                     </div>
+                    <p className="text-[10px] text-gray-400 font-medium mt-2 leading-relaxed">Koreksi stok dilakukan di halaman <b>Stok</b> supaya perubahannya tercatat di buku besar (siapa, kapan, berapa).</p>
                   </div>
                   <div className="pt-5 border-t border-gray-100">
                     <SectionLabel title="Profil Produksi" sub="Diisi biar Jadwal Produksi otomatis kasih rekomendasi 🔴🟡🟢" />
