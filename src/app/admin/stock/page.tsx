@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Boxes, Search, Loader2, Package, Pencil, Check, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Boxes, Search, Loader2, Pencil, Check, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Product, ProductCategory, ProductionTask } from '@/types/raden';
 import ExportExcelButton from '@/components/ExportExcelButton';
@@ -156,46 +155,47 @@ export default function StockPage() {
             ))}
           </div>
           {lowCount > 0 && (
-            <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 flex items-center gap-2 text-[11px] font-bold text-red-600">
-              <AlertTriangle size={15} className="shrink-0" /> {lowCount} produk stoknya menipis (di bawah {LOW_STOCK}).
+            <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2 flex items-center gap-2 text-[11px] font-bold text-red-600">
+              <AlertTriangle size={14} className="shrink-0" /> {lowCount} produk stoknya menipis (di bawah {LOW_STOCK}).
             </div>
           )}
           <div className="relative min-h-[300px]">
             {loading && products.length === 0 && <div className="absolute inset-0 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-raden-gold" /></div>}
-            <div className="space-y-2.5">
+            {/* Baris rapat biar banyak muat 1 layar — nama tetap ukuran gampang dibaca, stok badge warna buat scan cepat */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
               {stocked.map((p) => {
                 const stok = Number(p.current_stock || 0);
                 const low = stok < LOW_STOCK;
                 const editing = editId === p.id;
                 return (
-                  <motion.div key={p.id} layout className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${low ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}><Package size={18} /></div>
+                  <div key={p.id} className="px-3 py-2 flex items-center gap-2.5 hover:bg-gray-50/60">
+                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${low ? 'bg-red-500' : 'bg-green-500'}`} title={low ? 'Stok menipis' : 'Stok aman'} />
                     <div className="min-w-0 flex-1">
-                      <p className="font-black text-raden-green truncate">{p.name}</p>
-                      <p className="text-[10px] text-gray-400 font-medium">{p.category || '—'}{p.weekly_target ? ` · target ${p.weekly_target}/mgg` : ''}</p>
+                      <p className="font-bold text-raden-green text-[13px] leading-tight truncate">{p.name}</p>
+                      <p className="text-[10px] text-gray-400 font-medium leading-tight truncate">{p.category || '—'}{p.weekly_target ? ` · target ${p.weekly_target}/mgg` : ''}</p>
                     </div>
                     {editing ? (
                       <div className="flex items-center gap-1.5 shrink-0">
                         <input type="number" min="0" autoFocus value={editVal} onChange={(e) => setEditVal(e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') saveAdjust(p); if (e.key === 'Escape') setEditId(''); }}
-                          className="w-24 p-2 bg-gray-50 border border-raden-gold/40 rounded-xl font-black text-raden-green text-right outline-none focus:ring-2 focus:ring-raden-gold/30" />
-                        <button onClick={() => saveAdjust(p)} disabled={busy} className="p-2 rounded-xl bg-raden-green text-white disabled:opacity-50" title="Simpan">{busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}</button>
-                        <button onClick={() => setEditId('')} disabled={busy} className="p-2 rounded-xl bg-gray-100 text-gray-400" title="Batal"><X size={16} /></button>
+                          className="w-20 p-1.5 bg-gray-50 border border-raden-gold/40 rounded-lg font-black text-raden-green text-right outline-none focus:ring-2 focus:ring-raden-gold/30" />
+                        <button onClick={() => saveAdjust(p)} disabled={busy} className="p-1.5 rounded-lg bg-raden-green text-white disabled:opacity-50" title="Simpan">{busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}</button>
+                        <button onClick={() => setEditId('')} disabled={busy} className="p-1.5 rounded-lg bg-gray-100 text-gray-400" title="Batal"><X size={15} /></button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`px-3 py-1.5 rounded-xl text-sm font-black tabular-nums ${low ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>{stok} <span className="text-[10px] font-bold opacity-70">{p.unit}</span></span>
-                        <button onClick={() => { setEditId(p.id); setEditVal(String(stok)); }} className="p-2 rounded-xl text-gray-300 hover:text-raden-gold hover:bg-amber-50" title="Sesuaikan stok"><Pencil size={15} /></button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className={`px-2.5 py-1 rounded-lg text-sm font-black tabular-nums ${low ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>{stok}<span className="text-[10px] font-bold opacity-70 ml-0.5">{p.unit}</span></span>
+                        <button onClick={() => { setEditId(p.id); setEditVal(String(stok)); }} className="p-1.5 rounded-lg text-gray-300 hover:text-raden-gold hover:bg-amber-50" title="Sesuaikan stok"><Pencil size={15} /></button>
                       </div>
                     )}
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
             {stocked.length === 0 && !loading && (
               <div className="bg-white rounded-[2rem] p-16 text-center border-2 border-dashed border-gray-100">
                 <Boxes size={36} className="text-gray-200 mx-auto mb-4" />
-                <p className="text-gray-400 font-bold italic text-sm">{searchTerm ? 'Produk tidak ditemukan.' : 'Belum ada produk yang dilacak stoknya.'}</p>
+                <p className="text-gray-400 font-bold italic text-sm">{searchTerm || activeCat ? 'Produk tidak ditemukan.' : 'Belum ada produk yang dilacak stoknya.'}</p>
               </div>
             )}
           </div>
