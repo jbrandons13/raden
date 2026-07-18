@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Boxes, Search, Loader2, Package, Pencil, Check, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { Product, ProductionTask } from '@/types/raden';
+import { Product, ProductCategory, ProductionTask } from '@/types/raden';
 import ExportExcelButton from '@/components/ExportExcelButton';
 import { exportWorkbook, todayStamp } from '@/lib/exportExcel';
 import { fetchAllRows } from '@/lib/fetchAll';
@@ -14,9 +14,11 @@ const LOW_STOCK = 10;
 export default function StockPage() {
   const [activeTab, setActiveTab] = useState<'stock' | 'history'>('stock');
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [history, setHistory] = useState<ProductionTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeCat, setActiveCat] = useState('');   // '' = Semua
   // koreksi stok
   const [editId, setEditId] = useState('');
   const [editVal, setEditVal] = useState('');
@@ -24,11 +26,13 @@ export default function StockPage() {
   const [toast, setToast] = useState('');
 
   const fetchData = useCallback(async () => {
-    const [prodsRes, historyRes] = await Promise.all([
+    const [prodsRes, catsRes, historyRes] = await Promise.all([
       supabase.from('products').select('*').eq('is_hot_kitchen', false).order('sort_order', { ascending: true }),
+      supabase.from('product_categories').select('*').order('name'),
       supabase.from('tasks').select('*, products(name, is_hot_kitchen), staff(name)').eq('status', 'Completed').order('created_at', { ascending: false }).limit(50),
     ]);
     if (prodsRes.data) setProducts(prodsRes.data);
+    if (catsRes.data) setCategories(catsRes.data);
     if (historyRes.data) setHistory(historyRes.data);
     setLoading(false);
   }, []);
@@ -49,8 +53,9 @@ export default function StockPage() {
     const term = searchTerm.toLowerCase();
     return products
       .filter((p) => p.tracks_stock !== false)
+      .filter((p) => !activeCat || p.category === activeCat)
       .filter((p) => p.name.toLowerCase().includes(term) || p.category?.toLowerCase().includes(term));
-  }, [products, searchTerm]);
+  }, [products, searchTerm, activeCat]);
 
   const historyFiltered = useMemo(() => history.filter((h) => !h.products?.is_hot_kitchen), [history]);
   const lowCount = useMemo(() => stocked.filter((p) => Number(p.current_stock || 0) < LOW_STOCK).length, [stocked]);
@@ -144,6 +149,12 @@ export default function StockPage() {
 
       {activeTab === 'stock' ? (
         <>
+          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            <button onClick={() => setActiveCat('')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shrink-0 ${!activeCat ? 'bg-raden-green text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}>Semua</button>
+            {categories.map((c) => (
+              <button key={c.id} onClick={() => setActiveCat(c.name)} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shrink-0 ${activeCat === c.name ? 'bg-raden-gold text-raden-green shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}>{c.name}</button>
+            ))}
+          </div>
           {lowCount > 0 && (
             <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 flex items-center gap-2 text-[11px] font-bold text-red-600">
               <AlertTriangle size={15} className="shrink-0" /> {lowCount} produk stoknya menipis (di bawah {LOW_STOCK}).
