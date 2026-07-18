@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Boxes, Search, Loader2, Pencil, Check, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Boxes, Search, Loader2, Pencil, Check, X, CheckCircle2, AlertTriangle, ListChecks, Download, Upload } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Product, ProductCategory, ProductionTask } from '@/types/raden';
 import ExportExcelButton from '@/components/ExportExcelButton';
 import { exportWorkbook, todayStamp } from '@/lib/exportExcel';
 import { fetchAllRows } from '@/lib/fetchAll';
+import BatchEditPreview, { type BatchData } from '../_components/BatchEditPreview';
+import { exportProductsStock, parseProductRows, type StockRow } from '@/lib/productXlsx';
 
 const LOW_STOCK = 10;
 
@@ -23,6 +25,12 @@ export default function StockPage() {
   const [editVal, setEditVal] = useState('');
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
+  // batch edit via Excel
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const uploadRef = React.useRef<HTMLInputElement>(null);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batch, setBatch] = useState<BatchData | null>(null);
 
   const fetchData = useCallback(async () => {
     const [prodsRes, catsRes, historyRes] = await Promise.all([
@@ -76,6 +84,60 @@ export default function StockPage() {
     } catch (e: any) { alert('Gagal: ' + e.message); } finally { setBusy(false); }
   };
 
+  // ---- Batch edit STOK via Excel (stok di-apply lewat RPC audit) ----
+  const toggleSelectMode = () => { setSelectMode((v) => !v); setSelected(new Set()); setEditId(''); };
+  const toggleOne = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const allSelected = stocked.length > 0 && stocked.every((p) => selected.has(p.id));
+  const toggleAll = () => setSelected((s) => { const n = new Set(s); if (allSelected) stocked.forEach((p) => n.delete(p.id)); else stocked.forEach((p) => n.add(p.id)); return n; });
+
+  const downloadSelected = async () => {
+    const chosen = stocked.filter((p) => selected.has(p.id));
+    if (!chosen.length) return;
+    const data: StockRow[] = chosen.map((p) => ({ id: p.id, name: p.name, category: p.category || '', unit: p.unit || '', current_stock: Number(p.current_stock) || 0 }));
+    await exportProductsStock(data, `Raden_Stok_${todayStamp()}`);
+  };
+
+  const onUploadEdit = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    setBatchBusy(true);
+    try {
+      const parsed = await parseProductRows(await file.arrayBuffer());
+      const byId = new Map(products.map((p) => [p.id, p] as const));
+      const changes: BatchData['changes'] = [];
+      let ignored = 0, invalid = 0;
+      for (const row of parsed) {
+        const p = byId.get(row.id);
+        if (!p) { ignored++; continue; }
+        if (p.tracks_stock === false) { invalid++; continue; }   // fresh: tidak punya stok
+        if (row.current_stock == null) continue;                  // kolom Stok kosong → lewati
+        const neo = Math.max(0, Math.floor(Number(row.current_stock)));
+        const old = Number(p.current_stock) || 0;
+        if (neo !== old) changes.push({ id: p.id, name: p.name, fields: [{ label: 'Stok', old: String(old), neo: String(neo) }] });
+      }
+      if (!changes.length && !ignored && !invalid) { alert('File tidak berisi perubahan stok.'); setBatchBusy(false); return; }
+      setBatch({ changes, ignored, invalid });
+    } catch (err: any) { alert(err.message || 'Gagal baca file.'); }
+    finally { setBatchBusy(false); }
+  };
+
+  const commitBatch = async () => {
+    if (!batch) return;
+    setBatchBusy(true);
+    try {
+      for (const c of batch.changes) {
+        const neo = Number(c.fields[0].neo);
+        const { data, error } = await supabase.rpc('adjust_product_stock', { p_product_id: c.id, p_new_stock: neo });
+        if (error) throw error;
+        if (!data?.ok) throw new Error(`${c.name}: ${data?.error || 'gagal'}`);
+      }
+      const n = batch.changes.length;
+      setBatch(null); setSelectMode(false); setSelected(new Set());
+      await fetchData();
+      flash(`${n} stok disesuaikan ✓ (tercatat di buku besar)`);
+    } catch (e: any) { alert('Gagal update stok: ' + e.message); } finally { setBatchBusy(false); }
+  };
+
   const handleExportExcel = async () => {
     if (activeTab === 'history') {
       const tasks = await fetchAllRows<any>(
@@ -125,11 +187,24 @@ export default function StockPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-raden-green tracking-tight uppercase flex items-center gap-2"><Boxes className="text-raden-gold" /> Stok</h1>
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Lihat &amp; sesuaikan stok — tiap perubahan tercatat di buku besar.</p>
         </div>
-        <ExportExcelButton
-          onExport={handleExportExcel}
-          label="Export Excel"
-          className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50"
-        />
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <ExportExcelButton
+            onExport={handleExportExcel}
+            label="Export Excel"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50"
+          />
+          {activeTab === 'stock' && (
+            <>
+              <input ref={uploadRef} type="file" accept=".xlsx" className="hidden" onChange={onUploadEdit} />
+              <button onClick={() => uploadRef.current?.click()} disabled={batchBusy} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50" title="Upload Excel hasil edit stok">
+                {batchBusy && !batch ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />} Upload Edit
+              </button>
+              <button onClick={toggleSelectMode} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all border ${selectMode ? 'bg-raden-green text-white border-raden-green' : 'bg-white text-raden-green border-gray-200'}`}>
+                <ListChecks size={18} /> {selectMode ? 'Batal' : 'Pilih / Export'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -154,7 +229,17 @@ export default function StockPage() {
               <button key={c.id} onClick={() => setActiveCat(c.name)} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shrink-0 ${activeCat === c.name ? 'bg-raden-gold text-raden-green shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}>{c.name}</button>
             ))}
           </div>
-          {lowCount > 0 && (
+          {selectMode && (
+            <div className="bg-raden-green/5 border border-raden-green/15 rounded-2xl p-3 flex items-center gap-3 flex-wrap">
+              <label className="flex items-center gap-2 cursor-pointer select-none px-1">
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-4 h-4 accent-raden-green" />
+                <span className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Pilih semua ({stocked.length})</span>
+              </label>
+              <span className="text-[11px] font-black text-raden-green ml-auto">{selected.size} dipilih</span>
+              <button onClick={downloadSelected} disabled={!selected.size} className="px-4 py-2.5 bg-raden-green text-white rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-1.5 disabled:opacity-40"><Download size={14} /> Download Excel ({selected.size})</button>
+            </div>
+          )}
+          {lowCount > 0 && !selectMode && (
             <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2 flex items-center gap-2 text-[11px] font-bold text-red-600">
               <AlertTriangle size={14} className="shrink-0" /> {lowCount} produk stoknya menipis (di bawah {LOW_STOCK}).
             </div>
@@ -168,7 +253,10 @@ export default function StockPage() {
                 const low = stok < LOW_STOCK;
                 const editing = editId === p.id;
                 return (
-                  <div key={p.id} className="px-3 py-2 flex items-center gap-2.5 hover:bg-gray-50/60">
+                  <div key={p.id} onClick={selectMode ? () => toggleOne(p.id) : undefined} className={`px-3 py-2 flex items-center gap-2.5 ${selectMode ? 'cursor-pointer ' : ''}${selectMode && selected.has(p.id) ? 'bg-raden-green/5' : 'hover:bg-gray-50/60'}`}>
+                    {selectMode && (
+                      <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${selected.has(p.id) ? 'bg-raden-green border-raden-green text-white' : 'bg-white border-gray-300'}`}>{selected.has(p.id) && <Check size={12} />}</span>
+                    )}
                     <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${low ? 'bg-red-500' : 'bg-green-500'}`} title={low ? 'Stok menipis' : 'Stok aman'} />
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-raden-green text-[13px] leading-tight truncate">{p.name}</p>
@@ -185,7 +273,7 @@ export default function StockPage() {
                     ) : (
                       <div className="flex items-center gap-1 shrink-0">
                         <span className={`px-2.5 py-1 rounded-lg text-sm font-black tabular-nums ${low ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>{stok}<span className="text-[10px] font-bold opacity-70 ml-0.5">{p.unit}</span></span>
-                        <button onClick={() => { setEditId(p.id); setEditVal(String(stok)); }} className="p-1.5 rounded-lg text-gray-300 hover:text-raden-gold hover:bg-amber-50" title="Sesuaikan stok"><Pencil size={15} /></button>
+                        {!selectMode && <button onClick={() => { setEditId(p.id); setEditVal(String(stok)); }} className="p-1.5 rounded-lg text-gray-300 hover:text-raden-gold hover:bg-amber-50" title="Sesuaikan stok"><Pencil size={15} /></button>}
                       </div>
                     )}
                   </div>
@@ -232,6 +320,7 @@ export default function StockPage() {
         </div>
       )}
 
+      <BatchEditPreview data={batch} busy={batchBusy} onClose={() => setBatch(null)} onConfirm={commitBatch} verb="Sesuaikan" />
       {toast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-raden-green text-white px-6 py-3 rounded-2xl shadow-2xl font-black text-sm flex items-center gap-2"><Check size={18} className="text-raden-gold" /> {toast}</div>}
     </div>
   );

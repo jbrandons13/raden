@@ -13,7 +13,7 @@ _Update: 17 Juli 2026 · F10 #1–#5 sudah diverifikasi di browser ✅_
 | Area | Isi | Status |
 |---|---|---|
 | **FROZEN — Gudang** (`/frozen`) | 進貨 · stok per-EXP + FEFO · 出貨 + 撿貨單 + invoice · revisi/back-order · upload Excel 分配表 (1 upload → order semua toko) · koreksi stok + audit · diskon/ongkir · print per-order & pilih-banyak · foto produk · lock SKU · auto-kode IN/OUT · batch edit Excel · filter+search | ✅ |
-| **TOKO — Admin** | **Produk** (master: kategori, harga per channel, varian, Susunan Order, sortir) · **Stok** (halaman sendiri: lihat + koreksi stok → **tercatat di buku besar** · riwayat produksi) · order + engine stok (reserve→potong→balikin) · pelanggan (branch/agen/individual) · bahan · pengeluaran · staff · jadwal · checklist · analytics | ✅ |
+| **TOKO — Admin** | **Produk** (master: kategori, harga per channel, varian, Susunan Order, sortir · **batch edit via Excel**) · **Stok** (halaman sendiri: lihat + koreksi stok → **tercatat di buku besar** · **batch edit stok via Excel** lewat RPC audit · riwayat produksi) · order + engine stok (reserve→potong→balikin) · pelanggan (branch/agen/individual) · bahan · pengeluaran · staff · jadwal · checklist · analytics | ✅ |
 | **TOKO — Staff** | Checklist + foto · input order · lihat stok | ✅ |
 | **TOKO — Kasir** | POS cash + kembalian otomatis · role `kasir` | ✅ |
 | **Template Order** | Model "Susunan Order" — dropdown pilih template → filter kolom, qty tetap 0 | ✅ |

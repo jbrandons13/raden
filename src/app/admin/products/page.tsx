@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Loader2, Trash2, Tag, X, Edit3, Save, ListOrdered, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Loader2, Trash2, Tag, X, Edit3, Save, ListOrdered, CheckCircle2, ListChecks, Download, Upload, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import ProductCard from './_components/ProductCard';
 import ProductModals from './_components/ProductModals';
 import OrderLayoutManager from './_components/OrderLayoutManager';
+import BatchEditPreview, { type BatchData } from '../_components/BatchEditPreview';
 import { Product, ProductCategory } from '@/types/raden';
 import ExportExcelButton from '@/components/ExportExcelButton';
 import { exportWorkbook, CURRENCY_FMT, todayStamp } from '@/lib/exportExcel';
+import { exportProductsMaster, parseProductRows, type MasterRow } from '@/lib/productXlsx';
 
 export default function ProductsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -38,6 +40,13 @@ export default function ProductsPage() {
   const [categoryToDelete, setCategoryToDelete] = useState<{id: string, name: string} | null>(null);
   const [productLayout, setProductLayout] = useState<'single' | 'grid'>('grid');
   const [isSorting, setIsSorting] = useState(false);
+  // batch edit via Excel
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const uploadRef = React.useRef<HTMLInputElement>(null);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batch, setBatch] = useState<BatchData | null>(null);
+  const [batchToast, setBatchToast] = useState('');
 
   const fetchData = useCallback(async () => {
     try {
@@ -187,6 +196,80 @@ export default function ProductsPage() {
     setItemToDelete({ id, name });
   }, []);
 
+  // ---- Batch Edit via Excel (data master) ----
+  const toggleSelectMode = () => { setSelectMode((v) => !v); setSelected(new Set()); };
+  const toggleOne = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const allSelected = filteredProducts.length > 0 && filteredProducts.every((p) => selected.has(p.id));
+  const toggleAll = () => setSelected((s) => { const n = new Set(s); if (allSelected) filteredProducts.forEach((p) => n.delete(p.id)); else filteredProducts.forEach((p) => n.add(p.id)); return n; });
+
+  const downloadSelected = async () => {
+    const chosen = products.filter((p) => selected.has(p.id));
+    if (!chosen.length) return;
+    const data: MasterRow[] = chosen.map((p) => ({
+      id: p.id, name: p.name, category: p.category || '', unit: p.unit || '',
+      price: Number(p.price) || 0, price_agent: Number(p.price_agent) || 0, price_branch: Number(p.price_branch) || 0,
+      weekly_target: Number(p.weekly_target) || 0, yield_per_batch: Number(p.yield_per_batch) || 0, batch_unit: (p as any).batch_unit || '',
+    }));
+    await exportProductsMaster(data, `Raden_Produk_${todayStamp()}`);
+  };
+
+  const norm = (s: any) => (s == null ? '' : String(s)).trim();
+  const onUploadEdit = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    setBatchBusy(true);
+    try {
+      const parsed = await parseProductRows(await file.arrayBuffer());
+      const byId = new Map(products.map((p) => [p.id, p] as const));
+      const changes: BatchData['changes'] = [];
+      let ignored = 0, invalid = 0;
+      const TXT: [keyof MasterRow, string][] = [['name', 'Nama'], ['category', 'Kategori'], ['unit', 'Satuan'], ['batch_unit', 'Satuan Batch']];
+      const NUM: [keyof MasterRow, string][] = [['price', 'Eceran'], ['price_agent', 'Agen'], ['price_branch', 'Branch'], ['weekly_target', 'Target/Mgg'], ['yield_per_batch', 'Hasil/Batch']];
+      for (const row of parsed) {
+        const p = byId.get(row.id);
+        if (!p) { ignored++; continue; }
+        if (row.name !== undefined && !row.name) { invalid++; continue; } // nama wajib kalau kolomnya ada
+        const fields: BatchData['changes'][number]['fields'] = [];
+        for (const [k, label] of TXT) {
+          if ((row as any)[k] === undefined) continue;
+          const neo = norm((row as any)[k]); const old = norm((p as any)[k]);
+          if (neo !== old) fields.push({ label, old, neo });
+        }
+        for (const [k, label] of NUM) {
+          const val = (row as any)[k];
+          if (val == null) continue;
+          const neo = Math.max(0, Number(val)); const old = Number((p as any)[k]) || 0;
+          if (neo !== old) fields.push({ label, old: String(old), neo: String(neo) });
+        }
+        if (fields.length) changes.push({ id: p.id, name: p.name, fields });
+      }
+      if (!changes.length && !ignored && !invalid) { alert('File tidak berisi perubahan.'); setBatchBusy(false); return; }
+      setBatch({ changes, ignored, invalid });
+    } catch (err: any) { alert(err.message || 'Gagal baca file.'); }
+    finally { setBatchBusy(false); }
+  };
+
+  const KEY_BY_LABEL: Record<string, keyof MasterRow> = { 'Nama': 'name', 'Kategori': 'category', 'Satuan': 'unit', 'Satuan Batch': 'batch_unit', 'Eceran': 'price', 'Agen': 'price_agent', 'Branch': 'price_branch', 'Target/Mgg': 'weekly_target', 'Hasil/Batch': 'yield_per_batch' };
+  const commitBatch = async () => {
+    if (!batch) return;
+    setBatchBusy(true);
+    try {
+      for (const c of batch.changes) {
+        const payload: Record<string, unknown> = {};
+        for (const f of c.fields) {
+          const key = KEY_BY_LABEL[f.label];
+          payload[key] = ['price', 'price_agent', 'price_branch', 'weekly_target', 'yield_per_batch'].includes(key) ? Number(f.neo) || 0 : f.neo;
+        }
+        const { error } = await supabase.from('products').update(payload).eq('id', c.id);
+        if (error) throw error;
+      }
+      const n = batch.changes.length;
+      setBatch(null); setSelectMode(false); setSelected(new Set());
+      setBatchToast(`${n} produk diupdate ✓`); setTimeout(() => setBatchToast(''), 2600);
+      fetchData();
+    } catch (e: any) { alert('Gagal update: ' + e.message); } finally { setBatchBusy(false); }
+  };
+
   const handleExportExcel = async () => {
     if (filteredProducts.length === 0) { alert('Tidak ada produk untuk diexport.'); return; }
     const rows = filteredProducts.map((p) => ({
@@ -235,6 +318,13 @@ export default function ProductsPage() {
           </button>
           <button onClick={() => setShowLayoutManager(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-gold px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">
             <ListOrdered size={18} /> Susunan Order
+          </button>
+          <input ref={uploadRef} type="file" accept=".xlsx" className="hidden" onChange={onUploadEdit} />
+          <button onClick={() => uploadRef.current?.click()} disabled={batchBusy} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50" title="Upload Excel hasil edit">
+            {batchBusy && !batch ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />} Upload Edit
+          </button>
+          <button onClick={toggleSelectMode} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all border ${selectMode ? 'bg-raden-green text-white border-raden-green' : 'bg-white text-raden-green border-gray-200'}`}>
+            <ListChecks size={18} /> {selectMode ? 'Batal' : 'Pilih / Export'}
           </button>
           <button onClick={() => {
             const activeCategory = categories.find(c => c.name === searchTerm);
@@ -289,16 +379,35 @@ export default function ProductsPage() {
             </div>
           </div>
 
+          {selectMode && (
+            <div className="bg-raden-green/5 border border-raden-green/15 rounded-2xl p-3 flex items-center gap-3 flex-wrap mb-4">
+              <label className="flex items-center gap-2 cursor-pointer select-none px-1">
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-4 h-4 accent-raden-green" />
+                <span className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Pilih semua ({filteredProducts.length})</span>
+              </label>
+              <span className="text-[11px] font-black text-raden-green ml-auto">{selected.size} dipilih</span>
+              <button onClick={downloadSelected} disabled={!selected.size} className="px-4 py-2.5 bg-raden-green text-white rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-1.5 disabled:opacity-40"><Download size={14} /> Download Excel ({selected.size})</button>
+            </div>
+          )}
           <div className="relative min-h-[400px]">
             {loading && products.length === 0 && <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-raden-gold" /></div>}
             <div className={`grid gap-3 ${productLayout === 'grid' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
               {filteredProducts.map((p, index) => (
-                <ProductCard 
-                  key={p.id} p={p} index={index}
-                  isSorting={isSorting} totalCount={filteredProducts.length}
-                  productLayout={productLayout} onMove={moveProduct}
-                  onEdit={onEditRequest} onDelete={onDeleteRequest}
-                />
+                <div key={p.id} className="relative">
+                  <div className={selectMode ? 'pointer-events-none' : ''}>
+                    <ProductCard
+                      p={p} index={index}
+                      isSorting={isSorting} totalCount={filteredProducts.length}
+                      productLayout={productLayout} onMove={moveProduct}
+                      onEdit={onEditRequest} onDelete={onDeleteRequest}
+                    />
+                  </div>
+                  {selectMode && (
+                    <button onClick={() => toggleOne(p.id)} className={`absolute inset-0 rounded-[2rem] ring-2 transition-all ${selected.has(p.id) ? 'ring-raden-green bg-raden-green/10' : 'ring-transparent hover:ring-gray-200'}`}>
+                      <span className={`absolute top-4 left-4 w-6 h-6 rounded-lg border-2 flex items-center justify-center shadow-sm ${selected.has(p.id) ? 'bg-raden-green border-raden-green text-white' : 'bg-white border-gray-300'}`}>{selected.has(p.id) && <Check size={14} />}</span>
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
             {filteredProducts.length === 0 && !loading && (
@@ -329,11 +438,14 @@ export default function ProductsPage() {
         handleDeleteProduct={handleDeleteProduct}
       />
 
-      <OrderLayoutManager 
+      <OrderLayoutManager
         show={showLayoutManager}
         onClose={() => setShowLayoutManager(false)}
         products={products}
       />
+
+      <BatchEditPreview data={batch} busy={batchBusy} onClose={() => setBatch(null)} onConfirm={commitBatch} verb="Update" />
+      {batchToast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-raden-green text-white px-6 py-3 rounded-2xl shadow-2xl font-black text-sm flex items-center gap-2"><Check size={18} className="text-raden-gold" /> {batchToast}</div>}
     </div>
   );
 }
