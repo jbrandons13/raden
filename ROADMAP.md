@@ -30,7 +30,7 @@ _Update: 17 Juli 2026 · F10 #1–#5 sudah diverifikasi di browser ✅_
 ### 2. 🔒 Keblokir — nunggu input dari luar
 | Item | Nunggu apa |
 |---|---|
-| **F7 — Auto-generate SKU** (frozen) | Fitur **kategori/jenis produk** dulu — SKU di-generate per jenis. _Ini = item **1B** di rencana 3-modul di bawah._ |
+| **F7 — Auto-generate SKU** (frozen) | ⏸️ **basis "jenis" (1B) dibatalkan** — kalau tetap mau auto-SKU, dasarnya kategori flat / nomor global. **Belum diputuskan** apakah dikerjakan. Sementara SKU manual (udah cukup). |
 | **Cetak 託運單 kurir** (HCT/黑貓) | **Contoh/spec form asli** dari kurir (+ seri nomor resi kalau butuh barcode resmi). Pendekatan: print-template, **bukan API**. |
 | **發票** (invoice resmi) | **Ditunda** — kena regulasi pajak pemerintah Taiwan (統一發票/電子發票), harus ikut format resmi. Jangan dibangun dulu. |
 | **成本 / paketan produk** (2J) | Penjelasan SPV — maksudnya masih ambigu. |
@@ -39,7 +39,7 @@ _Update: 17 Juli 2026 · F10 #1–#5 sudah diverifikasi di browser ✅_
 _Dari catatan tulisan tangan SPV. **Status: nunggu diskusi face-to-face** — jangan mulai coding sampai ada arahan._
 
 **Modul 1 — DATABASE** (data induk yang dibaca semua sistem)
-- ☐ Pembagian jenis barang (frozen / fresh / kuliner) — **1B**
+- ❌ ~~Pembagian jenis barang (frozen / fresh / kuliner) — 1B~~ — **DIBATALKAN** (kategori flat sudah cukup, per keputusan Brandon 17 Jul)
 - ☐ SKU produk toko — **1R** _(produk toko belum punya SKU; frozen sudah)_
 - ☐ Data harga: **bisa upload + terjadwal per tanggal** — 1F
 - ☐ Tabel branch mandiri — 1L _(sekarang branch = tipe customer)_
@@ -60,7 +60,7 @@ _Dari catatan tulisan tangan SPV. **Status: nunggu diskusi face-to-face** — ja
 - ☐ Koreksi data invoice/kasir/stok yang salah + **audit trail**
 
 **Urutan garap yang disepakati** (hasil ranking kesulitan × kepentingan):
-1. **Fase 1** — SKU produk toko (1R) + kategori/jenis (1B) · _mudah, penting, sekalian nge-unblock F7_
+1. **Fase 1** — SKU produk toko (1R) · _mudah, penting_ (1B jenis dibatalkan)
 2. **Fase 2** — RBAC per-staff + audit (Modul 3) · _paling fondasional, paling berat_
 3. **Fase 3** — opname (2F) → PO-auto (2A) → retur (2D)
 4. **Fase 4** — tabel branch (1L) → transfer (2G) → harga terjadwal (1F)
