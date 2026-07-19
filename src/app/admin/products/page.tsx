@@ -9,8 +9,7 @@ import ProductModals from './_components/ProductModals';
 import OrderLayoutManager from './_components/OrderLayoutManager';
 import BatchEditPreview, { type BatchData } from '../_components/BatchEditPreview';
 import { Product, ProductCategory } from '@/types/raden';
-import ExportExcelButton from '@/components/ExportExcelButton';
-import { exportWorkbook, CURRENCY_FMT, todayStamp } from '@/lib/exportExcel';
+import { todayStamp } from '@/lib/exportExcel';
 import { exportProductsMaster, parseProductRows, type MasterRow } from '@/lib/productXlsx';
 
 export default function ProductsPage() {
@@ -270,36 +269,6 @@ export default function ProductsPage() {
     } catch (e: any) { alert('Gagal update: ' + e.message); } finally { setBatchBusy(false); }
   };
 
-  const handleExportExcel = async () => {
-    if (filteredProducts.length === 0) { alert('Tidak ada produk untuk diexport.'); return; }
-    const rows = filteredProducts.map((p) => ({
-      nama: p.name,
-      kategori: p.category || '',
-      tipe: p.tracks_stock === false ? 'Fresh' : 'Distok',
-      satuan: p.unit || '',
-      eceran: Number(p.price || 0),
-      agen: Number(p.price_agent || 0),
-      branch: Number(p.price_branch || 0),
-      stok: p.tracks_stock === false ? null : Number(p.current_stock || 0),
-      target: p.tracks_stock === false ? null : Number(p.weekly_target || 0),
-    }));
-    await exportWorkbook(`Raden_Produk_${todayStamp()}`, [{
-      name: 'Produk',
-      columns: [
-        { header: 'Nama', key: 'nama', width: 30 },
-        { header: 'Kategori', key: 'kategori', width: 18 },
-        { header: 'Tipe', key: 'tipe', width: 10 },
-        { header: 'Satuan', key: 'satuan', width: 10 },
-        { header: 'Harga Eceran', key: 'eceran', width: 14, numFmt: CURRENCY_FMT },
-        { header: 'Harga Agen', key: 'agen', width: 14, numFmt: CURRENCY_FMT },
-        { header: 'Harga Branch', key: 'branch', width: 14, numFmt: CURRENCY_FMT },
-        { header: 'Stok', key: 'stok', width: 10 },
-        { header: 'Target/Minggu', key: 'target', width: 14 },
-      ],
-      rows,
-    }]);
-  };
-
   return (
     <div className="space-y-6 relative pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -308,11 +277,6 @@ export default function ProductsPage() {
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Pusat Inventaris & Harga.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <ExportExcelButton
-            onExport={handleExportExcel}
-            label="Export Excel"
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50"
-          />
           <button onClick={() => setShowCategoryManager(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-raden-green px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">
             <Tag size={18} /> Kategori
           </button>
