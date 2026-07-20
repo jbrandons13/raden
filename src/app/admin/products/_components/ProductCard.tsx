@@ -78,7 +78,7 @@ const ProductCard = React.memo(({
           {p.name.charAt(0)}
         </div>
         <div className="min-w-0 pr-2">
-          <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-0.5">{p.category || 'No Category'}</p>
+          <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-0.5">{p.category || 'No Category'}{p.sku ? <span className="text-raden-gold"> · {p.sku}</span> : ''}</p>
           <h3 className="font-black text-raden-green text-sm sm:text-base truncate group-hover:text-raden-gold transition-colors leading-tight">{p.name}</h3>
           {!isSorting ? (
             <div className="flex flex-col gap-1 mt-1.5 overflow-hidden">

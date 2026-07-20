@@ -198,9 +198,15 @@ export default function ProductModals(props: ProductModalsProps) {
             <div className="space-y-5">
               {/* Info */}
               <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama Produk</label>
-                  <input type="text" value={newProduct.name} autoFocus onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-raden-gold" />
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama Produk</label>
+                    <input type="text" value={newProduct.name} autoFocus onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-raden-gold" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">SKU <span className="text-gray-300 normal-case tracking-normal">opsional</span></label>
+                    <input type="text" value={newProduct.sku ?? ''} onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })} placeholder="cth. NGT-01" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-center outline-none focus:ring-2 focus:ring-raden-gold" />
+                  </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kategori</label>
@@ -268,9 +274,15 @@ export default function ProductModals(props: ProductModalsProps) {
             <div className="space-y-5">
               {/* Info */}
               <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama Produk</label>
-                  <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-raden-gold" />
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Nama Produk</label>
+                    <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-raden-gold" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">SKU <span className="text-gray-300 normal-case tracking-normal">opsional</span></label>
+                    <input type="text" value={editForm.sku ?? ''} onChange={(e) => setEditForm({ ...editForm, sku: e.target.value })} placeholder="cth. NGT-01" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-center outline-none focus:ring-2 focus:ring-raden-gold" />
+                  </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Kategori</label>

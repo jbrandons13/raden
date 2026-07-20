@@ -25,13 +25,13 @@ export default function ProductsPage() {
   const [itemToDelete, setItemToDelete] = useState<{id: string, name: string} | null>(null);
 
   const [newProduct, setNewProduct] = useState({
-    name: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0,
+    name: '', sku: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0,
     price_agent: 0, price_branch: 0, yield_per_batch: 0, weekly_target: 0, tracks_stock: true, batch_unit: 'adonan', options: [] as string[]
   });
 
   // Catatan: stok TIDAK diedit di sini — dikoreksi di halaman Stok (tercatat di buku besar).
   const [editForm, setEditForm] = useState({
-    id: '', name: '', category: '', price: 0, price_agent: 0, price_branch: 0, unit: 'Pcs',
+    id: '', name: '', sku: '', category: '', price: 0, price_agent: 0, price_branch: 0, unit: 'Pcs',
     yield_per_batch: 0, weekly_target: 0, tracks_stock: true, batch_unit: 'adonan', options: [] as string[]
   });
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -99,14 +99,15 @@ export default function ProductsPage() {
 
   const filteredProducts = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return products.filter(p => p.name.toLowerCase().includes(term) || p.category?.toLowerCase().includes(term));
+    return products.filter(p => p.name.toLowerCase().includes(term) || p.category?.toLowerCase().includes(term) || (p.sku || '').toLowerCase().includes(term));
   }, [products, searchTerm]);
 
   const handleSaveProduct = async () => {
     if (!newProduct.name) return alert("Nama produk wajib diisi!");
     const maxSortOrder = products.length > 0 ? Math.max(...products.map(p => p.sort_order || 0)) : 0;
     const { error } = await supabase.from('products').insert([{ 
-      ...newProduct, 
+      ...newProduct,
+      sku: (newProduct.sku || '').trim() || null,
       initial_stock: (newProduct.tracks_stock === false) ? 0 : newProduct.initial_stock,
       current_stock: (newProduct.tracks_stock === false) ? 0 : newProduct.initial_stock,
       weekly_target: (newProduct.tracks_stock === false) ? 0 : newProduct.weekly_target,
@@ -116,8 +117,8 @@ export default function ProductsPage() {
     }]);
     if (error) alert(error.message);
     else { 
-      setShowAddModal(false); 
-      setNewProduct({ name: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0, price_agent: 0, price_branch: 0, yield_per_batch: 0, weekly_target: 0, tracks_stock: true, batch_unit: 'adonan', options: [] });
+      setShowAddModal(false);
+      setNewProduct({ name: '', sku: '', category: '', initial_stock: 0, unit: 'Pcs', price: 0, price_agent: 0, price_branch: 0, yield_per_batch: 0, weekly_target: 0, tracks_stock: true, batch_unit: 'adonan', options: [] });
       fetchData(); 
     }
   };
@@ -164,7 +165,7 @@ export default function ProductsPage() {
     // `current_stock` sengaja TIDAK ikut di-update di sini — koreksi stok lewat
     // halaman Stok (RPC adjust_product_stock) supaya tercatat di buku besar.
     const { error } = await supabase.from('products').update({
-      name: editForm.name, category: editForm.category,
+      name: editForm.name, sku: (editForm.sku || '').trim() || null, category: editForm.category,
       price: editForm.price, price_agent: editForm.price_agent, price_branch: editForm.price_branch,
       unit: editForm.unit, batch_unit: editForm.batch_unit, tracks_stock: editForm.tracks_stock,
       options: editForm.options || [],
@@ -205,7 +206,7 @@ export default function ProductsPage() {
     const chosen = products.filter((p) => selected.has(p.id));
     if (!chosen.length) return;
     const data: MasterRow[] = chosen.map((p) => ({
-      id: p.id, name: p.name, category: p.category || '', unit: p.unit || '',
+      id: p.id, name: p.name, sku: p.sku || '', category: p.category || '', unit: p.unit || '',
       price: Number(p.price) || 0, price_agent: Number(p.price_agent) || 0, price_branch: Number(p.price_branch) || 0,
       weekly_target: Number(p.weekly_target) || 0, yield_per_batch: Number(p.yield_per_batch) || 0, batch_unit: (p as any).batch_unit || '',
     }));
@@ -222,7 +223,7 @@ export default function ProductsPage() {
       const byId = new Map(products.map((p) => [p.id, p] as const));
       const changes: BatchData['changes'] = [];
       let ignored = 0, invalid = 0;
-      const TXT: [keyof MasterRow, string][] = [['name', 'Nama'], ['category', 'Kategori'], ['unit', 'Satuan'], ['batch_unit', 'Satuan Batch']];
+      const TXT: [keyof MasterRow, string][] = [['name', 'Nama'], ['sku', 'SKU'], ['category', 'Kategori'], ['unit', 'Satuan'], ['batch_unit', 'Satuan Batch']];
       const NUM: [keyof MasterRow, string][] = [['price', 'Eceran'], ['price_agent', 'Agen'], ['price_branch', 'Branch'], ['weekly_target', 'Target/Mgg'], ['yield_per_batch', 'Hasil/Batch']];
       for (const row of parsed) {
         const p = byId.get(row.id);
@@ -248,7 +249,7 @@ export default function ProductsPage() {
     finally { setBatchBusy(false); }
   };
 
-  const KEY_BY_LABEL: Record<string, keyof MasterRow> = { 'Nama': 'name', 'Kategori': 'category', 'Satuan': 'unit', 'Satuan Batch': 'batch_unit', 'Eceran': 'price', 'Agen': 'price_agent', 'Branch': 'price_branch', 'Target/Mgg': 'weekly_target', 'Hasil/Batch': 'yield_per_batch' };
+  const KEY_BY_LABEL: Record<string, keyof MasterRow> = { 'Nama': 'name', 'SKU': 'sku', 'Kategori': 'category', 'Satuan': 'unit', 'Satuan Batch': 'batch_unit', 'Eceran': 'price', 'Agen': 'price_agent', 'Branch': 'price_branch', 'Target/Mgg': 'weekly_target', 'Hasil/Batch': 'yield_per_batch' };
   const commitBatch = async () => {
     if (!batch) return;
     setBatchBusy(true);

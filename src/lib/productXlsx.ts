@@ -10,7 +10,7 @@ const RADEN_GREEN = 'FF1A3C34';
 const NUMFMT = '#,##0';
 
 export type MasterRow = {
-  id: string; name: string; category: string; unit: string;
+  id: string; name: string; sku: string; category: string; unit: string;
   price: number; price_agent: number; price_branch: number;
   weekly_target: number; yield_per_batch: number; batch_unit: string;
 };
@@ -19,7 +19,7 @@ export type StockRow = { id: string; name: string; category: string; unit: strin
 /** Baris hasil parse — cuma field yang kolomnya ADA di file yang keisi. */
 export type ParsedRow = {
   id: string;
-  name?: string; category?: string; unit?: string; batch_unit?: string;
+  name?: string; sku?: string; category?: string; unit?: string; batch_unit?: string;
   price?: number | null; price_agent?: number | null; price_branch?: number | null;
   weekly_target?: number | null; yield_per_batch?: number | null; current_stock?: number | null;
 };
@@ -28,6 +28,7 @@ export type ParsedRow = {
 const HEADER_KEY: Record<string, keyof ParsedRow> = {
   'id': 'id',
   'nama': 'name',
+  'sku': 'sku',
   'kategori': 'category',
   'satuan': 'unit',
   'satuan batch': 'batch_unit',
@@ -94,10 +95,10 @@ async function build(fileName: string, headers: string[], keys: (keyof MasterRow
 export async function exportProductsMaster(rows: MasterRow[], fileName: string) {
   await build(
     fileName,
-    ['ID', 'Nama', 'Kategori', 'Satuan', 'Harga Eceran', 'Harga Agen', 'Harga Branch', 'Target/Minggu', 'Hasil/Batch', 'Satuan Batch'],
-    ['id', 'name', 'category', 'unit', 'price', 'price_agent', 'price_branch', 'weekly_target', 'yield_per_batch', 'batch_unit'],
-    [36, 34, 18, 10, 14, 14, 14, 14, 12, 14],
-    [5, 6, 7, 8, 9],
+    ['ID', 'Nama', 'SKU', 'Kategori', 'Satuan', 'Harga Eceran', 'Harga Agen', 'Harga Branch', 'Target/Minggu', 'Hasil/Batch', 'Satuan Batch'],
+    ['id', 'name', 'sku', 'category', 'unit', 'price', 'price_agent', 'price_branch', 'weekly_target', 'yield_per_batch', 'batch_unit'],
+    [36, 34, 16, 18, 10, 14, 14, 14, 14, 12, 14],
+    [6, 7, 8, 9, 10],
     rows,
   );
 }

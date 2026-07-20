@@ -40,7 +40,7 @@ _Dari catatan tulisan tangan SPV. **Status: nunggu diskusi face-to-face** — ja
 
 **Modul 1 — DATABASE** (data induk yang dibaca semua sistem)
 - ❌ ~~Pembagian jenis barang (frozen / fresh / kuliner) — 1B~~ — **DIBATALKAN** (kategori flat sudah cukup, per keputusan Brandon 17 Jul)
-- ☐ SKU produk toko — **1R** _(produk toko belum punya SKU; frozen sudah)_
+- ✅ SKU produk toko — **1R** (17 Jul) — field `sku` di produk (form Tambah/Edit), tampil di kartu, bisa dicari, ikut **batch-edit Excel**. Opsional, keunikan diatur manual.
 - ☐ Data harga: **bisa upload + terjadwal per tanggal** — 1F
 - ☐ Tabel branch mandiri — 1L _(sekarang branch = tipe customer)_
 - ☐ Upload data batch (pilih data apa yang mau di-upload) — 1V
@@ -60,7 +60,7 @@ _Dari catatan tulisan tangan SPV. **Status: nunggu diskusi face-to-face** — ja
 - ☐ Koreksi data invoice/kasir/stok yang salah + **audit trail**
 
 **Urutan garap yang disepakati** (hasil ranking kesulitan × kepentingan):
-1. **Fase 1** — SKU produk toko (1R) · _mudah, penting_ (1B jenis dibatalkan)
+1. ✅ **Fase 1** — SKU produk toko (1R) SELESAI · (1B jenis dibatalkan)
 2. **Fase 2** — RBAC per-staff + audit (Modul 3) · _paling fondasional, paling berat_
 3. **Fase 3** — opname (2F) → PO-auto (2A) → retur (2D)
 4. **Fase 4** — tabel branch (1L) → transfer (2G) → harga terjadwal (1F)

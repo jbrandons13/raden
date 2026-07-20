@@ -6,6 +6,7 @@
 export interface Product {
   id: string;
   name: string;
+  sku?: string | null;
   category: string;
   initial_stock: number;
   current_stock: number;
